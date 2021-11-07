@@ -32,8 +32,8 @@ void PlayerFactory::registerAllPlayers() {
                                             [](House* house,const std::string& playername) { return std::make_unique<HumanPlayer>(house, playername); },
                                             [](InputStream& inputStream, House* house) { return std::make_unique<HumanPlayer>(inputStream, house); } );
 
-    playerDataList.emplace_back(  "qBotVeryEasy",
-                                            "qBotVeryEasy",
+    playerDataList.emplace_back(  "qBotVeryEast",
+                                            "qBotVeryEast",
         [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Defend); },
         [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); } );
 

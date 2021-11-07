@@ -147,6 +147,7 @@ void CampaignAIPlayer::onDecrementStructures(int itemID, const Coord& location) 
 }
 
 void CampaignAIPlayer::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID) {
+    
     if(!pObject->isAUnit() || !pObject->isRespondable()) {
         return;
     }
@@ -161,6 +162,17 @@ void CampaignAIPlayer::onDamage(const ObjectBase* pObject, int damage, Uint32 da
         // do not respond to friendly fire
         return;
     }
+
+    
+
+    // Once we have had direct contact we want to start attacking
+    auto* pHouse = getHouse();  
+    if (pHouse) {
+
+        pHouse->hadDirectContactWithEnemy();
+    }
+
+
 
     if(!pUnit->canAttack(pDamager)) {
         return;
@@ -178,7 +190,7 @@ void CampaignAIPlayer::updateStructures() {
             continue;
         }
 
-        if( pStructure->getItemID() == Structure_Palace) {
+        if( pStructure->getItemID() == Structure_Palace) { 
             const Palace* pPalace = static_cast<const Palace*>(pStructure);
             if(pPalace->isSpecialWeaponReady()){
 
@@ -310,11 +322,24 @@ void CampaignAIPlayer::updateStructures() {
 
 void CampaignAIPlayer::updateUnits() {
     for(const UnitBase* pUnit : getUnitList()) {
+        
+        // Don't attack if we haven't been in contact yet
+        if (!getHouse()->hadDirectContactWithEnemy()) {
+            return;
+        }
+
+
         if(pUnit->getOwner() != getHouse() || pUnit->wasForced() || !pUnit->isRespondable() || pUnit->isByScenario() || pUnit->hasATarget()) {
             continue;
         }
 
-        if((pUnit->getItemID() == Unit_Harvester) || (pUnit->getItemID() == Unit_MCV) || (pUnit->getItemID() == Unit_Carryall) || (pUnit->getItemID() == Unit_Frigate)) {
+        if((    pUnit->getItemID() == Unit_Harvester) || 
+                (pUnit->getItemID() == Unit_MCV) || 
+                (pUnit->getItemID() == Unit_Carryall) || 
+                (pUnit->getItemID() == Unit_Frigate) ||
+                (pUnit->getItemID() == Unit_Sandworm)) // remove sandworms from update
+        {
+
             continue;
         }
 
@@ -345,6 +370,7 @@ void CampaignAIPlayer::updateUnits() {
         }
 
         if(pBestCandidate) {
+            !getHouse()->hadDirectContactWithEnemy();
             doAttackObject(pUnit, pBestCandidate, true);
         }
     }

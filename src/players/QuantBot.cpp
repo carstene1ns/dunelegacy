@@ -125,7 +125,7 @@ QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Diffic
 
     buildTimer = getRandomGen().rand(0,3) * 50;
 
-    attackTimer = MILLI2CYCLES(10000);
+    attackTimer = MILLI2CYCLES(120000);
     retreatTimer = MILLI2CYCLES(60000); //turning off
 
     // Different AI logic for Campaign. Assumption is if player is loading they are playing a campaign game
@@ -478,6 +478,9 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
     bool bPossiblyOwnFremen = (pObject->getOwner()->getHouseID() == HOUSE_ATREIDES) && (pObject->getItemID() == Unit_Trooper) && (currentGame->techLevel > 7);
     if(gameMode == GameMode::Campaign && !pDamager->getOwner()->isAI() && !campaignAIAttackFlag && !bPossiblyOwnFremen && (pObject->getItemID() != Unit_Saboteur)) {
         campaignAIAttackFlag = true;
+        attackTimer = MILLI2CYCLES(0); // attack!!
+
+
     } else if (pObject->isAStructure()) {
         doRepair(pObject);
         // no point scrambling to defend a missile
@@ -1315,11 +1318,11 @@ void QuantBot::build(int militaryValue) {
                                 if(itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
                                     itemID = Structure_WindTrap;
                                     itemCount[Structure_WindTrap]++;
-                                } else if((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
+                                } else if((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 2.5) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
                                     itemID = Structure_Refinery;
                                     itemCount[Unit_Harvester]++;
                                     itemCount[Structure_Refinery]++;
-                                } else if(itemCount[Structure_Refinery] < 3 && pBuilder->isAvailableToBuild(Structure_Refinery) && money < 4000) {
+                                } else if(itemCount[Structure_Refinery] < 5 && pBuilder->isAvailableToBuild(Structure_Refinery) && money < 4000) {
                                     itemID = Structure_Refinery;
                                     itemCount[Unit_Harvester]++;
                                     itemCount[Structure_Refinery]++;
@@ -1343,7 +1346,7 @@ void QuantBot::build(int militaryValue) {
                                     }
                                 } 
                                 // If we need more refinerys for our harvesters or we don't have a heavy factory
-                                else if(((money > 2000 && itemCount[Structure_Refinery] * 3.5_fix  < harvesterLimit)
+                                else if(((money > 500 && itemCount[Structure_Refinery] * 2.5_fix  < harvesterLimit)
                                             || (currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit && money > 1000))
                                             && pBuilder->isAvailableToBuild(Structure_Refinery)){
                                         itemID = Structure_Refinery;
