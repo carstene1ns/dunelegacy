@@ -125,7 +125,7 @@ QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Diffic
 
 	buildTimer = getRandomGen().rand(0, 3) * 50;
 
-    attackTimer = MILLI2CYCLES(120000);
+    attackTimer = MILLI2CYCLES(150000);
     retreatTimer = MILLI2CYCLES(60000); //turning off
 
 	// Different AI logic for Campaign. Assumption is if player is loading they are playing a campaign game
@@ -277,7 +277,7 @@ void QuantBot::update() {
 			switch (difficulty) {
 			case Difficulty::Easy: {
 				harvesterLimit = initialItemCount[Structure_Refinery];
-				if (currentGame->getGameInitSettings().getMission() == 21
+				if (currentGame->getGameInitSettings().getMission() >= 21
 					&& initialMilitaryValue < 2000) {
 					militaryValueLimit = 2000;
 				}
@@ -290,8 +290,8 @@ void QuantBot::update() {
 
 			case Difficulty::Medium: {
 				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
-				militaryValueLimit = lround(initialMilitaryValue * 1.2_fix);
-				if (militaryValueLimit < 4000 && currentGame->getGameInitSettings().getMission() == 21) {
+				militaryValueLimit = lround(initialMilitaryValue * 1.5_fix);
+				if (militaryValueLimit < 4000 && currentGame->getGameInitSettings().getMission() >= 21) {
 					militaryValueLimit = 4000;
 				}
 
@@ -299,29 +299,32 @@ void QuantBot::update() {
 			} break;
 
 			case Difficulty::Hard: {
-				if (currentGame->getGameInitSettings().getMission() == 21) {
+				if (currentGame->getGameInitSettings().getMission() >= 21) {
 					initialItemCount[Structure_Refinery] = 2;
 					militaryValueLimit = 10000;
-					harvesterLimit = 4;
 				}
 				else {
-					harvesterLimit = 2 * initialItemCount[Structure_Refinery];
-					militaryValueLimit = lround(initialMilitaryValue * 1.5_fix);
+					
+					militaryValueLimit = lround(initialMilitaryValue * 2_fix);
 				}
+				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
 
-				logDebug("Hard Campaign  ");
+				logDebug("Hard Campaign  harvesterlimit = %d", harvesterLimit);
 			} break;
 
 			case Difficulty::Brutal: {
-				harvesterLimit = (currentGameMap->getSizeX() * currentGameMap->getSizeY() / 512);
-				militaryValueLimit = 25000;
-
+				//harvesterLimit = (currentGameMap->getSizeX() * currentGameMap->getSizeY() / 512);
+				if (initialItemCount[Structure_Refinery] < 2) {
+					initialItemCount[Structure_Refinery] = 2;
+				}
+				militaryValueLimit = lround(initialMilitaryValue * 3_fix);
+				harvesterLimit = 3 * initialItemCount[Structure_Refinery];
 				logDebug("Brutal Campaign  ");
 			} break;
 
 			case Difficulty::Defend: {
 				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
-				militaryValueLimit = lround(initialMilitaryValue * 1.2_fix);
+				militaryValueLimit = lround(initialMilitaryValue * 1.8_fix);
 
 				logDebug("Defensive Campaign  ");
 			} break;
@@ -363,39 +366,41 @@ void QuantBot::update() {
 			case Difficulty::Brutal: {
 				harvesterLimit = 50 * ratio;
 				militaryValueLimit = 65000 * ratio;
-				//logDebug("BUILD BRUTAL SKIRM ");
+				logDebug("BUILD BRUTAL SKIRM. harvesterLimit: 50 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Easy: {
 				harvesterLimit = 10 * ratio;
 
 				militaryValueLimit = 10000 * ratio;
-				//logDebug("BUILD EASY SKIRM ");
+				logDebug("BUILD EASY SKIRM. harvesterLimit: 10 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Medium: {
 				harvesterLimit = 20 * ratio;
 				militaryValueLimit = 20000 * ratio;
-				//logDebug("BUILD MEDIUM SKIRM ");
+				logDebug("BUILD MEDIUM SKIRM. harvesterLimit: 20 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Hard: {
-				harvesterLimit = 35 * ratio;
+				harvesterLimit = 30 * ratio;
 				militaryValueLimit = 40000 * ratio;
-				//logDebug("BUILD HARD SKIRM ");
+				logDebug("BUILD HARD SKIRM. harvesterLimit: 35 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Defend: {
 				harvesterLimit = 20 * ratio;
 				militaryValueLimit = 20000 * ratio;
-				//logDebug("BUILD MEDIUM SKIRM ");
+				logDebug("BUILD DEFEND SKIRM. harvesterLimit: 20 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 			}
 
-			// what is this useful for?
-			if ((currentGameMap->getSizeX() * currentGameMap->getSizeY() / 512) < harvesterLimit && difficulty != Difficulty::Brutal) {
-				harvesterLimit = currentGameMap->getSizeX() * currentGameMap->getSizeY() / 512;
-			}
+			// what is this useful for? Reseting limits or something
+			/*
+			if ((currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480) < harvesterLimit && difficulty != Difficulty::Brutal) {
+				harvesterLimit = currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480;
+				logDebug("Reset harvesterLimit: %d = mapX: %d * mapY: %d / 480", harvesterLimit, currentGameMap->getSizeX(), currentGameMap->getSizeY());
+			}*/
 
 		} break;
 
@@ -433,18 +438,8 @@ void QuantBot::update() {
 		attack(militaryValue);
 	}
 
-
-	else if (attackTimer > MILLI2CYCLES(100000) && (gameMode != GameMode::Campaign || campaignAIAttackFlag == true)) {
-		// If we have taken substantial losses then retreat
-		attackTimer = MILLI2CYCLES(90000);
-		retreatAllUnits();
-	}
-	else if (retreatTimer < 0) {
-		retreatAllUnits();
-	}
 	else {
 		attackTimer -= AIUPDATEINTERVAL;
-		retreatTimer -= AIUPDATEINTERVAL;
 	}
 }
 
@@ -460,7 +455,7 @@ void QuantBot::onDecrementStructures(int itemID, const Coord& location) {
 /// When we take losses we should hold off from attacking for longer...
 void QuantBot::onDecrementUnits(int itemID) {
 	if (itemID != Unit_Trooper && itemID != Unit_Infantry) {
-		attackTimer += MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 30 / (static_cast<Uint8>(difficulty) + 1));
+		//attackTimer += MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 30 / (static_cast<Uint8>(difficulty) + 1));
 		//logDebug("loss ");
 		retreatTimer -= MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 20);
 	}
@@ -470,7 +465,7 @@ void QuantBot::onDecrementUnits(int itemID) {
 /// When we get kills we should re-attack sooner...
 void QuantBot::onIncrementUnitKills(int itemID) {
 	if (itemID != Unit_Trooper && itemID != Unit_Infantry) {
-		attackTimer -= MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 15);
+		//attackTimer -= MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 15);
 		//logDebug("kill ");
 	}
 }
@@ -577,26 +572,32 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 		// only do these acitons for vehicles and not when fighting turrets
 		// repair them, if they are eligible to be repaired
 		if (difficulty != Difficulty::Easy) {
-			if ((pGroundUnit->getHealth() * 100) / pGroundUnit->getMaxHealth() < 80
+			if ((pGroundUnit->getHealth() * 100) / pGroundUnit->getMaxHealth() < 75
 				&& !pGroundUnit->isInfantry()
 				&& pGroundUnit->isVisible()
 				&& (pDamager->getItemID() != Structure_GunTurret
 					&& pDamager->getItemID() != Structure_RocketTurret)
 				) {
 
-				// Rotate unit backwards if it is taking damage
-				doSetAttackMode(pGroundUnit, AREAGUARD);
-				doMove2Pos(pGroundUnit, squadCenterLocation.x, squadCenterLocation.y, true);
 
 				// If unit isn't an infrantry then heal it once it is below 2/3 health if not an easy or medium campaign
 				if (getHouse()->hasRepairYard()
-					&& (pGroundUnit->getHealth() * 100) / pGroundUnit->getMaxHealth() < 65
+					&& (pGroundUnit->getHealth() * 100) / pGroundUnit->getMaxHealth() < 60
 
 					// don't do manual repairs if it's campaign and easy or medium difficulty
 					&& !(gameMode == GameMode::Campaign && (difficulty == Difficulty::Easy || difficulty == Difficulty::Medium))
 					) {
 					doRepair(pGroundUnit);
 				}
+
+				// Rotate unit backwards if it is taking damage if it is softer
+				else if (pGroundUnit->getItemID() != Unit_SiegeTank && pGroundUnit->getItemID() != Unit_Devastator) {
+					doSetAttackMode(pGroundUnit, AREAGUARD);
+					doMove2Pos(pGroundUnit, squadCenterLocation.x, squadCenterLocation.y, true);
+				}
+
+
+
 			}
 		}
 	}
@@ -820,8 +821,8 @@ void QuantBot::build(int militaryValue) {
 	int money = getHouse()->getCredits();
 
 	if (militaryValue > 0 || getHouse()->getNumStructures() > 0) {
-		logDebug(" att: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
-			attackTimer, getHouse()->getCredits(), militaryValueLimit, militaryValue, getHouse()->getUnitBuiltValue(),
+		logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
+			attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
 			getHouse()->getKillValue(), getHouse()->getLossValue(), getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
 	}
 
@@ -891,9 +892,10 @@ void QuantBot::build(int militaryValue) {
 	if (totalDamage < 3000) {
 		switch (houseID) {
 		case HOUSE_HARKONNEN:
-			launcherPercent = 0.35_fix;
-			specialPercent = 0.1_fix;
-			siegePercent = 0.55_fix;
+			launcherPercent = 0.40_fix;
+			specialPercent = 0.40_fix;
+			siegePercent = 0.10_fix;
+			siegePercent = 0.10_fix;
 			ornithopterPercent = 0.0_fix;
 			break;
 
@@ -934,8 +936,7 @@ void QuantBot::build(int militaryValue) {
 		getHouse()->getNumItemDamageInflicted(Unit_Launcher), getHouse()->getNumLostItems(Unit_Launcher) * 450, launcherPercent.toDouble(),
 		getHouse()->getNumItemDamageInflicted(Unit_Ornithopter), getHouse()->getNumLostItems(Unit_Ornithopter) * data[Unit_Ornithopter][houseID].price, ornithopterPercent.toDouble()
 	);
-
-
+	
 	// End of adaptive unit prioritisation algorithm
 
 
@@ -1549,50 +1550,35 @@ void QuantBot::scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits)
 
 void QuantBot::attack(int militaryValue) {
 
-	if ((militaryValue < militaryValueLimit * 0.50_fix && (getHouse()->getNumUnits() < getHouse()->getMaxUnits() - 10))) {
+	// reset attack timer for every 15s
+	attackTimer = MILLI2CYCLES(15000);
+
+	// if AI is set to only defend then don't attack
+	if (difficulty == Difficulty::Defend) {
+		logDebug("Don't attack. Defend only AI");
+		return;
+		// Set max attack squad sizes for campaigns, AI will only attack with this number of units
+		// should move and refactor this to run once at start. Also should rework military value
+	}
+
+
+	if (militaryValue < militaryValueLimit * 0.35_fix) {
+		logDebug("Don't attack. Not enough troops: house: %d  dif: %d  mStr: %d  mLim: %d",
+			getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
 		return;
 	}
 
 	// Don't attack if you don't yet have a repair yard, if you are at least tech 5
 	if (getHouse()->getNumItems(Structure_RepairYard) == 0 && currentGame->techLevel > 4) {
+		logDebug("Don't attack. Wait until you have a repair yard.");
 		return;
 	}
 
 	int attackSquadSize = 0; // how many units AI will send in attack squad
 	int maxAttackSquadSize = 99; // max units that AI can send
-
-	// if AI is set to only defend then don't attack
-	if (difficulty == Difficulty::Defend) {
-		return;
-		// Set max attack squad sizes for campaigns, AI will only attack with this number of units
-		// should move and refactor this to run once at start. Also should rework military value
-	}
-	else if (gameMode == GameMode::Campaign) {
-		maxAttackSquadSize = 1;
-		if (difficulty == Difficulty::Medium) {
-			maxAttackSquadSize += 2;
-		}
-		else if (difficulty == Difficulty::Hard) {
-			maxAttackSquadSize += 4;
-		}
-		if (currentGame->getGameInitSettings().getMission() < 21) {
-			maxAttackSquadSize++;
-		}
-		if (currentGame->getGameInitSettings().getMission() < 19) {
-			maxAttackSquadSize++;
-		}
-		attackTimer = MILLI2CYCLES(40000); // we want to attack semi-regularly
-	}
-	// normal campaign, attack every 90s
-	else {
-		attackTimer = MILLI2CYCLES(90000);
-	}
-
-
-
+	
 	logDebug("Attack: house: %d  dif: %d  mStr: %d  mLim: %d  attackTimer: %d",
 		getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
-
 
 	Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
 
@@ -1604,7 +1590,7 @@ void QuantBot::attack(int militaryValue) {
 			&& pUnit->getItemID() != Unit_MCV
 			&& pUnit->getItemID() != Unit_Carryall
 			&& pUnit->getItemID() != Unit_Sandworm
-			&& pUnit->getHealth() / pUnit->getMaxHealth() > 0.8_fix)
+			&& pUnit->getHealth() / pUnit->getMaxHealth() > 0.7_fix)
 
 		{
 			if (attackSquadSize >= maxAttackSquadSize) {
@@ -1755,7 +1741,7 @@ void QuantBot::retreatAllUnits() {
 	squadRetreatLocation = findSquadRetreatLocation();
 
 	// turning this off fow now
-	retreatTimer = MILLI2CYCLES(90000);
+	//retreatTimer = MILLI2CYCLES(90000);
 
 	// If no base exists yet, there is no retreat location
 	if (squadRallyLocation.isValid() && squadRetreatLocation.isValid()) {
@@ -1811,12 +1797,12 @@ void QuantBot::checkAllUnits() {
 			} break;
 
 			case Unit_Harvester: {
-				/*
+				
 				const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
 				if(getHouse()->getCredits() < 1000 && pHarvester != nullptr && pHarvester->isActive()
 					&& (pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE/2) && getHouse()->getNumItems(Structure_HeavyFactory) == 0) {
 					doReturn(pHarvester);
-				}*/
+				}
 			} break;
 
 			case Unit_Carryall: {
@@ -1844,11 +1830,12 @@ void QuantBot::checkAllUnits() {
 						doStartDevastate(pDevastator);
 						doSetAttackMode(pDevastator, HUNT);
 					}
+					/*
 					else if (pUnit->getItemID() == Unit_Ornithopter) {
 						if (pUnit->getAttackMode() != HUNT) {
 							doSetAttackMode(pUnit, HUNT);
 						}
-					}
+					}*/
 					else if (pUnit->getItemID() == Unit_Harvester) {
 						const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
 						if (pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE / 5) {
@@ -1904,13 +1891,6 @@ void QuantBot::checkAllUnits() {
 						// A newly deployed unit has reached the rally point, or has been diverted => Change it to area guard
 						doSetAttackMode(pUnit, AREAGUARD);
 					}
-				}
-				else if (pUnit->getAttackMode() == HUNT
-					&& attackTimer > MILLI2CYCLES(250000)
-					&& pUnit->getItemID() != Unit_Trooper
-					&& pUnit->getItemID() != Unit_Saboteur
-					&& pUnit->getItemID() != Unit_Sandworm) {
-					doSetAttackMode(pUnit, AREAGUARD);
 				}
 			} break;
 			}
