@@ -1,11 +1,15 @@
 
-              /-------------------------------\
-              |                               |
-              |    Dune Legacy 0.96 readme    |
-              |    -----------------------    |
-              |                               |
-              \-------------------------------/
+		/-----------------------------------------------\
+		|                               				|
+		|    Dune Legacy 0.97 readme    				|
+		|    ---------------------------------------    |
+		|    current dev: stefanvanderwelATgmail.com    |
+		\-----------------------------------------------/
 
+--------------------------------------------------------------
+Web: http://sourceforge.net/projects/dunelegacy
+Discord: https://discord.gg/6sAcZr6y3B
+--------------------------------------------------------------
 
 IMPORTANT:
 This software is provided as is, and you are running it at your own risk.  I'm not responsible if any harm results
@@ -14,7 +18,7 @@ The program Dune Legacy is an modernized clone of the excellent Westwood Studios
 Dune2 on the net anyways, but I won't provide it.  I think you can still even buy it from Westwood studios, so do that.
 There exists a mod called Superdune 2. The PAK-Files Superdune 2 provides are nearly the same except SCENARIO.PAK.
  
-This program would not have been created without the use of the excellent SDL library and its extensions.  Thanks guys :).
+This program would not have been created without the use of the excellent SDL2 library and its extensions.  Thanks guys :).
 
 
 Getting Started
@@ -124,7 +128,5 @@ To play online via Internet you have to manually enable port forwarding if you u
 Example: If your machine has IP 192.168.123.1 and your using the default Dune Legacy Port, than forward port 28747 from your router to 192.168.123.1:28747.
 
 
---------------------------------------------------------------
-IRC: #dunelegacy @ irc.freenode.net
-Web: http://sourceforge.net/projects/dunelegacy
+
 

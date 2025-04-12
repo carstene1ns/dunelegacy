@@ -55,3 +55,4 @@ IDE/VC/obj
 /data/DUNE.PAK
 /data/SOUND.PAK
 /data/VOC.PAK
+*.exe
