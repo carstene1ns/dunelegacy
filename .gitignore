@@ -33,3 +33,4 @@ IDE/VC/*.out?
 /IDE/VC/packages/sdl2_ttf.nuget.2.20.1
 /IDE/VC/packages/sdl2_ttf.nuget.redist.2.20.1
 /Dune Legacy 0.97.01 Setup.exe
+/IDE/VC/packages
