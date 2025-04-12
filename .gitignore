@@ -19,9 +19,10 @@ UserInterfaceState.xcuserstate
 *~.xib 
 .DS_Store 
 xcuserdata/
-IDE/VC/obj
 *.user
 IDE/VC/*.out?
+IDE/VC/packages/
+IDE/VC/obj
 /.vs/ProjectSettings.json
 /.vs
 /data
