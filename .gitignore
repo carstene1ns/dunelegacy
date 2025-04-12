@@ -25,12 +25,4 @@ IDE/VC/*.out?
 /.vs/ProjectSettings.json
 /.vs
 /data
-/IDE/VC/packages/sdl2.nuget.2.0.8
-/IDE/VC/packages/sdl2.nuget.2.26.1
-/IDE/VC/packages/sdl2.nuget.redist.2.26.1
-/IDE/VC/packages/sdl2_mixer.nuget.2.6.2
-/IDE/VC/packages/sdl2_mixer.nuget.redist.2.6.2
-/IDE/VC/packages/sdl2_ttf.nuget.2.20.1
-/IDE/VC/packages/sdl2_ttf.nuget.redist.2.20.1
 /Dune Legacy 0.97.01 Setup.exe
-/IDE/VC/packages
