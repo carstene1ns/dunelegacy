@@ -150,10 +150,10 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       </WarningVersion>
       <DisableSpecificWarnings>4267</DisableSpecificWarnings>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
-      <LanguageStandard>Default</LanguageStandard>
-      <LanguageStandard_C>Default</LanguageStandard_C>
-      <DebugInformationFormat>None</DebugInformationFormat>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -190,8 +190,9 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_ttf.lib;SDL2_mixer.lib;imm32.lib;version.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>imm32.lib;version.lib;ws2_32.lib;winmm.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>C:\source\dune\dunelegacy-code\IDE\VC\packages\sdl2_mixer.nuget.2.8.1\build\native\lib\x64;C:\source\dune\dunelegacy-code\IDE\VC\packages\sdl2.nuget.2.32.4\build\native\lib\x64;C:\source\dune\dunelegacy-code\IDE\VC\packages\sdl2_ttf.nuget.2.24.0\build\native\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent />
     <PostBuildEvent>
@@ -960,27 +961,26 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ResourceCompile Include="..\..\resource.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\dunelegacy.nsi" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\sdl2.nuget.2.26.1\build\native\sdl2.nuget.targets" Condition="Exists('packages\sdl2.nuget.2.26.1\build\native\sdl2.nuget.targets')" />
-    <Import Project="packages\sdl2.nuget.2.0.8\build\native\sdl2.nuget.targets" Condition="Exists('packages\sdl2.nuget.2.0.8\build\native\sdl2.nuget.targets')" />
-    <Import Project="packages\sdl2_mixer.nuget.redist.2.6.2\build\native\sdl2_mixer.nuget.redist.targets" Condition="Exists('packages\sdl2_mixer.nuget.redist.2.6.2\build\native\sdl2_mixer.nuget.redist.targets')" />
-    <Import Project="packages\sdl2_mixer.nuget.2.6.2\build\native\sdl2_mixer.nuget.targets" Condition="Exists('packages\sdl2_mixer.nuget.2.6.2\build\native\sdl2_mixer.nuget.targets')" />
-    <Import Project="packages\sdl2_ttf.nuget.redist.2.20.1\build\native\sdl2_ttf.nuget.redist.targets" Condition="Exists('packages\sdl2_ttf.nuget.redist.2.20.1\build\native\sdl2_ttf.nuget.redist.targets')" />
-    <Import Project="packages\sdl2_ttf.nuget.2.20.1\build\native\sdl2_ttf.nuget.targets" Condition="Exists('packages\sdl2_ttf.nuget.2.20.1\build\native\sdl2_ttf.nuget.targets')" />
+    <Import Project="packages\sdl2.nuget.redist.2.32.4\build\native\sdl2.nuget.redist.targets" Condition="Exists('packages\sdl2.nuget.redist.2.32.4\build\native\sdl2.nuget.redist.targets')" />
+    <Import Project="packages\sdl2.nuget.2.32.4\build\native\sdl2.nuget.targets" Condition="Exists('packages\sdl2.nuget.2.32.4\build\native\sdl2.nuget.targets')" />
+    <Import Project="packages\sdl2_mixer.nuget.redist.2.8.1\build\native\sdl2_mixer.nuget.redist.targets" Condition="Exists('packages\sdl2_mixer.nuget.redist.2.8.1\build\native\sdl2_mixer.nuget.redist.targets')" />
+    <Import Project="packages\sdl2_mixer.nuget.2.8.1\build\native\sdl2_mixer.nuget.targets" Condition="Exists('packages\sdl2_mixer.nuget.2.8.1\build\native\sdl2_mixer.nuget.targets')" />
+    <Import Project="packages\sdl2_ttf.nuget.redist.2.24.0\build\native\sdl2_ttf.nuget.redist.targets" Condition="Exists('packages\sdl2_ttf.nuget.redist.2.24.0\build\native\sdl2_ttf.nuget.redist.targets')" />
+    <Import Project="packages\sdl2_ttf.nuget.2.24.0\build\native\sdl2_ttf.nuget.targets" Condition="Exists('packages\sdl2_ttf.nuget.2.24.0\build\native\sdl2_ttf.nuget.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\sdl2.nuget.2.26.1\build\native\sdl2.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2.nuget.2.26.1\build\native\sdl2.nuget.targets'))" />
-    <Error Condition="!Exists('packages\sdl2.nuget.2.0.8\build\native\sdl2.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2.nuget.2.0.8\build\native\sdl2.nuget.targets'))" />
-    <Error Condition="!Exists('packages\sdl2_mixer.nuget.redist.2.6.2\build\native\sdl2_mixer.nuget.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_mixer.nuget.redist.2.6.2\build\native\sdl2_mixer.nuget.redist.targets'))" />
-    <Error Condition="!Exists('packages\sdl2_mixer.nuget.2.6.2\build\native\sdl2_mixer.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_mixer.nuget.2.6.2\build\native\sdl2_mixer.nuget.targets'))" />
-    <Error Condition="!Exists('packages\sdl2_ttf.nuget.redist.2.20.1\build\native\sdl2_ttf.nuget.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_ttf.nuget.redist.2.20.1\build\native\sdl2_ttf.nuget.redist.targets'))" />
-    <Error Condition="!Exists('packages\sdl2_ttf.nuget.2.20.1\build\native\sdl2_ttf.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_ttf.nuget.2.20.1\build\native\sdl2_ttf.nuget.targets'))" />
+    <Error Condition="!Exists('packages\sdl2.nuget.redist.2.32.4\build\native\sdl2.nuget.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2.nuget.redist.2.32.4\build\native\sdl2.nuget.redist.targets'))" />
+    <Error Condition="!Exists('packages\sdl2.nuget.2.32.4\build\native\sdl2.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2.nuget.2.32.4\build\native\sdl2.nuget.targets'))" />
+    <Error Condition="!Exists('packages\sdl2_mixer.nuget.redist.2.8.1\build\native\sdl2_mixer.nuget.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_mixer.nuget.redist.2.8.1\build\native\sdl2_mixer.nuget.redist.targets'))" />
+    <Error Condition="!Exists('packages\sdl2_mixer.nuget.2.8.1\build\native\sdl2_mixer.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_mixer.nuget.2.8.1\build\native\sdl2_mixer.nuget.targets'))" />
+    <Error Condition="!Exists('packages\sdl2_ttf.nuget.redist.2.24.0\build\native\sdl2_ttf.nuget.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_ttf.nuget.redist.2.24.0\build\native\sdl2_ttf.nuget.redist.targets'))" />
+    <Error Condition="!Exists('packages\sdl2_ttf.nuget.2.24.0\build\native\sdl2_ttf.nuget.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\sdl2_ttf.nuget.2.24.0\build\native\sdl2_ttf.nuget.targets'))" />
   </Target>
 </Project>

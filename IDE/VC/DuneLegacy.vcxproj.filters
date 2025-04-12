@@ -1576,6 +1576,5 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="..\..\dunelegacy.nsi" />
   </ItemGroup>
 </Project>

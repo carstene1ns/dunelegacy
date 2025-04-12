@@ -125,8 +125,8 @@ QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Diffic
 
 	buildTimer = getRandomGen().rand(0, 3) * 50;
 
-	attackTimer = MILLI2CYCLES(10000);
-	retreatTimer = MILLI2CYCLES(60000);
+    attackTimer = MILLI2CYCLES(120000);
+    retreatTimer = MILLI2CYCLES(60000); //turning off
 
 	// Different AI logic for Campaign. Assumption is if player is loading they are playing a campaign game
 	if ((currentGame->gameType == GameType::Campaign) || (currentGame->gameType == GameType::LoadSavegame) || (currentGame->gameType == GameType::Skirmish)) {
@@ -482,26 +482,25 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 		return;
 	}
 
-	// If the human has attacked us then its time to start fighting back... unless its an attack on a special unit
-	// Don't trigger with fremen or saboteur
-	bool bPossiblyOwnFremen = (pObject->getOwner()->getHouseID() == HOUSE_ATREIDES) && (pObject->getItemID() == Unit_Trooper) && (currentGame->techLevel > 7);
-	if (gameMode == GameMode::Campaign && !pDamager->getOwner()->isAI() && !campaignAIAttackFlag && !bPossiblyOwnFremen && (pObject->getItemID() != Unit_Saboteur)) {
-		campaignAIAttackFlag = true;
-	}
-	else if (pObject->isAStructure()) {
-		doRepair(pObject);
-		// no point scrambling to defend a missile
-		if (pDamager->getItemID() != Structure_Palace) {
-			int numStructureDefenders = 0;
-			switch (difficulty) {
-			case Difficulty::Defend:    numStructureDefenders = 4;                                  break;
-			case Difficulty::Easy:      numStructureDefenders = 6;                                  break;
-			case Difficulty::Medium:    numStructureDefenders = 10;                                 break;
-			case Difficulty::Hard:      numStructureDefenders = 20;                                 break;
-			case Difficulty::Brutal:    numStructureDefenders = std::numeric_limits<int>::max();    break;
-			}
-			scrambleUnitsAndDefend(pDamager, numStructureDefenders);
-		}
+    // If the human has attacked us then its time to start fighting back... unless its an attack on a special unit
+    // Don't trigger with fremen or saboteur
+    bool bPossiblyOwnFremen = (pObject->getOwner()->getHouseID() == HOUSE_ATREIDES) && (pObject->getItemID() == Unit_Trooper) && (currentGame->techLevel > 7);
+    if(gameMode == GameMode::Campaign && !pDamager->getOwner()->isAI() && !campaignAIAttackFlag && !bPossiblyOwnFremen && (pObject->getItemID() != Unit_Saboteur)) {
+        campaignAIAttackFlag = true;
+    } else if (pObject->isAStructure()) {
+        doRepair(pObject);
+        // no point scrambling to defend a missile
+        if(pDamager->getItemID() != Structure_Palace) {
+            int numStructureDefenders = 0;
+            switch(difficulty) {
+                case Difficulty::Defend:    numStructureDefenders = 4;                                  break;
+                case Difficulty::Easy:      numStructureDefenders = 6;                                  break;
+                case Difficulty::Medium:    numStructureDefenders = 10;                                 break;
+                case Difficulty::Hard:      numStructureDefenders = 20;                                 break;
+                case Difficulty::Brutal:    numStructureDefenders = std::numeric_limits<int>::max();    break;
+            }
+            scrambleUnitsAndDefend(pDamager, numStructureDefenders);
+        }
 
 	}
 	else if (pObject->isAGroundUnit()) {
