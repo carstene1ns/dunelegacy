@@ -18,13 +18,14 @@
 #ifndef TEXTMANAGER_H
 #define TEXTMANAGER_H
 
-#include "IndexedTextFile.h"
-#include "MentatTextFile.h"
-
 #include <string>
+#include <array>
+#include <memory>
+#include "FileClasses/IndexedTextFile.h"
+#include "FileClasses/MentatTextFile.h"
+
 #include <vector>
 #include <map>
-#include <memory>
 
 #include <algorithm>
 
