@@ -1,4 +1,3 @@
-
 /*
  *  This file is part of Dune Legacy.
  *
@@ -17,7 +16,7 @@
  */
 
 #ifndef VERSION
-    #define VERSION "0.97.03"
+    #define VERSION "0.97.04"
 #endif
 
 #ifndef PACKAGE

@@ -8,6 +8,31 @@
     <atom:link href="http://dunelegacy.sourceforge.net/website/feed.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <title>Dune Legacy 0.97.04 Released</title>
+      <description>&lt;p&gt;I am pleased to announce that Dune Legacy version 0.97.04 is now available for Windows! This release brings significant performance optimizations and gameplay improvements.&lt;/p&gt;
+
+&lt;h3&gt;Key Improvements in 0.97.04&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Optimized sandworm behavior to use AMBUSH mode for better performance&lt;/li&gt;
+  &lt;li&gt;Fixed sandworm aggression to prevent excessive hunting across the map&lt;/li&gt;
+  &lt;li&gt;Overall improvements in CPU efficiency during large-scale battles&lt;/li&gt;
+  &lt;li&gt;Reduced CPU load during AI decision-making&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;Community Updates&lt;/h3&gt;
+&lt;p&gt;We've expanded our community presence! You can now provide feedback and engage with other players in two ways:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Join our new Discord server: &lt;a href=&quot;https://discord.gg/6sAcZr6y3B&quot;&gt;https://discord.gg/6sAcZr6y3B&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;Visit our SourceForge forum for traditional forum discussions&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Cheers,&lt;br&gt;Stefan&lt;/p&gt;</description>
+      <pubDate>Mon, 04 Dec 2025 00:00:00 +0000</pubDate>
+      <link>http://dunelegacy.sourceforge.net/website/news.html#2025-12-04-00-00-00</link>
+      <guid isPermaLink="true">http://dunelegacy.sourceforge.net/website/news.html#2025-12-04-00-00-00</guid>
+    </item>
+
+    <item>
       <title>Dune Legacy 0.97.03 Released</title>
       <description>&lt;p&gt;I am pleased to announce that Dune Legacy version 0.97.03 is now available for Windows! This release brings various improvements and fixes to enhance your gaming experience.&lt;/p&gt;
 

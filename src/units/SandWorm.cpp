@@ -81,6 +81,9 @@ void Sandworm::init() {
     numImagesY = 9;
 
     drawnFrame = INVALID;
+    
+    // Set to AMBUSH mode to limit pursuit range to view range
+    doSetAttackMode(AMBUSH);
 }
 
 Sandworm::~Sandworm() = default;

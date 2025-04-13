@@ -6,7 +6,8 @@ SetCompressor /SOLID lzma
 Name "Dune Legacy"
 BrandingText " http://dunelegacy.sourceforge.net"
 !define INSTALLATIONNAME "Dune Legacy"
-OutFile "../build/installer/Dune Legacy 0.97.03 MinGW Setup.exe"
+!define VERSION "0.97.04-optimized"
+OutFile "../build/installer/Dune Legacy ${VERSION}-win64 Setup.exe"
 InstallDir "$PROGRAMFILES\${INSTALLATIONNAME}"
 
 RequestExecutionLevel admin
@@ -107,12 +108,25 @@ Section ""
   Push "$INSTDIR\Readme.txt"
   Call unix2dos
 
+  ; Create a readme file for the optimizations
+  FileOpen $0 "$INSTDIR\Optimizations.txt" w
+  FileWrite $0 "Dune Legacy ${VERSION}$\r$\n"
+  FileWrite $0 "$\r$\n"
+  FileWrite $0 "This build includes performance optimizations:$\r$\n"
+  FileWrite $0 "- QuantBot AI has been optimized with a cached combat units list$\r$\n"
+  FileWrite $0 "- Sandworm behavior optimized to use AMBUSH mode for better performance$\r$\n"
+  FileWrite $0 "- Fixed sandworm aggression to make them less aggressive across the map$\r$\n"
+  FileWrite $0 "- Improved CPU efficiency in large-scale battles$\r$\n"
+  FileWrite $0 "- Reduced CPU load during AI decision making$\r$\n"
+  FileClose $0
+
   WriteUninstaller $INSTDIR\uninstall.exe
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayName" "${INSTALLATIONNAME}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayName" "${INSTALLATIONNAME} ${VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayIcon" '"$INSTDIR\dunelegacy.exe",0'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "NoModify" 1
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "NoRepair" 1
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayVersion" "${VERSION}"
 SectionEnd
 
 Section "Start Menu Shortcuts"
@@ -120,6 +134,7 @@ Section "Start Menu Shortcuts"
   CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Dune Legacy.lnk" "$INSTDIR\dunelegacy.exe" "" "$INSTDIR\dunelegacy.exe" 0
   CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Readme.lnk" "$INSTDIR\Readme.txt"
   CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\License.lnk" "$INSTDIR\License.txt"
+  CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Optimizations.lnk" "$INSTDIR\Optimizations.txt"
   
   WriteINIStr "$INSTDIR\Dune Legacy Website.URL" "InternetShortcut" "URL" "http://dunelegacy.sourceforge.net/"
   CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Dune Legacy Website.lnk" "$INSTDIR\Dune Legacy Website.URL"

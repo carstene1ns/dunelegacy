@@ -1241,13 +1241,13 @@ void UnitBase::targeting() {
                         doSetAttackMode(HUNT);
                     }
                     doAttackObject(pNewTarget, false);
-
+                    /*
                     if(getItemID() == Unit_Sandworm) {
-                        doSetAttackMode(HUNT);
-                    }
+                        doSetAttackMode(HUNT);   -- Don't automatically set sandworms to HUNT mode, this makes them too aggressive
+                    }*/
                 } else if(attackMode == HUNT) {
                     setGuardPoint(location);
-                    doSetAttackMode(GUARD);
+                    doSetAttackMode(AMBUSH);
                 }
 
                 // reset target timer
