@@ -60,7 +60,6 @@
 		1358FE5013D3B72F00FAD5B7 /* Pakfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD8F13D3B72F00FAD5B7 /* Pakfile.cpp */; };
 		1358FE5113D3B72F00FAD5B7 /* Palfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD9013D3B72F00FAD5B7 /* Palfile.cpp */; };
 		1358FE5213D3B72F00FAD5B7 /* PictureFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD9113D3B72F00FAD5B7 /* PictureFactory.cpp */; };
-		1358FE5313D3B72F00FAD5B7 /* PictureFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD9213D3B72F00FAD5B7 /* PictureFont.cpp */; };
 		1358FE5513D3B72F00FAD5B7 /* SFXManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD9413D3B72F00FAD5B7 /* SFXManager.cpp */; };
 		1358FE5613D3B72F00FAD5B7 /* Shpfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD9513D3B72F00FAD5B7 /* Shpfile.cpp */; };
 		1358FE5713D3B72F00FAD5B7 /* TextManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD9613D3B72F00FAD5B7 /* TextManager.cpp */; };
@@ -274,6 +273,26 @@
 		CEEB16D31CD6A23B00CF91D9 /* fix32_str.c in Sources */ = {isa = PBXBuildFile; fileRef = CEEB16C91CD6A23B00CF91D9 /* fix32_str.c */; };
 		CEEB16D41CD6A23B00CF91D9 /* fix32_trig.c in Sources */ = {isa = PBXBuildFile; fileRef = CEEB16CA1CD6A23B00CF91D9 /* fix32_trig.c */; };
 		CEEB16D51CD6A23B00CF91D9 /* fix32.c in Sources */ = {isa = PBXBuildFile; fileRef = CEEB16CB1CD6A23B00CF91D9 /* fix32.c */; };
+		E375D3112DB0095900F459C8 /* CampaignAIPlayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E375D3102DB0095900F459C8 /* CampaignAIPlayer.cpp */; };
+		E375D3192DB00A4E00F459C8 /* Random.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E375D3182DB00A4E00F459C8 /* Random.cpp */; };
+		E375D31B2DB00A6500F459C8 /* TTFFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E375D31A2DB00A6500F459C8 /* TTFFont.cpp */; };
+		E375D32F2DB00C5E00F459C8 /* FRENCH.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D31D2DB00C5C00F459C8 /* FRENCH.PAK */; };
+		E375D3302DB00C5E00F459C8 /* INTRO.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D31E2DB00C5C00F459C8 /* INTRO.PAK */; };
+		E375D3312DB00C5E00F459C8 /* ORDOS.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D31F2DB00C5C00F459C8 /* ORDOS.PAK */; };
+		E375D3322DB00C5E00F459C8 /* DUNE.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3202DB00C5C00F459C8 /* DUNE.PAK */; };
+		E375D3342DB00C5E00F459C8 /* INTROVOC.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3222DB00C5C00F459C8 /* INTROVOC.PAK */; };
+		E375D3352DB00C5E00F459C8 /* GERMAN.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3232DB00C5C00F459C8 /* GERMAN.PAK */; };
+		E375D3362DB00C5E00F459C8 /* ENGLISH.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3242DB00C5D00F459C8 /* ENGLISH.PAK */; };
+		E375D3372DB00C5E00F459C8 /* SCENARIO.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3252DB00C5D00F459C8 /* SCENARIO.PAK */; };
+		E375D3382DB00C5E00F459C8 /* MENTAT.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3262DB00C5D00F459C8 /* MENTAT.PAK */; };
+		E375D33A2DB00C5E00F459C8 /* FINALE.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3282DB00C5D00F459C8 /* FINALE.PAK */; };
+		E375D33B2DB00C5E00F459C8 /* HARK.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D3292DB00C5D00F459C8 /* HARK.PAK */; };
+		E375D33C2DB00C5E00F459C8 /* MERC.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32A2DB00C5D00F459C8 /* MERC.PAK */; };
+		E375D33D2DB00C5E00F459C8 /* ATRE.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32B2DB00C5D00F459C8 /* ATRE.PAK */; };
+		E375D33E2DB00C5E00F459C8 /* SOUND.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32C2DB00C5D00F459C8 /* SOUND.PAK */; };
+		E375D33F2DB00C5E00F459C8 /* VOC.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32D2DB00C5D00F459C8 /* VOC.PAK */; };
+		E3D11F8F2DAFFD0600C4A670 /* SDL2_ttf.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */; };
+		E3D11F902DAFFD2D00C4A670 /* SDL2_ttf.framework in Copy Frameworks into .app bundle */ = {isa = PBXBuildFile; fileRef = E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -283,6 +302,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				E3D11F902DAFFD2D00C4A670 /* SDL2_ttf.framework in Copy Frameworks into .app bundle */,
 				CE8E0B9E1E07481A00A71916 /* SDL2.framework in Copy Frameworks into .app bundle */,
 				CE8E0B9F1E07481D00A71916 /* SDL2_mixer.framework in Copy Frameworks into .app bundle */,
 			);
@@ -371,6 +391,30 @@
 			name = "Copy Multiplayer Maps";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E375D31C2DB00C1B00F459C8 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+				E375D32F2DB00C5E00F459C8 /* FRENCH.PAK in CopyFiles */,
+				E375D3302DB00C5E00F459C8 /* INTRO.PAK in CopyFiles */,
+				E375D3312DB00C5E00F459C8 /* ORDOS.PAK in CopyFiles */,
+				E375D3322DB00C5E00F459C8 /* DUNE.PAK in CopyFiles */,
+				E375D3342DB00C5E00F459C8 /* INTROVOC.PAK in CopyFiles */,
+				E375D3352DB00C5E00F459C8 /* GERMAN.PAK in CopyFiles */,
+				E375D3362DB00C5E00F459C8 /* ENGLISH.PAK in CopyFiles */,
+				E375D3372DB00C5E00F459C8 /* SCENARIO.PAK in CopyFiles */,
+				E375D3382DB00C5E00F459C8 /* MENTAT.PAK in CopyFiles */,
+				E375D33A2DB00C5E00F459C8 /* FINALE.PAK in CopyFiles */,
+				E375D33B2DB00C5E00F459C8 /* HARK.PAK in CopyFiles */,
+				E375D33C2DB00C5E00F459C8 /* MERC.PAK in CopyFiles */,
+				E375D33D2DB00C5E00F459C8 /* ATRE.PAK in CopyFiles */,
+				E375D33E2DB00C5E00F459C8 /* SOUND.PAK in CopyFiles */,
+				E375D33F2DB00C5E00F459C8 /* VOC.PAK in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -434,7 +478,6 @@
 		1358FBA713D3B71500FAD5B7 /* Palette.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Palette.h; sourceTree = "<group>"; };
 		1358FBA813D3B71500FAD5B7 /* Palfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Palfile.h; sourceTree = "<group>"; };
 		1358FBA913D3B71500FAD5B7 /* PictureFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PictureFactory.h; sourceTree = "<group>"; };
-		1358FBAA13D3B71500FAD5B7 /* PictureFont.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PictureFont.h; sourceTree = "<group>"; };
 		1358FBAC13D3B71500FAD5B7 /* SFXManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SFXManager.h; sourceTree = "<group>"; };
 		1358FBAD13D3B71500FAD5B7 /* Shpfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Shpfile.h; sourceTree = "<group>"; };
 		1358FBAE13D3B71500FAD5B7 /* TextManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextManager.h; sourceTree = "<group>"; };
@@ -647,7 +690,6 @@
 		1358FD8F13D3B72F00FAD5B7 /* Pakfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Pakfile.cpp; sourceTree = "<group>"; };
 		1358FD9013D3B72F00FAD5B7 /* Palfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Palfile.cpp; sourceTree = "<group>"; };
 		1358FD9113D3B72F00FAD5B7 /* PictureFactory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PictureFactory.cpp; sourceTree = "<group>"; };
-		1358FD9213D3B72F00FAD5B7 /* PictureFont.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PictureFont.cpp; sourceTree = "<group>"; };
 		1358FD9413D3B72F00FAD5B7 /* SFXManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SFXManager.cpp; sourceTree = "<group>"; };
 		1358FD9513D3B72F00FAD5B7 /* Shpfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Shpfile.cpp; sourceTree = "<group>"; };
 		1358FD9613D3B72F00FAD5B7 /* TextManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextManager.cpp; sourceTree = "<group>"; };
@@ -913,6 +955,34 @@
 		CEEB16DE1CD6A25D00CF91D9 /* int64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = int64.h; path = fixmath/int64.h; sourceTree = "<group>"; };
 		E311BCC51BF9CF8C005C993B /* QuantBot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QuantBot.h; sourceTree = "<group>"; };
 		E311BCC61BF9CF8C005C993B /* SmartBot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SmartBot.h; sourceTree = "<group>"; };
+		E375D3102DB0095900F459C8 /* CampaignAIPlayer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CampaignAIPlayer.cpp; sourceTree = "<group>"; };
+		E375D3122DB0098200F459C8 /* CampaignAIPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CampaignAIPlayer.h; sourceTree = "<group>"; };
+		E375D3132DB00A1F00F459C8 /* exceptions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = exceptions.h; sourceTree = "<group>"; };
+		E375D3142DB00A1F00F459C8 /* format.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = format.h; sourceTree = "<group>"; };
+		E375D3152DB00A1F00F459C8 /* MacFunctions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MacFunctions.h; sourceTree = "<group>"; };
+		E375D3162DB00A1F00F459C8 /* SDL2pp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SDL2pp.h; sourceTree = "<group>"; };
+		E375D3172DB00A1F00F459C8 /* unique_or_nonowning_ptr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = unique_or_nonowning_ptr.h; sourceTree = "<group>"; };
+		E375D3182DB00A4E00F459C8 /* Random.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Random.cpp; sourceTree = "<group>"; };
+		E375D31A2DB00A6500F459C8 /* TTFFont.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TTFFont.cpp; sourceTree = "<group>"; };
+		E375D31D2DB00C5C00F459C8 /* FRENCH.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = FRENCH.PAK; path = ../../data/FRENCH.PAK; sourceTree = "<group>"; };
+		E375D31E2DB00C5C00F459C8 /* INTRO.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = INTRO.PAK; path = ../../data/INTRO.PAK; sourceTree = "<group>"; };
+		E375D31F2DB00C5C00F459C8 /* ORDOS.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = ORDOS.PAK; path = ../../data/ORDOS.PAK; sourceTree = "<group>"; };
+		E375D3202DB00C5C00F459C8 /* DUNE.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = DUNE.PAK; path = ../../data/DUNE.PAK; sourceTree = "<group>"; };
+		E375D3212DB00C5C00F459C8 /* LEGACY.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = LEGACY.PAK; path = ../../data/LEGACY.PAK; sourceTree = "<group>"; };
+		E375D3222DB00C5C00F459C8 /* INTROVOC.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = INTROVOC.PAK; path = ../../data/INTROVOC.PAK; sourceTree = "<group>"; };
+		E375D3232DB00C5C00F459C8 /* GERMAN.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = GERMAN.PAK; path = ../../data/GERMAN.PAK; sourceTree = "<group>"; };
+		E375D3242DB00C5D00F459C8 /* ENGLISH.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = ENGLISH.PAK; path = ../../data/ENGLISH.PAK; sourceTree = "<group>"; };
+		E375D3252DB00C5D00F459C8 /* SCENARIO.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = SCENARIO.PAK; path = ../../data/SCENARIO.PAK; sourceTree = "<group>"; };
+		E375D3262DB00C5D00F459C8 /* MENTAT.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = MENTAT.PAK; path = ../../data/MENTAT.PAK; sourceTree = "<group>"; };
+		E375D3272DB00C5D00F459C8 /* OPENSD2.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = OPENSD2.PAK; path = ../../data/OPENSD2.PAK; sourceTree = "<group>"; };
+		E375D3282DB00C5D00F459C8 /* FINALE.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = FINALE.PAK; path = ../../data/FINALE.PAK; sourceTree = "<group>"; };
+		E375D3292DB00C5D00F459C8 /* HARK.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = HARK.PAK; path = ../../data/HARK.PAK; sourceTree = "<group>"; };
+		E375D32A2DB00C5D00F459C8 /* MERC.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = MERC.PAK; path = ../../data/MERC.PAK; sourceTree = "<group>"; };
+		E375D32B2DB00C5D00F459C8 /* ATRE.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = ATRE.PAK; path = ../../data/ATRE.PAK; sourceTree = "<group>"; };
+		E375D32C2DB00C5D00F459C8 /* SOUND.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = SOUND.PAK; path = ../../data/SOUND.PAK; sourceTree = "<group>"; };
+		E375D32D2DB00C5D00F459C8 /* VOC.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = VOC.PAK; path = ../../data/VOC.PAK; sourceTree = "<group>"; };
+		E375D32E2DB00C5D00F459C8 /* GFXHD.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = GFXHD.PAK; path = ../../data/GFXHD.PAK; sourceTree = "<group>"; };
+		E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_ttf.framework; path = ../../../../../../../Library/Frameworks/SDL2_ttf.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -920,6 +990,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3D11F8F2DAFFD0600C4A670 /* SDL2_ttf.framework in Frameworks */,
 				CE8E0B721E07438400A71916 /* SDL2_mixer.framework in Frameworks */,
 				8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */,
 				CE8E0B741E07439B00A71916 /* SDL2.framework in Frameworks */,
@@ -1070,7 +1141,6 @@
 				1358FBA713D3B71500FAD5B7 /* Palette.h */,
 				1358FBA813D3B71500FAD5B7 /* Palfile.h */,
 				1358FBA913D3B71500FAD5B7 /* PictureFactory.h */,
-				1358FBAA13D3B71500FAD5B7 /* PictureFont.h */,
 				13E5648A169B52D800D282B9 /* POFile.h */,
 				1358FBAC13D3B71500FAD5B7 /* SFXManager.h */,
 				1358FBAD13D3B71500FAD5B7 /* Shpfile.h */,
@@ -1225,6 +1295,11 @@
 		1358FC0613D3B71500FAD5B7 /* misc */ = {
 			isa = PBXGroup;
 			children = (
+				E375D3132DB00A1F00F459C8 /* exceptions.h */,
+				E375D3142DB00A1F00F459C8 /* format.h */,
+				E375D3152DB00A1F00F459C8 /* MacFunctions.h */,
+				E375D3162DB00A1F00F459C8 /* SDL2pp.h */,
+				E375D3172DB00A1F00F459C8 /* unique_or_nonowning_ptr.h */,
 				1358FC0713D3B71500FAD5B7 /* BlendBlitter.h */,
 				1358FC0813D3B71500FAD5B7 /* draw_util.h */,
 				CEEB16BE1CD6A0E600CF91D9 /* DrawingRectHelper.h */,
@@ -1267,6 +1342,7 @@
 		1358FC2A13D3B71500FAD5B7 /* players */ = {
 			isa = PBXGroup;
 			children = (
+				E375D3122DB0098200F459C8 /* CampaignAIPlayer.h */,
 				E311BCC51BF9CF8C005C993B /* QuantBot.h */,
 				E311BCC61BF9CF8C005C993B /* SmartBot.h */,
 				1358FC2B13D3B71500FAD5B7 /* AIPlayer.h */,
@@ -1431,6 +1507,7 @@
 		1358FD7913D3B72F00FAD5B7 /* FileClasses */ = {
 			isa = PBXGroup;
 			children = (
+				E375D31A2DB00A6500F459C8 /* TTFFont.cpp */,
 				1358FD7A13D3B72F00FAD5B7 /* adl */,
 				1358FD7F13D3B72F00FAD5B7 /* Animation.cpp */,
 				1358FD8113D3B72F00FAD5B7 /* Cpsfile.cpp */,
@@ -1448,7 +1525,6 @@
 				1358FD8F13D3B72F00FAD5B7 /* Pakfile.cpp */,
 				1358FD9013D3B72F00FAD5B7 /* Palfile.cpp */,
 				1358FD9113D3B72F00FAD5B7 /* PictureFactory.cpp */,
-				1358FD9213D3B72F00FAD5B7 /* PictureFont.cpp */,
 				13E5648C169B52FF00D282B9 /* POFile.cpp */,
 				1358FD9413D3B72F00FAD5B7 /* SFXManager.cpp */,
 				1358FD9513D3B72F00FAD5B7 /* Shpfile.cpp */,
@@ -1559,6 +1635,7 @@
 		1358FDCF13D3B72F00FAD5B7 /* misc */ = {
 			isa = PBXGroup;
 			children = (
+				E375D3182DB00A4E00F459C8 /* Random.cpp */,
 				174241711DDE0953001FB159 /* format.cpp */,
 				1358FDD013D3B72F00FAD5B7 /* draw_util.cpp */,
 				1358FDD113D3B72F00FAD5B7 /* FileSystem.cpp */,
@@ -1587,6 +1664,7 @@
 		1358FDE313D3B72F00FAD5B7 /* players */ = {
 			isa = PBXGroup;
 			children = (
+				E375D3102DB0095900F459C8 /* CampaignAIPlayer.cpp */,
 				1358FDE413D3B72F00FAD5B7 /* AIPlayer.cpp */,
 				1358FDE513D3B72F00FAD5B7 /* HumanPlayer.cpp */,
 				1358FDE613D3B72F00FAD5B7 /* Player.cpp */,
@@ -1804,6 +1882,24 @@
 		29B97314FDCFA39411CA2CEA /* Dune Legacy */ = {
 			isa = PBXGroup;
 			children = (
+				E375D32B2DB00C5D00F459C8 /* ATRE.PAK */,
+				E375D3202DB00C5C00F459C8 /* DUNE.PAK */,
+				E375D3242DB00C5D00F459C8 /* ENGLISH.PAK */,
+				E375D3282DB00C5D00F459C8 /* FINALE.PAK */,
+				E375D31D2DB00C5C00F459C8 /* FRENCH.PAK */,
+				E375D3232DB00C5C00F459C8 /* GERMAN.PAK */,
+				E375D32E2DB00C5D00F459C8 /* GFXHD.PAK */,
+				E375D3292DB00C5D00F459C8 /* HARK.PAK */,
+				E375D31E2DB00C5C00F459C8 /* INTRO.PAK */,
+				E375D3222DB00C5C00F459C8 /* INTROVOC.PAK */,
+				E375D3212DB00C5C00F459C8 /* LEGACY.PAK */,
+				E375D3262DB00C5D00F459C8 /* MENTAT.PAK */,
+				E375D32A2DB00C5D00F459C8 /* MERC.PAK */,
+				E375D3272DB00C5D00F459C8 /* OPENSD2.PAK */,
+				E375D31F2DB00C5C00F459C8 /* ORDOS.PAK */,
+				E375D3252DB00C5D00F459C8 /* SCENARIO.PAK */,
+				E375D32C2DB00C5D00F459C8 /* SOUND.PAK */,
+				E375D32D2DB00C5D00F459C8 /* VOC.PAK */,
 				080E96DDFE201D6D7F000001 /* Classes */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
@@ -1841,6 +1937,7 @@
 		29B97323FDCFA39411CA2CEA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */,
 				1058C7A0FEA54F0111CA2CBB /* Linked Frameworks */,
 				1058C7A2FEA54F0111CA2CBB /* Other Frameworks */,
 			);
@@ -1893,6 +1990,7 @@
 				8D11072C0486CEB800E47090 /* Sources */,
 				8D11072E0486CEB800E47090 /* Frameworks */,
 				002F39FD09D0883400EBEB88 /* Copy Frameworks into .app bundle */,
+				E375D31C2DB00C1B00F459C8 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -1911,12 +2009,18 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0730;
+				TargetAttributes = {
+					8D1107260486CEB800E47090 = {
+						DevelopmentTeam = 34X7AYJZ93;
+					};
+				};
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "Dune Legacy" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 1;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 29B97314FDCFA39411CA2CEA /* Dune Legacy */;
@@ -1971,6 +2075,7 @@
 				1358FE3213D3B72F00FAD5B7 /* callbacks.c in Sources */,
 				1358FE3313D3B72F00FAD5B7 /* compress.c in Sources */,
 				1358FE3413D3B72F00FAD5B7 /* host.c in Sources */,
+				E375D31B2DB00A6500F459C8 /* TTFFont.cpp in Sources */,
 				1358FE3613D3B72F00FAD5B7 /* list.c in Sources */,
 				1358FE3713D3B72F00FAD5B7 /* packet.c in Sources */,
 				1358FE3813D3B72F00FAD5B7 /* peer.c in Sources */,
@@ -1998,13 +2103,13 @@
 				1358FE5013D3B72F00FAD5B7 /* Pakfile.cpp in Sources */,
 				1358FE5113D3B72F00FAD5B7 /* Palfile.cpp in Sources */,
 				1358FE5213D3B72F00FAD5B7 /* PictureFactory.cpp in Sources */,
-				1358FE5313D3B72F00FAD5B7 /* PictureFont.cpp in Sources */,
 				1358FE5513D3B72F00FAD5B7 /* SFXManager.cpp in Sources */,
 				1358FE5613D3B72F00FAD5B7 /* Shpfile.cpp in Sources */,
 				1358FE5713D3B72F00FAD5B7 /* TextManager.cpp in Sources */,
 				1358FE5813D3B72F00FAD5B7 /* Vocfile.cpp in Sources */,
 				1358FE5913D3B72F00FAD5B7 /* Wsafile.cpp in Sources */,
 				CEEB16B21CD6A01200CF91D9 /* SmartBot.cpp in Sources */,
+				E375D3112DB0095900F459C8 /* CampaignAIPlayer.cpp in Sources */,
 				1358FE5A13D3B72F00FAD5B7 /* xmidi.cpp in Sources */,
 				1358FE5B13D3B72F00FAD5B7 /* Game.cpp in Sources */,
 				1358FE5C13D3B72F00FAD5B7 /* GameInitSettings.cpp in Sources */,
@@ -2016,6 +2121,7 @@
 				1358FE6113D3B72F00FAD5B7 /* BuilderList.cpp in Sources */,
 				1358FE6213D3B72F00FAD5B7 /* ChatManager.cpp in Sources */,
 				1358FE6313D3B72F00FAD5B7 /* DuneStyle.cpp in Sources */,
+				E375D3192DB00A4E00F459C8 /* Random.cpp in Sources */,
 				CEEB16B11CD6A01200CF91D9 /* QuantBot.cpp in Sources */,
 				1358FE6413D3B72F00FAD5B7 /* GameOptionsWindow.cpp in Sources */,
 				1358FE6513D3B72F00FAD5B7 /* InGameMenu.cpp in Sources */,
@@ -2163,12 +2269,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD)";
-				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
+				CLANG_VECTORIZE_ENABLE = YES;
+				CLANG_VECTORIZE_LOOPS = YES;
 				CLANG_X86_VECTOR_INSTRUCTIONS = default;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = YES;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 34X7AYJZ93;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_TESTABILITY = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2188,25 +2299,31 @@
 				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					"$(HOME)/Library/Frameworks/SDL2.framework/Headers",
-					/Library/Frameworks/SDL2.framework/Headers,
-					"$(HOME)/Library/Frameworks/SDL2_mixer.framework/Headers",
-					/Library/Frameworks/SDL2_mixer.framework/Headers,
+					/Library/Frameworks/SDL2_ttf.framework/Versions/A/Headers,
+					/Library/Frameworks/SDL2.framework/Versions/A/Headers,
+					/Library/Frameworks/SDL2_mixer.framework/Versions/A/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				LLVM_LTO = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "";
+				OTHER_CFLAGS = "";
+				OTHER_CPLUSPLUSFLAGS = (
+					"-ffast-math",
+					"-funroll-loops",
+					"-fvectorize",
+					"-fslp-vectorize",
+				);
 				OTHER_LDFLAGS = (
 					"-dylib_file",
 					"@loader_path/Frameworks/mikmod.framework/Versions/A/mikmod:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/mikmod.framework/Versions/A/mikmod",
 					"-dylib_file",
 					"@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/smpeg.framework/Versions/A/smpeg",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.96.4-build1";
+				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.97.04";
 				PRODUCT_NAME = "Dune Legacy";
 				SYMROOT = "${SRCROOT}/build";
 				WRAPPER_EXTENSION = app;
@@ -2218,12 +2335,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD)";
-				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_USE_OPTIMIZATION_PROFILE = NO;
+				CLANG_VECTORIZE_ENABLE = YES;
+				CLANG_VECTORIZE_LOOPS = YES;
 				CLANG_X86_VECTOR_INSTRUCTIONS = default;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = YES;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 34X7AYJZ93;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_TESTABILITY = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2251,16 +2373,28 @@
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				LLVM_LTO = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "";
+				OTHER_CFLAGS = (
+					"-ffast-math",
+					"-funroll-loops",
+					"-fvectorize",
+					"-fslp-vectorize",
+				);
+				OTHER_CPLUSPLUSFLAGS = (
+					"-ffast-math",
+					"-funroll-loops",
+					"-fvectorize",
+					"-fslp-vectorize",
+				);
 				OTHER_LDFLAGS = (
 					"-dylib_file",
 					"@loader_path/Frameworks/mikmod.framework/Versions/A/mikmod:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/mikmod.framework/Versions/A/mikmod",
 					"-dylib_file",
 					"@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/smpeg.framework/Versions/A/smpeg",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.96.4-build1";
+				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.97.04";
 				PRODUCT_NAME = "Dune Legacy";
 				SYMROOT = "${SRCROOT}/build";
 				WRAPPER_EXTENSION = app;
@@ -2299,10 +2433,10 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					"$(HOME)/Library/Frameworks/SDL.framework/Headers",
-					/Library/Frameworks/SDL.framework/Headers,
-					"$(HOME)/Library/Frameworks/SDL_mixer.framework/Headers",
-					/Library/Frameworks/SDL_mixer.framework/Headers,
+					"$(HOME)/Library/Frameworks/SDL2.framework/Headers",
+					/Library/Frameworks/SDL2.framework/Headers,
+					"$(HOME)/Library/Frameworks/SDL2_mixer.framework/Headers",
+					/Library/Frameworks/SDL2_mixer.framework/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				ONLY_ACTIVE_ARCH = YES;
@@ -2328,6 +2462,7 @@
 					"$(HOME)/Library/Frameworks",
 					/Library/Frameworks,
 					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(inherited)",
 				);
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_MODEL_PPC64 = NO;
@@ -2352,10 +2487,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					"$(HOME)/Library/Frameworks/SDL.framework/Headers",
-					/Library/Frameworks/SDL.framework/Headers,
-					"$(HOME)/Library/Frameworks/SDL_mixer.framework/Headers",
-					/Library/Frameworks/SDL_mixer.framework/Headers,
+					/Library/Frameworks/SDL2_ttf.framework/Versions/A/Headers,
+					/Library/Frameworks/SDL2.framework/Versions/A/Headers,
+					/Library/Frameworks/SDL2_mixer.framework/Versions/A/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mno-fused-madd";
