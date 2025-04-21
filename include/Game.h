@@ -605,6 +605,16 @@ private:
     std::map<Uint8, Player*> playerID2Player;               ///< mapping player ids to players (one entry per player)
 
     std::array<std::unique_ptr<House>, NUM_HOUSES> house;   ///< All the houses of this game, index by their houseID; has the size NUM_HOUSES; unused houses are nullptr
+
+    // Game loop methods
+    void initializeGameLoop();
+    void renderFrame();
+    void processInput();
+    void processNetwork();
+    void updateGameState();
+    bool handleNetworkUpdates();
+    void initializeReplay();
+    void initializeNetwork();
 };
 
 #endif // GAME_H
