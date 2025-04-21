@@ -69,7 +69,6 @@ int MenuBase::showMenu() {
             SDL_RenderClear(renderer);
         }
         draw();
-        drawCursor();
         SDL_RenderPresent(renderer);
 
         while(SDL_PollEvent(&event)) {

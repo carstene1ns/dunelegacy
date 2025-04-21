@@ -544,7 +544,7 @@ void Game::drawScreen()
         pInGameMentat->draw();
     }
 
-    drawCursor();
+    // Remove cursor drawing since we're using hardware cursor now
 }
 
 
@@ -1106,9 +1106,6 @@ void Game::initializeGameLoop() {
             pInterface->getRadarView().switchRadarMode(true);
         }
     }
-
-    // Hide OS cursor since we draw our own
-    SDL_ShowCursor(SDL_DISABLE);
 
     // Configure hardware-accelerated rendering with pixel-perfect scaling
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");  // Use nearest-neighbor scaling for pixel-perfect look

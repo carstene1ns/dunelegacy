@@ -103,6 +103,7 @@ inline std::string demangleSymbol(const char* symbolname) {
 
 void setVideoMode(int displayIndex);
 void realign_buttons();
+void createWhiteCursor();
 
 static void printUsage() {
     fprintf(stderr, "Usage:\n\tdunelegacy [--showlog] [--fullscreen|--window] [--PlayerName=X] [--ServerPort=X]\n");
@@ -151,8 +152,34 @@ void setVideoMode(int displayIndex)
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
     SDL_RenderSetLogicalSize(renderer, settings.video.width, settings.video.height);
     screenTexture = SDL_CreateTexture(renderer, SCREEN_FORMAT, SDL_TEXTUREACCESS_TARGET, settings.video.width, settings.video.height);
+}
 
-    SDL_ShowCursor(SDL_DISABLE);
+void createWhiteCursor() {
+    // Create white arrow cursor
+    Uint8 data[4*32] = {0};  // All 0s for white
+    Uint8 mask[4*32] = {
+        0x80, 0x00, 0x00, 0x00,   // X.......
+        0xc0, 0x00, 0x00, 0x00,   // XX......
+        0xe0, 0x00, 0x00, 0x00,   // XXX.....
+        0xf0, 0x00, 0x00, 0x00,   // XXXX....
+        0xf8, 0x00, 0x00, 0x00,   // XXXXX...
+        0xfc, 0x00, 0x00, 0x00,   // XXXXXX..
+        0xfe, 0x00, 0x00, 0x00,   // XXXXXXX.
+        0xff, 0x00, 0x00, 0x00,   // XXXXXXXX
+        0xf8, 0x00, 0x00, 0x00,   // XXXXX...
+        0xb8, 0x00, 0x00, 0x00,   // X.XXX...
+        0x98, 0x00, 0x00, 0x00,   // X..XX...
+        0x0c, 0x00, 0x00, 0x00,   // ..XX....
+        0x0c, 0x00, 0x00, 0x00,   // ..XX....
+        0x06, 0x00, 0x00, 0x00,   // ..XX....
+        0x06, 0x00, 0x00, 0x00,   // .XX.....
+        0x03, 0x00, 0x00, 0x00,   // .X......
+    };
+
+    SDL_Cursor* cursor = SDL_CreateCursor(data, mask, 32, 16, 0, 0);
+    if(cursor) {
+        SDL_SetCursor(cursor);
+    }
 }
 
 void toogleFullscreen()
@@ -179,6 +206,9 @@ void toogleFullscreen()
     // we just need to flush all events; otherwise we might get them twice
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+
+    // Restore our custom cursor after event flush
+    createWhiteCursor();
 
     // wait a bit to avoid immediately switching back
     SDL_Delay(100);
@@ -592,6 +622,8 @@ int main(int argc, char *argv[]) {
                 if(SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0) {
                     THROW(sdl_error, "Couldn't initialize SDL: %s!", SDL_GetError());
                 }
+
+                createWhiteCursor();
 
                 SDL_version compiledVersion;
                 SDL_version linkedVersion;
