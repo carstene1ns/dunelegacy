@@ -572,7 +572,7 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 		// only do these acitons for vehicles and not when fighting turrets
 		// repair them, if they are eligible to be repaired
 		if (difficulty != Difficulty::Easy) {
-			if ((pGroundUnit->getHealth() * 100) / pGroundUnit->getMaxHealth() < 75
+			if (pGroundUnit->getHealth() / pGroundUnit->getMaxHealth() < 0.80_fix
 				&& !pGroundUnit->isInfantry()
 				&& pGroundUnit->isVisible()
 				&& (pDamager->getItemID() != Structure_GunTurret
@@ -582,7 +582,7 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 
 				// If unit isn't an infrantry then heal it once it is below 2/3 health if not an easy or medium campaign
 				if (getHouse()->hasRepairYard()
-					&& (pGroundUnit->getHealth() * 100) / pGroundUnit->getMaxHealth() < 60
+					&& pGroundUnit->getHealth() / pGroundUnit->getMaxHealth() < 0.7_fix
 
 					// don't do manual repairs if it's campaign and easy or medium difficulty
 					&& !(gameMode == GameMode::Campaign && (difficulty == Difficulty::Easy || difficulty == Difficulty::Medium))
@@ -591,7 +591,7 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 				}
 
 				// Rotate unit backwards if it is taking damage if it is softer
-				else if (pGroundUnit->getItemID() != Unit_SiegeTank && pGroundUnit->getItemID() != Unit_Devastator) {
+				else if (pGroundUnit->getItemID() != pGroundUnit->getItemID() != Unit_Devastator) {
 					doSetAttackMode(pGroundUnit, AREAGUARD);
 					doMove2Pos(pGroundUnit, squadCenterLocation.x, squadCenterLocation.y, true);
 				}
@@ -688,9 +688,9 @@ Coord QuantBot::findPlaceLocation(Uint32 itemID) {
 							for (int i = placeLocationX - 1; i <= placeLocationEndX; i++) {
 								for (int j = placeLocationY - 1; j <= placeLocationEndY; j++) {
 									if (getMap().tileExists(i, j) && (getMap().getSizeX() > i) && (0 <= i) && (getMap().getSizeY() > j) && (0 <= j)) {
-										// Penalise if near edge of map
+										// Favor edge of map placement
 										if ((i == 0) || (i == getMap().getSizeX() - 1) || (j == 0) || (j == getMap().getSizeY() - 1)) {
-											buildLocationScore[placeLocationX][placeLocationY] -= 10;
+											buildLocationScore[placeLocationX][placeLocationY] += 10;
 										}
 
 										if (getMap().getTile(i, j)->hasAStructure()) {
@@ -705,7 +705,7 @@ Coord QuantBot::findPlaceLocation(Uint32 itemID) {
 										}
 										else if (!getMap().getTile(i, j)->isRock()) {
 											// square isn't rock, favour it
-											buildLocationScore[placeLocationX][placeLocationY] += 1;
+											buildLocationScore[placeLocationX][placeLocationY] += 5;
 										}
 										else if (getMap().getTile(i, j)->hasAGroundObject()) {
 											if (getMap().getTile(i, j)->getOwner() != getHouse()->getHouseID()) {
@@ -718,7 +718,7 @@ Coord QuantBot::findPlaceLocation(Uint32 itemID) {
 										}
 									}
 									else {
-										// penalise if on edge of map
+										// penalise if outside of map
 										buildLocationScore[placeLocationX][placeLocationY] -= 200;
 									}
 								}
@@ -1521,7 +1521,7 @@ void QuantBot::scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits)
 					doSetAttackMode(pUnit, AREAGUARD);
 
 					if (pUnit->getItemID() == Unit_Launcher || pUnit->getItemID() == Unit_Deviator) {
-						//doAttackObject(pUnit, pIntruder, true);
+						doAttackObject(pUnit, pIntruder, false);
 					}
 					else {
 						doAttackObject(pUnit, pIntruder, true);
@@ -1562,7 +1562,7 @@ void QuantBot::attack(int militaryValue) {
 	}
 
 
-	if (militaryValue < militaryValueLimit * 0.35_fix) {
+	if (militaryValue < militaryValueLimit * 0.30_fix) {
 		logDebug("Don't attack. Not enough troops: house: %d  dif: %d  mStr: %d  mLim: %d",
 			getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
 		return;
@@ -1586,20 +1586,23 @@ void QuantBot::attack(int militaryValue) {
 		if (pUnit->isRespondable()
 			&& (pUnit->getOwner() == getHouse())
 			&& pUnit->isActive()
+			&& !pUnit->isBadlyDamaged()
+			&& !pUnit->wasForced()
+			&& pUnit->getAttackMode() != HUNT
+			&& pUnit->getAttackMode() != RETREAT
 			&& pUnit->getItemID() != Unit_Harvester
 			&& pUnit->getItemID() != Unit_MCV
 			&& pUnit->getItemID() != Unit_Carryall
-			&& pUnit->getItemID() != Unit_Sandworm
-			&& pUnit->getHealth() / pUnit->getMaxHealth() > 0.7_fix)
+			&& pUnit->getItemID() != Unit_Sandworm)
 
-		{
+		{	/*
 			if (attackSquadSize >= maxAttackSquadSize) {
 				return; // return if we have reached the squad size for the map
 			}
-			else {
+			else {*/
 				doSetAttackMode(pUnit, HUNT);
 				attackSquadSize++;
-			}
+			//}
 		}
 	}
 
@@ -1797,11 +1800,19 @@ void QuantBot::checkAllUnits() {
 			} break;
 
 			case Unit_Harvester: {
-				
 				const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
-				if(getHouse()->getCredits() < 1000 && pHarvester != nullptr && pHarvester->isActive()
-					&& (pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE/2) && getHouse()->getNumItems(Structure_HeavyFactory) == 0) {
-					doReturn(pHarvester);
+				if(pHarvester != nullptr && pHarvester->isActive()) {
+					// Existing check for early return with half spice
+					if(getHouse()->getCredits() < 1000 && pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE/2 
+						&& getHouse()->getNumItems(Structure_HeavyFactory) == 0) {
+						doReturn(pHarvester);
+					}
+					
+					/* this needs to be fixed to make better, currently if they are trying to move somewhere it will trigger
+					// Check for idle harvesters
+					if(!pHarvester->isMoving() && !pHarvester->isHarvesting()) {
+						doSetAttackMode(pHarvester, GUARD);
+					}*/
 				}
 			} break;
 
@@ -1866,7 +1877,7 @@ void QuantBot::checkAllUnits() {
 						}
 					}
 				}
-				else if (pUnit->getAttackMode() != HUNT && !pUnit->hasATarget() && !pUnit->wasForced()) {
+				else if (pUnit->getItemID() != Unit_Ornithopter && pUnit->getAttackMode() != HUNT && !pUnit->hasATarget() && !pUnit->wasForced()) {
 					if (pUnit->getAttackMode() == AREAGUARD && squadCenterLocation.isValid() && (gameMode != GameMode::Campaign)) {
 						if (blockDistance(pUnit->getLocation(), squadCenterLocation) > squadRadius) {
 							if (!pUnit->hasATarget()) {

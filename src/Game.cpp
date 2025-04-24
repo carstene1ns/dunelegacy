@@ -137,6 +137,32 @@ Game::~Game() {
 void Game::initGame(const GameInitSettings& newGameInitSettings) {
     gameInitSettings = newGameInitSettings;
 
+    // Create and set white cursor at game initialization
+    Uint8 data[4*32] = {0};  // All 0s for white
+    Uint8 mask[4*32] = {
+        0x80, 0x00, 0x00, 0x00,   // X.......
+        0xc0, 0x00, 0x00, 0x00,   // XX......
+        0xe0, 0x00, 0x00, 0x00,   // XXX.....
+        0xf0, 0x00, 0x00, 0x00,   // XXXX....
+        0xf8, 0x00, 0x00, 0x00,   // XXXXX...
+        0xfc, 0x00, 0x00, 0x00,   // XXXXXX..
+        0xfe, 0x00, 0x00, 0x00,   // XXXXXXX.
+        0xff, 0x00, 0x00, 0x00,   // XXXXXXXX
+        0xf8, 0x00, 0x00, 0x00,   // XXXXX...
+        0xb8, 0x00, 0x00, 0x00,   // X.XXX...
+        0x98, 0x00, 0x00, 0x00,   // X..XX...
+        0x0c, 0x00, 0x00, 0x00,   // ..XX....
+        0x0c, 0x00, 0x00, 0x00,   // ..XX....
+        0x06, 0x00, 0x00, 0x00,   // ..XX....
+        0x06, 0x00, 0x00, 0x00,   // .XX.....
+        0x03, 0x00, 0x00, 0x00,   // .X......
+    };
+
+    SDL_Cursor* cursor = SDL_CreateCursor(data, mask, 32, 16, 0, 0);
+    if(cursor) {
+        SDL_SetCursor(cursor);
+    }
+
     switch(gameInitSettings.getGameType()) {
         case GameType::LoadSavegame: {
             if(loadSaveGame(gameInitSettings.getFilename()) == false) {
@@ -1009,12 +1035,10 @@ void Game::runMainLoop() {
     SDL_Log("Starting game...");
     initializeGameLoop();
 
-    const int TARGET_FPS = 60;
-    const int RENDER_TIME_MS = 1000 / TARGET_FPS;
     const int MAX_UPDATES_PER_FRAME = 5;
+    const Uint32 MIN_FRAME_TIME = 1;  // Minimum 1ms between frames to prevent CPU overload
     
     Uint32 lastGameCycle = SDL_GetTicks();
-    Uint32 lastRenderTime = lastGameCycle;
     Uint32 accumulator = 0;
     bool wasMenuOpen = false;
     
@@ -1032,7 +1056,7 @@ void Game::runMainLoop() {
         }
         
         if (!isMenuOpen) {
-            accumulator += std::min(frameTime, Uint32(200));
+            accumulator += std::min(frameTime, Uint32(200));  // Cap at 200ms to prevent spiral of death
         }
         
         // Process all input through normal game loop
@@ -1076,8 +1100,8 @@ void Game::runMainLoop() {
         renderFrame();
         
         const Uint32 totalFrameTime = SDL_GetTicks() - frameStart;
-        if(settings.video.frameLimit && totalFrameTime < RENDER_TIME_MS) {
-            SDL_Delay(RENDER_TIME_MS - totalFrameTime);
+        if(totalFrameTime < MIN_FRAME_TIME) {
+            SDL_Delay(1);  // Give up timeslice but don't force delay
         }
         
         if(bShowFPS) {
@@ -1142,12 +1166,8 @@ void Game::renderFrame() {
     
     drawScreen();
     
-    SDL_RenderPresent(renderer);
-    
-    // Copy to main screen
+    // Copy to main screen and present in one step
     SDL_SetRenderTarget(renderer, nullptr);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, screenTexture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
 }
@@ -1171,19 +1191,19 @@ void Game::processInput() {
         return;
     } else if(pWaitingForOtherPlayers != nullptr) {
         if(bMenu == false) {
-            pWaitingForOtherPlayers.reset();
-        }
+                    pWaitingForOtherPlayers.reset();
+                }
         return;
-    }
+            }
 
     // Only update interface and network if no menu is active
-    pInterface->updateObjectInterface();
-    
+            pInterface->updateObjectInterface();
+
     if(pNetworkManager != nullptr && bSelectionChanged) {
-        pNetworkManager->sendSelectedList(selectedList);
-        bSelectionChanged = false;
-    }
-}
+                    pNetworkManager->sendSelectedList(selectedList);
+                    bSelectionChanged = false;
+                }
+            }
 
 void Game::processNetwork() {
     if(pNetworkManager != nullptr) {
@@ -1197,31 +1217,31 @@ void Game::processNetwork() {
 void Game::updateGameState() {
     if(bPause) {
         return;
-    }
+            }
 
-    cmdManager.update();
-    pInterface->getRadarView().update();
-    cmdManager.executeCommands(gameCycleCount);
-    
+            cmdManager.update();
+                pInterface->getRadarView().update();
+                cmdManager.executeCommands(gameCycleCount);
+
     // Update all houses
     for(int i = 0; i < NUM_HOUSES; i++) {
         if(house[i] != nullptr) {
-            house[i]->update();
-        }
-    }
-    
-    screenborder->update();
-    triggerManager.trigger(gameCycleCount);
-    processObjects();
-    
+                        house[i]->update();
+                    }
+                }
+
+                screenborder->update();
+                triggerManager.trigger(gameCycleCount);
+                processObjects();
+
     if((indicatorFrame != NONE_ID) && (--indicatorTimer <= 0)) {
-        indicatorTimer = indicatorTime;
+                    indicatorTimer = indicatorTime;
         if(++indicatorFrame > 2) {
-            indicatorFrame = NONE_ID;
-        }
-    }
-    
-    gameCycleCount++;
+                        indicatorFrame = NONE_ID;
+                    }
+                }
+
+                gameCycleCount++;
     
     if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {
         finishedLevel = true;

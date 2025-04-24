@@ -402,24 +402,50 @@ const UnitBase* ObjectBase::findClosestTargetUnit() const {
 }
 
 const ObjectBase* ObjectBase::findClosestTarget() const {
+<<<<<<< HEAD
     const ObjectBase *pClosestObject = nullptr;
     FixPoint closestDistance = FixPt_MAX;
     for(const StructureBase* pStructure : structureList) {
         if(canAttack(pStructure)) {
             const auto closestPoint = pStructure->getClosestPoint(getLocation());
             auto structureDistance = blockDistance(getLocation(), closestPoint);
+=======
+    // Start with small radius and expand outward
+    int maxRadius = std::max(currentGameMap->getSizeX(), currentGameMap->getSizeY());
+    
+    // Search in expanding rings
+    for(int radius = 1; radius <= maxRadius; radius++) {
+        // Check each coordinate in the current ring
+        for(int dx = -radius; dx <= radius; dx++) {
+            for(int dy = -radius; dy <= radius; dy++) {
+                // Only check coordinates that form the ring (not the inside)
+                if(abs(dx) != radius && abs(dy) != radius) {
+                    continue;
+                }
+>>>>>>> f07b065 (few extra tweaks)
 
-            if(pStructure->getItemID() == Structure_Wall) {
-                    structureDistance += 20000000; //so that walls are targeted very last
-            }
+                int checkX = location.x + dx;
+                int checkY = location.y + dy;
 
-            if(structureDistance < closestDistance) {
-                closestDistance = structureDistance;
-                pClosestObject = pStructure;
+                // Skip if outside map bounds
+                if(!currentGameMap->tileExists(checkX, checkY)) {
+                    continue;
+                }
+
+                Tile* pTile = currentGameMap->getTile(checkX, checkY);
+                if(!pTile->hasAnObject()) {
+                    continue;
+                }
+
+                ObjectBase* pObject = pTile->getObject();
+                if(canAttack(pObject)) {
+                    return pObject;  // Found a valid target, return immediately
+                }
             }
         }
     }
 
+<<<<<<< HEAD
     for(const UnitBase* pUnit : unitList) {
         if(canAttack(pUnit)) {
             const auto closestPoint = pUnit->getClosestPoint(getLocation());
@@ -433,6 +459,9 @@ const ObjectBase* ObjectBase::findClosestTarget() const {
     }
 
     return pClosestObject;
+=======
+    return nullptr;  // No target found
+>>>>>>> f07b065 (few extra tweaks)
 }
 
 const ObjectBase* ObjectBase::findTarget() const {
