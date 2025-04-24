@@ -135,38 +135,44 @@ void RepairYard::updateStructureSpecificStuff() {
             if (owner->takeCredits(UNIT_REPAIRCOST) > 0) {
                 pRepairUnit->addHealth();
             }
-
-        /*
-            Will turn this code into an option that's only on when manual carryall is enabled. 
-            While this is fixing the original code, it can cause imbalances in combat as tanks 
-            can be kept at the frontline letting an initial successful attack snowball
-        */
-        } else if(!pRepairUnit->isAwaitingPickup() && blockDistance(location, pRepairUnit->getGuardPoint()) >= MIN_CARRYALL_LIFT_DISTANCE && currentGame->getGameInitSettings().getGameOptions().manualCarryallDrops) {
-            // find carryall
-            Carryall* pCarryall = nullptr;
-            if((pRepairUnit->getGuardPoint().isValid()) && getOwner()->hasCarryalls())  {
-                for(UnitBase* pUnit : unitList) {
-                    if ((pUnit->getOwner() == owner) && (pUnit->getItemID() == Unit_Carryall)) {
-                        Carryall* pTmpCarryall = static_cast<Carryall*>(pUnit);
-                        if (!pTmpCarryall->isBooked()) {
-                            pCarryall = pTmpCarryall;
+        } else {
+            // Unit is fully repaired - handle deployment
+            bool needsCarryall = blockDistance(location, pRepairUnit->getGuardPoint()) >= MIN_CARRYALL_LIFT_DISTANCE 
+                               && currentGame->getGameInitSettings().getGameOptions().manualCarryallDrops;
+            
+            if (pRepairUnit->hasBookedCarrier()) {
+                // Already has a carryall coming - wait for it
+                return;
+            }
+            
+            if (needsCarryall && !pRepairUnit->isAwaitingPickup()) {
+                // Try to find an available carryall
+                Carryall* pCarryall = nullptr;
+                if (pRepairUnit->getGuardPoint().isValid() && getOwner()->hasCarryalls()) {
+                    for(UnitBase* pUnit : unitList) {
+                        if ((pUnit->getOwner() == owner) && (pUnit->getItemID() == Unit_Carryall)) {
+                            Carryall* pTmpCarryall = static_cast<Carryall*>(pUnit);
+                            if (!pTmpCarryall->isBooked()) {
+                                pCarryall = pTmpCarryall;
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            if(pCarryall != nullptr) {
-                pCarryall->setTarget(this);
-                pCarryall->clearPath();
-                static_cast<GroundUnit*>(pRepairUnit)->bookCarrier(pCarryall);
-                pRepairUnit->setTarget(nullptr);
-                pRepairUnit->setDestination(pRepairUnit->getGuardPoint());
-            } else {
-                deployRepairUnit();
+                if (pCarryall != nullptr) {
+                    // Book the carryall and set it up
+                    pCarryall->setTarget(this);
+                    pCarryall->clearPath();
+                    static_cast<GroundUnit*>(pRepairUnit)->bookCarrier(pCarryall);
+                    pRepairUnit->setTarget(nullptr);
+                    pRepairUnit->setDestination(pRepairUnit->getGuardPoint());
+                    return;
+                }
             }
-        } else if(!pRepairUnit->hasBookedCarrier()) {
-            deployRepairUnit();
-        } else {
+            
+            // If we get here, either we don't need a carryall or couldn't find one
+            // Safe to deploy normally
             deployRepairUnit();
         }
     }

@@ -402,14 +402,6 @@ const UnitBase* ObjectBase::findClosestTargetUnit() const {
 }
 
 const ObjectBase* ObjectBase::findClosestTarget() const {
-<<<<<<< HEAD
-    const ObjectBase *pClosestObject = nullptr;
-    FixPoint closestDistance = FixPt_MAX;
-    for(const StructureBase* pStructure : structureList) {
-        if(canAttack(pStructure)) {
-            const auto closestPoint = pStructure->getClosestPoint(getLocation());
-            auto structureDistance = blockDistance(getLocation(), closestPoint);
-=======
     // Start with small radius and expand outward
     int maxRadius = std::max(currentGameMap->getSizeX(), currentGameMap->getSizeY());
     
@@ -422,7 +414,6 @@ const ObjectBase* ObjectBase::findClosestTarget() const {
                 if(abs(dx) != radius && abs(dy) != radius) {
                     continue;
                 }
->>>>>>> f07b065 (few extra tweaks)
 
                 int checkX = location.x + dx;
                 int checkY = location.y + dy;
@@ -445,23 +436,7 @@ const ObjectBase* ObjectBase::findClosestTarget() const {
         }
     }
 
-<<<<<<< HEAD
-    for(const UnitBase* pUnit : unitList) {
-        if(canAttack(pUnit)) {
-            const auto closestPoint = pUnit->getClosestPoint(getLocation());
-            const auto unitDistance = blockDistance(getLocation(), closestPoint);
-
-            if(unitDistance < closestDistance) {
-                closestDistance = unitDistance;
-                pClosestObject = pUnit;
-            }
-        }
-    }
-
-    return pClosestObject;
-=======
     return nullptr;  // No target found
->>>>>>> f07b065 (few extra tweaks)
 }
 
 const ObjectBase* ObjectBase::findTarget() const {

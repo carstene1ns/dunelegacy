@@ -419,7 +419,6 @@
 
 /* Begin PBXFileReference section */
 		1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
-		1309680010B6E51E00B22CFC /* MacFunctions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacFunctions.h; sourceTree = "<group>"; };
 		1309680110B6E51E00B22CFC /* MacFunctions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MacFunctions.m; sourceTree = "<group>"; };
 		1322B17110A8CB9C00F8825D /* Dune Legacy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dune Legacy.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		134D2FE80F38F178001B38EF /* LEGACY.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = LEGACY.PAK; path = ../../data/LEGACY.PAK; sourceTree = SOURCE_ROOT; };
@@ -1003,7 +1002,6 @@
 		080E96DDFE201D6D7F000001 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
-				1309680010B6E51E00B22CFC /* MacFunctions.h */,
 				1309680110B6E51E00B22CFC /* MacFunctions.m */,
 			);
 			name = Classes;
@@ -2323,7 +2321,7 @@
 					"-dylib_file",
 					"@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/smpeg.framework/Versions/A/smpeg",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.97.04";
+				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.98.1";
 				PRODUCT_NAME = "Dune Legacy";
 				SYMROOT = "${SRCROOT}/build";
 				WRAPPER_EXTENSION = app;
@@ -2394,7 +2392,7 @@
 					"-dylib_file",
 					"@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/smpeg.framework/Versions/A/smpeg",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.97.04";
+				PRODUCT_BUNDLE_IDENTIFIER = "Dune-Legacy-OSX-0.98.1";
 				PRODUCT_NAME = "Dune Legacy";
 				SYMROOT = "${SRCROOT}/build";
 				WRAPPER_EXTENSION = app;
