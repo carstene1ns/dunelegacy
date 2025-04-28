@@ -70,6 +70,12 @@ Section ""
     File "..\build\bin\SDL2.dll"
     File "..\build\bin\SDL2_mixer.dll"
     File "..\build\bin\SDL2_ttf.dll"
+    
+    ; Add MinGW runtime DLLs
+    File "..\build\bin\libgcc_s_seh-1.dll"
+    File "..\build\bin\libstdc++-6.dll"
+    File "..\build\bin\libwinpthread-1.dll"
+    
     File "..\build\bin\ATRE.PAK"
     File "..\build\bin\DUNE.PAK"
     File "..\build\bin\ENGLISH.PAK"
