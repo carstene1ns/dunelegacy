@@ -582,7 +582,7 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 
 				// If unit isn't an infrantry then heal it once it is below 2/3 health if not an easy or medium campaign
 				if (getHouse()->hasRepairYard()
-					&& pGroundUnit->getHealth() / pGroundUnit->getMaxHealth() < 0.7_fix
+					&& pGroundUnit->getHealth() / pGroundUnit->getMaxHealth() < 0.6_fix
 
 					// don't do manual repairs if it's campaign and easy or medium difficulty
 					&& !(gameMode == GameMode::Campaign && (difficulty == Difficulty::Easy || difficulty == Difficulty::Medium))
@@ -591,7 +591,8 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 				}
 
 				// Rotate unit backwards if it is taking damage if it is softer
-				else if (pGroundUnit->getItemID() != pGroundUnit->getItemID() != Unit_Devastator) {
+				else if (pGroundUnit->getItemID() != pGroundUnit->getItemID() != Unit_Devastator 
+						&& pGroundUnit->getItemID() != pGroundUnit->getItemID() != Unit_SiegeTank) {
 					doSetAttackMode(pGroundUnit, AREAGUARD);
 					doMove2Pos(pGroundUnit, squadCenterLocation.x, squadCenterLocation.y, true);
 				}
@@ -892,8 +893,8 @@ void QuantBot::build(int militaryValue) {
 	if (totalDamage < 3000) {
 		switch (houseID) {
 		case HOUSE_HARKONNEN:
-			launcherPercent = 0.40_fix;
-			specialPercent = 0.40_fix;
+			launcherPercent = 0.70_fix;
+			specialPercent = 0.10_fix;
 			siegePercent = 0.10_fix;
 			siegePercent = 0.10_fix;
 			ornithopterPercent = 0.0_fix;
@@ -901,25 +902,42 @@ void QuantBot::build(int militaryValue) {
 
 		case HOUSE_ORDOS:
 			launcherPercent = 0.0_fix; // Don't have these
-			specialPercent = 0.40_fix;
-			siegePercent = 0.10_fix;
-			tankPercent = 0.45_fix;
+			specialPercent = 0.05_fix;
+			siegePercent = 0.85_fix;
+			tankPercent = 0.05_fix;
 			ornithopterPercent = 0.05_fix;
 			break;
 
 		case HOUSE_ATREIDES:
-			launcherPercent = 0.35_fix;
-			siegePercent = 0.30_fix;
-			tankPercent = 0.30_fix;
+			launcherPercent = 0.45_fix;
+			specialPercent = 0.40_fix;
+			siegePercent = 0.05_fix;
+			tankPercent = 0.05_fix;
 			ornithopterPercent = 0.05_fix;
 			break;
+		
+		case HOUSE_FREMEN:
+			launcherPercent = 0.20_fix;
+			specialPercent = 0.00_fix;
+			siegePercent = 0.05_fix;
+			tankPercent = 0.70_fix;
+			ornithopterPercent = 0.05_fix;
+			break;
+		
+		case HOUSE_SARDAUKAR:
+			launcherPercent = 0.45_fix;
+			specialPercent = 0.00_fix;
+			siegePercent = 0.44_fix;
+			tankPercent = 0.05_fix;
+			ornithopterPercent = 0.05_fix;
+		break;
 
 		default:
 			launcherPercent = 0.30_fix;
-			specialPercent = 0.0_fix;
-			siegePercent = 0.60_fix;
-			tankPercent = 0.10_fix;
-			ornithopterPercent = 0.0_fix;
+			specialPercent = 0.05_fix;
+			siegePercent = 0.35_fix;
+			tankPercent = 0.30_fix;
+			ornithopterPercent = 0.05_fix;
 
 			break;
 		}
@@ -1575,7 +1593,7 @@ void QuantBot::attack(int militaryValue) {
 	}
 
 	int attackSquadSize = 0; // how many units AI will send in attack squad
-	int maxAttackSquadSize = 99; // max units that AI can send
+	int maxAttackSquadSize = 40; // max units that AI can send
 	
 	logDebug("Attack: house: %d  dif: %d  mStr: %d  mLim: %d  attackTimer: %d",
 		getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
@@ -1588,21 +1606,20 @@ void QuantBot::attack(int militaryValue) {
 			&& pUnit->isActive()
 			&& !pUnit->isBadlyDamaged()
 			&& !pUnit->wasForced()
-			&& pUnit->getAttackMode() != HUNT
 			&& pUnit->getAttackMode() != RETREAT
 			&& pUnit->getItemID() != Unit_Harvester
 			&& pUnit->getItemID() != Unit_MCV
 			&& pUnit->getItemID() != Unit_Carryall
 			&& pUnit->getItemID() != Unit_Sandworm)
 
-		{	/*
+		{	
 			if (attackSquadSize >= maxAttackSquadSize) {
 				return; // return if we have reached the squad size for the map
 			}
-			else {*/
+			else {
 				doSetAttackMode(pUnit, HUNT);
 				attackSquadSize++;
-			//}
+			}
 		}
 	}
 
