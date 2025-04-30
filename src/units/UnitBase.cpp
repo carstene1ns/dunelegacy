@@ -378,7 +378,7 @@ void UnitBase::deviate(House* newOwner) {
     if(getItemID() == Unit_Devastator || getItemID() == Unit_Ornithopter){
         newOwner->informHasDamaged(Unit_Deviator, currentGame->objectData.data[getItemID()][newOwner->getHouseID()].price);
     } else{
-        newOwner->informHasDamaged(Unit_Deviator, currentGame->objectData.data[getItemID()][newOwner->getHouseID()].price / 5);
+        newOwner->informHasDamaged(Unit_Deviator, currentGame->objectData.data[getItemID()][newOwner->getHouseID()].price / 10);
     }
 
 
