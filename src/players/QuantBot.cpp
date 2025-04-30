@@ -364,28 +364,28 @@ void QuantBot::update() {
 
 			switch (difficulty) {
 			case Difficulty::Brutal: {
-				harvesterLimit = 50 * ratio;
-				militaryValueLimit = 65000 * ratio;
+				harvesterLimit = 60 * ratio;
+				militaryValueLimit = 75000 * ratio;
 				logDebug("BUILD BRUTAL SKIRM. harvesterLimit: 50 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Easy: {
 				harvesterLimit = 10 * ratio;
 
-				militaryValueLimit = 10000 * ratio;
+				militaryValueLimit = 15000 * ratio;
 				logDebug("BUILD EASY SKIRM. harvesterLimit: 10 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Medium: {
 				harvesterLimit = 20 * ratio;
-				militaryValueLimit = 20000 * ratio;
+				militaryValueLimit = 25000 * ratio;
 				logDebug("BUILD MEDIUM SKIRM. harvesterLimit: 20 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Hard: {
-				harvesterLimit = 30 * ratio;
-				militaryValueLimit = 40000 * ratio;
-				logDebug("BUILD HARD SKIRM. harvesterLimit: 35 * ratio: %d = %d", ratio, harvesterLimit);
+				harvesterLimit = 40 * ratio;
+				militaryValueLimit = 50000 * ratio;
+				logDebug("BUILD HARD SKIRM. harvesterLimit: 40 * ratio: %d = %d", ratio, harvesterLimit);
 			} break;
 
 			case Difficulty::Defend: {
@@ -902,42 +902,42 @@ void QuantBot::build(int militaryValue) {
 
 		case HOUSE_ORDOS:
 			launcherPercent = 0.0_fix; // Don't have these
-			specialPercent = 0.05_fix;
-			siegePercent = 0.85_fix;
-			tankPercent = 0.05_fix;
-			ornithopterPercent = 0.05_fix;
+			specialPercent = 0.25_fix;
+			siegePercent = 0.25_fix;
+			tankPercent = 0.25_fix;
+			ornithopterPercent = 0.25_fix;
 			break;
 
 		case HOUSE_ATREIDES:
-			launcherPercent = 0.45_fix;
-			specialPercent = 0.40_fix;
-			siegePercent = 0.05_fix;
-			tankPercent = 0.05_fix;
-			ornithopterPercent = 0.05_fix;
+			launcherPercent = 0.20_fix;
+			specialPercent = 0.65_fix;
+			siegePercent = 0.00_fix;
+			tankPercent = 0.00_fix;
+			ornithopterPercent = 0.15_fix;
 			break;
 		
 		case HOUSE_FREMEN:
 			launcherPercent = 0.20_fix;
 			specialPercent = 0.00_fix;
 			siegePercent = 0.05_fix;
-			tankPercent = 0.70_fix;
-			ornithopterPercent = 0.05_fix;
+			tankPercent = 0.65_fix;
+			ornithopterPercent = 0.10_fix;
 			break;
 		
 		case HOUSE_SARDAUKAR:
 			launcherPercent = 0.45_fix;
 			specialPercent = 0.00_fix;
-			siegePercent = 0.44_fix;
+			siegePercent = 0.40_fix;
 			tankPercent = 0.05_fix;
-			ornithopterPercent = 0.05_fix;
+			ornithopterPercent = 0.10_fix;
 		break;
 
 		default:
 			launcherPercent = 0.30_fix;
 			specialPercent = 0.05_fix;
-			siegePercent = 0.35_fix;
+			siegePercent = 0.30_fix;
 			tankPercent = 0.30_fix;
-			ornithopterPercent = 0.05_fix;
+			ornithopterPercent = 0.10_fix;
 
 			break;
 		}
@@ -1579,7 +1579,37 @@ void QuantBot::attack(int militaryValue) {
 		// should move and refactor this to run once at start. Also should rework military value
 	}
 
+	// Ornithopter attack loop
+	if (getHouse()->getNumItems(Unit_Ornithopter) > 4) {
+		Coord squadRallyPoint = findSquadRallyLocation();
+		const StructureBase* closestEnemyStructure = nullptr;
+		FixPoint closestDistance = FixPt_MAX;
 
+		// Find closest enemy structure to squad rally point
+		for (const StructureBase* pStructure : getStructureList()) {
+			if (pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
+				FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
+				if (distance < closestDistance) {
+					closestDistance = distance;
+					closestEnemyStructure = pStructure;
+				}
+			}
+		}
+
+		// If we found an enemy structure, send ornithopters to attack it
+		if (closestEnemyStructure != nullptr) {
+			for (const UnitBase* pUnit : getUnitList()) {
+				if (pUnit->getOwner() == getHouse() 
+					&& pUnit->getItemID() == Unit_Ornithopter
+					&& pUnit->isActive()
+					&& !pUnit->isBadlyDamaged()) {
+					doAttackObject(pUnit, closestEnemyStructure, true);
+				}
+			}
+		}
+	}
+
+	// Main attack loop
 	if (militaryValue < militaryValueLimit * 0.30_fix) {
 		logDebug("Don't attack. Not enough troops: house: %d  dif: %d  mStr: %d  mLim: %d",
 			getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
@@ -1593,8 +1623,24 @@ void QuantBot::attack(int militaryValue) {
 	}
 
 	int attackSquadSize = 0; // how many units AI will send in attack squad
-	int maxAttackSquadSize = 40; // max units that AI can send
+	int maxAttackSquadSize = 70; // max units that AI can send
 	
+	// First count existing hunting units
+	for (const UnitBase* pUnit : getUnitList()) {
+		if (pUnit->isRespondable()
+			&& (pUnit->getOwner() == getHouse())
+			&& pUnit->isActive()
+			&& !pUnit->isBadlyDamaged()
+			&& pUnit->getAttackMode() == HUNT
+			&& pUnit->getItemID() != Unit_Harvester
+			&& pUnit->getItemID() != Unit_MCV
+			&& pUnit->getItemID() != Unit_Carryall
+			&& pUnit->getItemID() != Unit_Ornithopter
+			&& pUnit->getItemID() != Unit_Sandworm) {
+			attackSquadSize++;
+		}
+	}
+
 	logDebug("Attack: house: %d  dif: %d  mStr: %d  mLim: %d  attackTimer: %d",
 		getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
 
@@ -1607,13 +1653,16 @@ void QuantBot::attack(int militaryValue) {
 			&& !pUnit->isBadlyDamaged()
 			&& !pUnit->wasForced()
 			&& pUnit->getAttackMode() != RETREAT
+			&& pUnit->getAttackMode() != HUNT  // Don't add units that are already hunting
 			&& pUnit->getItemID() != Unit_Harvester
 			&& pUnit->getItemID() != Unit_MCV
 			&& pUnit->getItemID() != Unit_Carryall
+			&& pUnit->getItemID() != Unit_Ornithopter
 			&& pUnit->getItemID() != Unit_Sandworm)
 
 		{	
 			if (attackSquadSize >= maxAttackSquadSize) {
+				logDebug("Attacking with %d units", attackSquadSize);
 				return; // return if we have reached the squad size for the map
 			}
 			else {
@@ -1622,6 +1671,7 @@ void QuantBot::attack(int militaryValue) {
 			}
 		}
 	}
+	logDebug("Attacking with %d units", attackSquadSize);
 
 }
 
@@ -1840,6 +1890,40 @@ void QuantBot::checkAllUnits() {
 			} break;
 
 			case Unit_Sandworm: {
+			} break;
+
+			case Unit_Ornithopter: {
+				const UnitBase* pOrnithopter = pUnit;
+				if (getHouse()->getNumItems(Unit_Ornithopter) > 2) {
+					// If we have more than 2 ornithopters, they should attack enemy structures
+					if (!pOrnithopter->hasATarget() || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID())) {
+						// Find closest enemy structure to squad rally point
+						Coord squadRallyPoint = findSquadRallyLocation();
+						const StructureBase* closestEnemyStructure = nullptr;
+						FixPoint closestDistance = FixPt_MAX;
+
+						for (const StructureBase* pStructure : getStructureList()) {
+							if (pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
+								FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
+								if (distance < closestDistance) {
+									closestDistance = distance;
+									closestEnemyStructure = pStructure;
+								}
+							}
+						}
+
+						if (closestEnemyStructure != nullptr) {
+							doAttackObject(pOrnithopter, closestEnemyStructure, true);
+						} else {
+							// No enemy structures found, return to rally point
+							doMove2Pos(const_cast<UnitBase*>(pOrnithopter), squadRallyPoint.x, squadRallyPoint.y, true);
+						}
+					}
+				} else {
+					// If we have 2 or fewer ornithopters, they should return to rally point
+					Coord squadRallyPoint = findSquadRallyLocation();
+					doMove2Pos(const_cast<UnitBase*>(pOrnithopter), squadRallyPoint.x, squadRallyPoint.y, false);
+				}
 			} break;
 
 			default: {
