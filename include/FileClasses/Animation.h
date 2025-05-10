@@ -22,6 +22,7 @@
 #include <misc/SDL2pp.h>
 
 #include <vector>
+#include <iterator>
 
 #define INVALID_FRAME ((unsigned int) -1)
 
