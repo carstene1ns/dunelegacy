@@ -440,15 +440,15 @@ const ObjectBase* ObjectBase::findClosestTarget() const {
 }
 
 const ObjectBase* ObjectBase::findTarget() const {
-//searches for a target in an area like as shown below
-//
-//                    *
-//                  *****
-//                  *****
-//                 ***T***
-//                  *****
-//                  *****
-//                    *
+    //searches for a target in an area like as shown below
+    //
+    //                    *
+    //                  *****
+    //                  *****
+    //                 ***T***
+    //                  *****
+    //                  *****
+    //                    *
 
     auto checkRange = 0;
     switch(attackMode) {
@@ -482,30 +482,51 @@ const ObjectBase* ObjectBase::findTarget() const {
     ObjectBase *pClosestTarget = nullptr;
     auto closestTargetDistance = FixPt_MAX;
 
-    Coord coord;
-    const auto startY = std::max(0, location.y - checkRange);
-    const auto endY = std::min(currentGameMap->getSizeY()-1, location.y + checkRange);
-    for(coord.y = startY; coord.y <= endY; coord.y++) {
-        const auto startX = std::max(0, location.x - checkRange);
-        const auto endX = std::min(currentGameMap->getSizeX()-1, location.x + checkRange);
-        for(coord.x = startX; coord.x <= endX; coord.x++) {
+    // Start from center and expand outward in rings
+    for(auto ring = 0; ring <= checkRange; ring++) {
+        // Check each point in the current ring
+        for(auto x = -ring; x <= ring; x++) {
+            for(auto y = -ring; y <= ring; y++) {
+                // Only check points on the ring's perimeter
+                if(std::abs(x) != ring && std::abs(y) != ring) {
+                    continue;
+                }
 
-            const auto targetDistance = blockDistance(location, coord);
-            if(targetDistance <= checkRange) {
-                Tile* pTile = currentGameMap->getTile(coord);
-                if( pTile->isExploredByTeam(getOwner()->getTeamID())
-                    && !pTile->isFoggedByTeam(getOwner()->getTeamID())
-                    && pTile->hasAnObject()) {
+                const auto checkX = location.x + x;
+                const auto checkY = location.y + y;
 
-                    const auto pNewTarget = pTile->getObject();
-                    if(((pNewTarget->getItemID() != Structure_Wall && pNewTarget->getItemID() != Unit_Carryall) || pClosestTarget == nullptr) && canAttack(pNewTarget)) {
-                        if(targetDistance < closestTargetDistance) {
-                            pClosestTarget = pNewTarget;
-                            closestTargetDistance = targetDistance;
+                // Skip if out of bounds
+                if(checkX < 0 || checkX >= currentGameMap->getSizeX() ||
+                   checkY < 0 || checkY >= currentGameMap->getSizeY()) {
+                    continue;
+                }
+
+                const auto targetDistance = blockDistance(location, Coord(checkX, checkY));
+                if(targetDistance <= checkRange) {
+                    Tile* pTile = currentGameMap->getTile(Coord(checkX, checkY));
+                    if(pTile->isExploredByTeam(getOwner()->getTeamID()) &&
+                       !pTile->isFoggedByTeam(getOwner()->getTeamID()) &&
+                       pTile->hasAnObject()) {
+
+                        const auto pNewTarget = pTile->getObject();
+                        if(((pNewTarget->getItemID() != Structure_Wall && 
+                             pNewTarget->getItemID() != Unit_Carryall) || 
+                            pClosestTarget == nullptr) && 
+                           canAttack(pNewTarget)) {
+                            if(targetDistance < closestTargetDistance) {
+                                pClosestTarget = pNewTarget;
+                                closestTargetDistance = targetDistance;
+                            }
                         }
                     }
                 }
             }
+        }
+
+        // If we found a target in this ring, we can stop searching
+        // as we won't find a closer one in outer rings
+        if(pClosestTarget != nullptr) {
+            break;
         }
     }
 
