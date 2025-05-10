@@ -19,6 +19,7 @@
 #define FIXPOINT_H
 
 #include "FixPoint32.h"
+#include "fix32.h"
 
 typedef FixPoint32 FixPoint;
 
@@ -65,11 +66,16 @@ namespace fix32_parserimpl
 }
 
 template<char...Chars>
-constexpr auto operator""_fix()
+inline FixPoint32 operator""_fix()
 {
     return FixPoint32::FromRawValue(fix32_parserimpl::fp32_parser<0ull, Chars...>());
 }
 
-
+inline FixPoint32 operator"" _fix(long double val) {
+    return FixPoint32::FromRawValue(fix32_from_dbl(static_cast<double>(val)));
+}
+inline FixPoint32 operator"" _fix(unsigned long long val) {
+    return FixPoint32::FromRawValue(fix32_from_dbl(static_cast<double>(val)));
+}
 
 #endif // FIXPOINT_H
