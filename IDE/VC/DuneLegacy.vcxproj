@@ -75,14 +75,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\..\bin\$(Configuration)-$(Platform)\</OutDir>
     <IntDir>obj\$(Configuration)-$(Platform)\</IntDir>
-    <IncludePath>$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)packages\sdl2.nuget.2.26.1\build\native\include;$(ProjectDir)packages\sdl2_mixer.nuget.2.6.2\build\native\include;$(ProjectDir)packages\sdl2_ttf.nuget.2.20.1\build\native\include</IncludePath>
-    <LibraryPath>$(LibraryPath);$(ProjectDir)packages\sdl2.nuget.2.26.1\build\native\lib\x64;$(ProjectDir)packages\sdl2_ttf.nuget.2.20.1\build\native\lib\x64;$(ProjectDir)packages\sdl2_mixer.nuget.2.6.2\build\native\lib\x64</LibraryPath>
+    <IncludePath>$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)packages\sdl2.nuget.2.32.4\build\native\include;$(ProjectDir)packages\sdl2_mixer.nuget.2.8.1\build\native\include;$(ProjectDir)packages\sdl2_ttf.nuget.2.24.0\build\native\include</IncludePath>
+    <LibraryPath>$(LibraryPath);$(ProjectDir)packages\sdl2.nuget.2.32.4\build\native\lib\x64;$(ProjectDir)packages\sdl2_ttf.nuget.2.24.0\build\native\lib\x64;$(ProjectDir)packages\sdl2_mixer.nuget.2.8.1\build\native\lib\x64</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\..\bin\$(Configuration)-$(Platform)\</OutDir>
     <IntDir>obj\$(Configuration)-$(Platform)\</IntDir>
-    <IncludePath>$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)packages\sdl2.nuget.2.26.1\build\native\include;$(ProjectDir)packages\sdl2_mixer.nuget.2.6.2\build\native\include;$(ProjectDir)packages\sdl2_ttf.nuget.2.20.1\build\native\include</IncludePath>
-    <LibraryPath>$(LibraryPath);$(ProjectDir)packages\sdl2.nuget.2.26.1\build\native\lib\x64;$(ProjectDir)packages\sdl2_ttf.nuget.2.20.1\build\native\lib\x64;$(ProjectDir)packages\sdl2_mixer.nuget.2.6.2\build\native\lib\x64</LibraryPath>
+    <IncludePath>$(IncludePath);$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)packages\sdl2.nuget.2.32.4\build\native\include;$(ProjectDir)packages\sdl2_mixer.nuget.2.8.1\build\native\include;$(ProjectDir)packages\sdl2_ttf.nuget.2.24.0\build\native\include</IncludePath>
+    <LibraryPath>$(LibraryPath);$(ProjectDir)packages\sdl2.nuget.2.32.4\build\native\lib\x64;$(ProjectDir)packages\sdl2_ttf.nuget.2.24.0\build\native\lib\x64;$(ProjectDir)packages\sdl2_mixer.nuget.2.8.1\build\native\lib\x64</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -113,7 +113,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_NONSTDC_NO_DEPRECATE;_CRT_DECLARE_NONSTDC_NAMES;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_NONSTDC_NO_DEPRECATE;_CRT_DECLARE_NONSTDC_NAMES;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningVersion>
@@ -122,11 +122,12 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);.\packages\sdl2.nuget.2.26.1\build\native\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);.\packages\sdl2.nuget.2.32.4\build\native\lib\x64</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent />
     <PostBuildEvent>
@@ -140,6 +141,9 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <FloatingPointModel>Fast</FloatingPointModel>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -150,7 +154,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       </WarningVersion>
       <DisableSpecificWarnings>4267</DisableSpecificWarnings>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -172,8 +176,11 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <FloatingPointModel>Fast</FloatingPointModel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_NONSTDC_NO_DEPRECATE;_CRT_DECLARE_NONSTDC_NAMES;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_NONSTDC_NO_DEPRECATE;_CRT_DECLARE_NONSTDC_NAMES;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -182,7 +189,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
       </WarningVersion>
       <DisableSpecificWarnings>4267</DisableSpecificWarnings>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
-      <LanguageStandard>Default</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <DebugInformationFormat>None</DebugInformationFormat>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -474,6 +481,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClInclude Include="..\..\include\units\Trooper.h" />
     <ClInclude Include="..\..\include\units\UnitBase.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="..\..\include\AITeamInfo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\AStarSearch.cpp" />

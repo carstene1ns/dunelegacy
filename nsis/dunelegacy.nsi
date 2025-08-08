@@ -6,19 +6,20 @@ SetCompressor /SOLID lzma
 Name "Dune Legacy"
 BrandingText " http://dunelegacy.sourceforge.net"
 !define INSTALLATIONNAME "Dune Legacy"
-OutFile "Dune Legacy 0.97.04 Setup.exe"
+!define VERSION "0.97.04"
+OutFile "../build/installer/Dune Legacy ${VERSION} Setup.exe"
 InstallDir "$PROGRAMFILES\${INSTALLATIONNAME}"
 
 RequestExecutionLevel admin
 
-!define MUI_ICON "dunelegacy.ico"
+!define MUI_ICON "../dunelegacy.ico"
 !define MUI_WELCOMEFINISHPAGE_BITMAP "modern-wizard.bmp"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "modern-wizard.bmp"
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_BITMAP "modern-header.bmp"
 
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "COPYING"
+!insertmacro MUI_PAGE_LICENSE "../COPYING"
 
 !define MUI_DIRECTORYPAGE_VARIABLE $INSTDIR
 !insertmacro MUI_PAGE_DIRECTORY
@@ -55,69 +56,71 @@ FunctionEnd
 
 Section ""
   SetOutPath $INSTDIR\maps\singleplayer
-  File "data\maps\singleplayer\*.*"
+  File "../data\maps\singleplayer\*.*"
 
   SetOutPath $INSTDIR\maps\multiplayer
-  File "data\maps\multiplayer\*.ini"
+  File "../data\maps\multiplayer\*.ini"
 
   SetOutPath $INSTDIR\locale
-  File "data\locale\*.po"
+  File "../data\locale\*.po"
 
   SetOutPath $INSTDIR
   ${If} ${RunningX64}
-    File bin\Release-x64\dunelegacy.exe
-    File bin\Release-x64\SDL2.dll
-    File bin\Release-x64\SDL2_mixer.dll
-    File bin\Release-x64\SDL2_ttf.dll
-    File bin\Release-x64\ATRE.PAK
-    File bin\Release-x64\DUNE.PAK
-    File bin\Release-x64\ENGLISH.PAK
-    File bin\Release-x64\FINALE.PAK
-    File bin\Release-x64\FRENCH.PAK
-    File bin\Release-x64\GERMAN.PAK
-    File bin\Release-x64\GFXHD.PAK
-    File bin\Release-x64\HARK.PAK
-    File bin\Release-x64\INTRO.PAK
-    File bin\Release-x64\INTROVOC.PAK
-    File bin\Release-x64\LEGACY.PAK
-    File bin\Release-x64\MENTAT.PAK
-    File bin\Release-x64\MERC.PAK
-    File bin\Release-x64\OPENSD2.PAK
-    File bin\Release-x64\ORDOS.PAK
-    File bin\Release-x64\SCENARIO.PAK
-    File bin\Release-x64\SOUND.PAK
-    File bin\Release-x64\VOC.PAK
+    File "../bin\Release-x64\DuneLegacy.exe"
+    File "../bin\Release-x64\SDL2.dll"
+    File "../bin\Release-x64\SDL2_mixer.dll"
+    File "../bin\Release-x64\SDL2_ttf.dll"
+    
+    File "../bin\Release-x64\ATRE.PAK"
+    File "../bin\Release-x64\DUNE.PAK"
+    File "../bin\Release-x64\ENGLISH.PAK"
+    File "../bin\Release-x64\FINALE.PAK"
+    File "../bin\Release-x64\FRENCH.PAK"
+    File "../bin\Release-x64\GERMAN.PAK"
+    File "../bin\Release-x64\GFXHD.PAK"
+    File "../bin\Release-x64\HARK.PAK"
+    File "../bin\Release-x64\INTRO.PAK"
+    File "../bin\Release-x64\INTROVOC.PAK"
+    File "../bin\Release-x64\LEGACY.PAK"
+    File "../bin\Release-x64\MENTAT.PAK"
+    File "../bin\Release-x64\MERC.PAK"
+    File "../bin\Release-x64\OPENSD2.PAK"
+    File "../bin\Release-x64\ORDOS.PAK"
+    File "../bin\Release-x64\SCENARIO.PAK"
+    File "../bin\Release-x64\SOUND.PAK"
+    File "../bin\Release-x64\VOC.PAK"
     
     ; Verify all required PAK files were copied successfully
     Call VerifyPakFiles
   ${EndIf}
 
-  File COPYING
+  File "../COPYING"
   Push "$INSTDIR\COPYING"
   Push "$INSTDIR\License.txt"
   Call unix2dos
 
-  File AUTHORS
+  File "../AUTHORS"
   Push "$INSTDIR\AUTHORS"
   Push "$INSTDIR\Authors.txt"
   Call unix2dos
 
-  File README
+  File "../README"
   Push "$INSTDIR\README"
   Push "$INSTDIR\Readme.txt"
   Call unix2dos
 
   WriteUninstaller $INSTDIR\uninstall.exe
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayName" "${INSTALLATIONNAME}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayName" "${INSTALLATIONNAME} ${VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "UninstallString" '"$INSTDIR\uninstall.exe"'
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayIcon" '"$INSTDIR\dunelegacy.exe",0'
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayIcon" '"$INSTDIR\DuneLegacy.exe",0'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "NoModify" 1
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "NoRepair" 1
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${INSTALLATIONNAME}" "DisplayVersion" "${VERSION}"
 SectionEnd
 
 Section "Start Menu Shortcuts"
   CreateDirectory "$SMPROGRAMS\${INSTALLATIONNAME}"
-  CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Dune Legacy.lnk" "$INSTDIR\dunelegacy.exe" "" "$INSTDIR\dunelegacy.exe" 0
+  CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Dune Legacy.lnk" "$INSTDIR\DuneLegacy.exe" "" "$INSTDIR\DuneLegacy.exe" 0
   CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\Readme.lnk" "$INSTDIR\Readme.txt"
   CreateShortCut "$SMPROGRAMS\${INSTALLATIONNAME}\License.lnk" "$INSTDIR\License.txt"
   

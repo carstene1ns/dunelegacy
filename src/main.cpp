@@ -149,7 +149,15 @@ void setVideoMode(int displayIndex)
                               SDL_WINDOWPOS_CENTERED_DISPLAY(displayIndex), SDL_WINDOWPOS_CENTERED_DISPLAY(displayIndex),
                               settings.video.physicalWidth, settings.video.physicalHeight,
                               videoFlags);
+    if (!window) {
+        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
+    if (!renderer) {
+        fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
     SDL_RenderSetLogicalSize(renderer, settings.video.width, settings.video.height);
     screenTexture = SDL_CreateTexture(renderer, SCREEN_FORMAT, SDL_TEXTUREACCESS_TARGET, settings.video.width, settings.video.height);
 }
@@ -608,7 +616,6 @@ int main(int argc, char *argv[]) {
                 SDL_Log("Initializing game...");
 
                 // Force OpenGL rendering on macOS
-                SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
                 SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
                 SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, "0");
                 SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "0");
