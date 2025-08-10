@@ -17,7 +17,6 @@
 
 #include <Menu/MenuBase.h>
 
-#include <sand.h>
 #include <Network/NetworkManager.h>
 
 #include <FileClasses/LoadSavePNG.h>
@@ -70,6 +69,7 @@ int MenuBase::showMenu() {
             SDL_RenderClear(renderer);
         }
         draw();
+        drawCursor();
         SDL_RenderPresent(renderer);
 
         while(SDL_PollEvent(&event)) {
@@ -101,9 +101,6 @@ void MenuBase::draw() {
     Window::drawOverlay();
 
     SDL_RenderSetClipRect(renderer, nullptr);
-    
-    // Draw cursor
-    drawCursor();
 }
 
 void MenuBase::drawSpecificStuff() {
