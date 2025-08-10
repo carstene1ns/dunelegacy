@@ -103,7 +103,6 @@ inline std::string demangleSymbol(const char* symbolname) {
 
 void setVideoMode(int displayIndex);
 void realign_buttons();
-void createWhiteCursor();
 
 static void printUsage() {
     fprintf(stderr, "Usage:\n\tdunelegacy [--showlog] [--fullscreen|--window] [--PlayerName=X] [--ServerPort=X]\n");
@@ -199,8 +198,7 @@ void toogleFullscreen()
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
 
-    // Restore our custom cursor after event flush
-    createWhiteCursor();
+    // SDL_ShowCursor is handled in setVideoMode
 
     // wait a bit to avoid immediately switching back
     SDL_Delay(100);
@@ -613,8 +611,6 @@ int main(int argc, char *argv[]) {
                 if(SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0) {
                     THROW(sdl_error, "Couldn't initialize SDL: %s!", SDL_GetError());
                 }
-
-                createWhiteCursor();
 
                 SDL_version compiledVersion;
                 SDL_version linkedVersion;
