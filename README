@@ -1,7 +1,7 @@
 
 		/-----------------------------------------------\
 		|                               				|
-		|    Dune Legacy 0.97 readme    				|
+		|    Dune Legacy 0.98.4 readme    			|
 		|    ---------------------------------------    |
 		|    current dev: stefanvanderwelATgmail.com    |
 		\-----------------------------------------------/
@@ -59,6 +59,11 @@ The PAK-files have to be copied inside the application bundle. If you have follo
 Otherwise just right-click on the bundle and select "Show Bundle Content". Then navigate into "Contents" and then into "Resources". There you will 
 find LEGACY.PAK. Put the other PAK-files there too. Alternativly you can put them in your home directory under ~/.config/dunelegacy/data/ but putting 
 them inside the application bundle is the preferred way.
+
+IMPORTANT - Network Permissions on macOS:
+When first accessing multiplayer features, macOS may prompt you to allow network access for Dune Legacy. Click "Allow" to enable multiplayer 
+functionality. The game will automatically retry network initialization once permissions are granted. If the game seems unresponsive in 
+multiplayer mode, check System Preferences > Security & Privacy > Privacy > Network to ensure Dune Legacy has network access.
 
 
 
@@ -126,6 +131,41 @@ Internet Game
 
 To play online via Internet you have to manually enable port forwarding if you use a NAT Router. Forward the Dune Legacy Server Port (Default is 28747) from your NAT Router to your computer. Use the same port on your router as configured in Dune Legacy.
 Example: If your machine has IP 192.168.123.1 and your using the default Dune Legacy Port, than forward port 28747 from your router to 192.168.123.1:28747.
+
+
+Troubleshooting
+---------------
+
+Common Issues:
+
+1. Multiplayer crashes on macOS:
+   - Grant network permissions when prompted by macOS
+   - Check System Preferences > Security & Privacy > Privacy > Network
+   - The game will automatically retry network initialization
+
+2. Game won't start:
+   - Ensure all required PAK files are in the correct location
+   - Check that SDL2 libraries are properly installed
+   - Verify the game has necessary file permissions
+
+3. No sound:
+   - Check that SDL2_mixer is installed
+   - Verify audio device settings
+   - Try toggling sound in game options (F10/F11)
+
+4. Performance issues:
+   - Try different zoom levels (F1/F2/F3)
+   - Reduce graphics settings if available
+   - Close other applications to free memory
+
+
+Recent Changes (v0.98.4)
+------------------------
+
+- Fixed crash when accessing multiplayer on macOS due to network permission prompts
+- Improved network error handling with automatic retry mechanism
+- Enhanced stability for first-time multiplayer access
+- Better logging for network-related issues
 
 
 

@@ -73,22 +73,32 @@ LANGameFinderAndAnnouncer::LANGameFinderAndAnnouncer() {
 
     announceSocket = enet_socket_create(ENET_SOCKET_TYPE_DATAGRAM);
     if(announceSocket == ENET_SOCKET_NULL) {
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Creating socket failed!");
+        // On macOS, socket creation may fail initially due to permission prompts
+        // Set to null and log warning - operations will be skipped until permissions are granted
+        SDL_Log("LANGameFinderAndAnnouncer: Creating socket failed (network permissions may be required)");
+        announceSocket = ENET_SOCKET_NULL;
+        return;
     }
 
     if(enet_socket_set_option(announceSocket, ENET_SOCKOPT_REUSEADDR, 1) < 0) {
         enet_socket_destroy(announceSocket);
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Setting socket option 'ENET_SOCKOPT_REUSEADDR' failed!");
+        SDL_Log("LANGameFinderAndAnnouncer: Setting socket option 'ENET_SOCKOPT_REUSEADDR' failed (network permissions may be required)");
+        announceSocket = ENET_SOCKET_NULL;
+        return;
     }
 
     if(enet_socket_set_option(announceSocket, ENET_SOCKOPT_NONBLOCK, 1) < 0) {
         enet_socket_destroy(announceSocket);
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Setting socket option 'ENET_SOCKOPT_NONBLOCK' failed!");
+        SDL_Log("LANGameFinderAndAnnouncer: Setting socket option 'ENET_SOCKOPT_NONBLOCK' failed (network permissions may be required)");
+        announceSocket = ENET_SOCKET_NULL;
+        return;
     }
 
     if(enet_socket_set_option(announceSocket, ENET_SOCKOPT_BROADCAST, 1) < 0) {
         enet_socket_destroy(announceSocket);
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Setting socket option 'ENET_SOCKOPT_BROADCAST' failed!");
+        SDL_Log("LANGameFinderAndAnnouncer: Setting socket option 'ENET_SOCKOPT_BROADCAST' failed (network permissions may be required)");
+        announceSocket = ENET_SOCKET_NULL;
+        return;
     }
 
     ENetAddress address;
@@ -97,7 +107,9 @@ LANGameFinderAndAnnouncer::LANGameFinderAndAnnouncer() {
 
     if(enet_socket_bind(announceSocket, &address) < 0) {
         enet_socket_destroy(announceSocket);
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Binding socket to address failed!");
+        SDL_Log("LANGameFinderAndAnnouncer: Binding socket to address failed (network permissions may be required)");
+        announceSocket = ENET_SOCKET_NULL;
+        return;
     }
 }
 
@@ -109,10 +121,74 @@ LANGameFinderAndAnnouncer::~LANGameFinderAndAnnouncer() {
             SDL_Log("LANGameFinderAndAnnouncer::~LANGameFinderAndAnnouncer(): %s", e.what());
         }
     }
-    enet_socket_destroy(announceSocket);
+    if(announceSocket != ENET_SOCKET_NULL) {
+        enet_socket_destroy(announceSocket);
+    }
+}
+
+bool LANGameFinderAndAnnouncer::retrySocketInitialization() {
+    // If socket is already initialized, return true
+    if(announceSocket != ENET_SOCKET_NULL) {
+        return true;
+    }
+
+    // Try to initialize socket again
+    announceSocket = enet_socket_create(ENET_SOCKET_TYPE_DATAGRAM);
+    if(announceSocket == ENET_SOCKET_NULL) {
+        SDL_Log("LANGameFinderAndAnnouncer: Retry - Creating socket failed (network permissions may still be required)");
+        return false;
+    }
+
+    if(enet_socket_set_option(announceSocket, ENET_SOCKOPT_REUSEADDR, 1) < 0) {
+        enet_socket_destroy(announceSocket);
+        SDL_Log("LANGameFinderAndAnnouncer: Retry - Setting socket option 'ENET_SOCKOPT_REUSEADDR' failed");
+        announceSocket = ENET_SOCKET_NULL;
+        return false;
+    }
+
+    if(enet_socket_set_option(announceSocket, ENET_SOCKOPT_NONBLOCK, 1) < 0) {
+        enet_socket_destroy(announceSocket);
+        SDL_Log("LANGameFinderAndAnnouncer: Retry - Setting socket option 'ENET_SOCKOPT_NONBLOCK' failed");
+        announceSocket = ENET_SOCKET_NULL;
+        return false;
+    }
+
+    if(enet_socket_set_option(announceSocket, ENET_SOCKOPT_BROADCAST, 1) < 0) {
+        enet_socket_destroy(announceSocket);
+        SDL_Log("LANGameFinderAndAnnouncer: Retry - Setting socket option 'ENET_SOCKOPT_BROADCAST' failed");
+        announceSocket = ENET_SOCKET_NULL;
+        return false;
+    }
+
+    ENetAddress address;
+    address.host = ENET_HOST_ANY;
+    address.port = LANGAME_ANNOUNCER_PORT;
+
+    if(enet_socket_bind(announceSocket, &address) < 0) {
+        enet_socket_destroy(announceSocket);
+        SDL_Log("LANGameFinderAndAnnouncer: Retry - Binding socket to address failed");
+        announceSocket = ENET_SOCKET_NULL;
+        return false;
+    }
+
+    SDL_Log("LANGameFinderAndAnnouncer: Socket initialization retry successful!");
+    return true;
 }
 
 void LANGameFinderAndAnnouncer::update() {
+    // If socket is not available, try to retry initialization periodically
+    if(announceSocket == ENET_SOCKET_NULL) {
+        static Uint32 lastRetryTime = 0;
+        if(SDL_GetTicks() - lastRetryTime > 5000) { // Retry every 5 seconds
+            retrySocketInitialization();
+            lastRetryTime = SDL_GetTicks();
+        }
+        // If still not available, skip rest of update
+        if(announceSocket == ENET_SOCKET_NULL) {
+            return;
+        }
+    }
+
     if(serverPort > 0) {
         if(SDL_GetTicks() - lastAnnounce > LANGAME_ANNOUNCER_INTERVAL) {
             announceGame();
@@ -125,6 +201,10 @@ void LANGameFinderAndAnnouncer::update() {
 }
 
 void LANGameFinderAndAnnouncer::announceGame() {
+    if(announceSocket == ENET_SOCKET_NULL) {
+        SDL_Log("LANGameFinderAndAnnouncer: Cannot announce game - socket not available (network permissions may be required)");
+        return;
+    }
 
     ENetAddress destinationAddress;
     destinationAddress.host = ENET_HOST_BROADCAST;
@@ -149,13 +229,20 @@ void LANGameFinderAndAnnouncer::announceGame() {
     if(err==0) {
         // blocked
     } else if(err < 0) {
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Announcing failed!");
+        // On macOS, network operations may fail initially due to permission prompts
+        // Log the error but don't crash - the user can retry once permissions are granted
+        SDL_Log("LANGameFinderAndAnnouncer: Announcing failed (network permissions may be required)");
     } else {
         lastAnnounce = SDL_GetTicks();
     }
 }
 
 void LANGameFinderAndAnnouncer::refreshServerList() const {
+    if(announceSocket == ENET_SOCKET_NULL) {
+        SDL_Log("LANGameFinderAndAnnouncer: Cannot refresh server list - socket not available (network permissions may be required)");
+        return;
+    }
+
     ENetAddress destinationAddress;
     destinationAddress.host = ENET_HOST_BROADCAST;
     destinationAddress.port = LANGAME_ANNOUNCER_PORT;
@@ -174,11 +261,18 @@ void LANGameFinderAndAnnouncer::refreshServerList() const {
     if(err==0) {
         // blocked
     } else if(err < 0) {
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Refreshing server list failed!");
+        // On macOS, network operations may fail initially due to permission prompts
+        // Log the error but don't crash - the user can retry once permissions are granted
+        SDL_Log("LANGameFinderAndAnnouncer: Refreshing server list failed (network permissions may be required)");
     }
 }
 
 void LANGameFinderAndAnnouncer::receivePackets() {
+    if(announceSocket == ENET_SOCKET_NULL) {
+        // Socket not available, skip receiving packets
+        return;
+    }
+
     NetworkPacket_AnnounceGame announcePacket;
 
     ENetAddress senderAddress;
@@ -190,7 +284,10 @@ void LANGameFinderAndAnnouncer::receivePackets() {
     if(receivedBytes==0) {
         // blocked
     } else if(receivedBytes < 0) {
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Receiving data failed!");
+        // On macOS, network operations may fail initially due to permission prompts
+        // Log the error but don't crash - the user can retry once permissions are granted
+        SDL_Log("LANGameFinderAndAnnouncer: Receiving data failed (network permissions may be required)");
+        return;
     } else {
         if((receivedBytes == sizeof(NetworkPacket_AnnounceGame))
             && (SDL_SwapLE32(announcePacket.magicNumber) == LANGAME_ANNOUNCER_MAGICNUMBER)
@@ -287,6 +384,10 @@ void LANGameFinderAndAnnouncer::updateServerInfoList() {
 }
 
 void LANGameFinderAndAnnouncer::sendRemoveGameAnnouncement() {
+    if(announceSocket == ENET_SOCKET_NULL) {
+        SDL_Log("LANGameFinderAndAnnouncer: Cannot send remove game announcement - socket not available (network permissions may be required)");
+        return;
+    }
 
     ENetAddress destinationAddress;
     destinationAddress.host = ENET_HOST_BROADCAST;
@@ -306,7 +407,9 @@ void LANGameFinderAndAnnouncer::sendRemoveGameAnnouncement() {
     if(err==0) {
         // would have blocked, need to resend later
     } else if(err < 0) {
-        THROW(std::runtime_error, "LANGameFinderAndAnnouncer: Removing game announcement failed!");
+        // On macOS, network operations may fail initially due to permission prompts
+        // Log the error but don't crash - the user can retry once permissions are granted
+        SDL_Log("LANGameFinderAndAnnouncer: Removing game announcement failed (network permissions may be required)");
     }
 }
 

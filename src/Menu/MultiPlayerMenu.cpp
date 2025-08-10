@@ -108,12 +108,19 @@ MultiPlayerMenu::MultiPlayerMenu() : MenuBase() {
 
     // Start Network Manager
     SDL_Log("Starting network...");
-    pNetworkManager = std::make_unique<NetworkManager>(settings.network.serverPort, settings.network.metaServer);
-    LANGameFinderAndAnnouncer* pLANGFAA = pNetworkManager->getLANGameFinderAndAnnouncer();
-    pLANGFAA->setOnNewServer(std::bind(&MultiPlayerMenu::onNewLANServer, this, std::placeholders::_1));
-    pLANGFAA->setOnUpdateServer(std::bind(&MultiPlayerMenu::onUpdateLANServer, this, std::placeholders::_1));
-    pLANGFAA->setOnRemoveServer(std::bind(&MultiPlayerMenu::onRemoveLANServer, this, std::placeholders::_1));
-    pLANGFAA->refreshServerList();
+    try {
+        pNetworkManager = std::make_unique<NetworkManager>(settings.network.serverPort, settings.network.metaServer);
+        LANGameFinderAndAnnouncer* pLANGFAA = pNetworkManager->getLANGameFinderAndAnnouncer();
+        pLANGFAA->setOnNewServer(std::bind(&MultiPlayerMenu::onNewLANServer, this, std::placeholders::_1));
+        pLANGFAA->setOnUpdateServer(std::bind(&MultiPlayerMenu::onUpdateLANServer, this, std::placeholders::_1));
+        pLANGFAA->setOnRemoveServer(std::bind(&MultiPlayerMenu::onRemoveLANServer, this, std::placeholders::_1));
+        pLANGFAA->refreshServerList();
+        SDL_Log("Network initialization completed.");
+    } catch (const std::exception& e) {
+        SDL_Log("Network initialization failed: %s", e.what());
+        SDL_Log("Multiplayer functionality may be limited until network permissions are granted.");
+        // Continue without crashing - the NetworkManager constructor should handle this gracefully now
+    }
 
     onGameTypeChange(0);
 }

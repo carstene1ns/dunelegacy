@@ -1,0 +1,92 @@
+# Dune Legacy Project Configuration for Cursor
+
+## Project Overview
+This is Dune Legacy, a modernized clone of Westwood Studios' "Dune 2" real-time strategy game.
+- Version: 0.98.4
+- Platform: Cross-platform (Windows, macOS, Linux)
+- Language: C++17
+- Graphics: SDL2, SDL2_mixer, SDL2_ttf
+
+## Build System & Platforms
+
+### macOS (Primary Development Platform)
+- **IDE**: Xcode project located at `IDE/xCode/Dune Legacy.xcodeproj`
+- **Build Command**: `cd IDE/xCode && xcodebuild -project "Dune Legacy.xcodeproj" -configuration Release`
+- **Output**: `IDE/xCode/build/Release/Dune Legacy.app`
+- **Installer Creation**: `./create_dmg.sh` (creates DMG from Xcode build)
+- **Dependencies**: SDL2 frameworks included in `IDE/xCode/external/frameworks/`
+
+### Windows
+- **Cross-compilation**: `./buildcrosswin32.sh` (requires mingw)
+- **Native**: Visual Studio project in `IDE/VC/`
+- **Installer**: NSIS scripts in `nsis/` directory
+
+### Linux
+- **Build System**: CMake or Autotools
+- **Commands**: 
+  - CMake: `cmake -B build && make -C build`
+  - Autotools: `autoreconf --install && ./configure && make`
+
+## Key Dependencies
+- SDL2 (≥2.32.4)
+- SDL2_mixer (≥2.8.1) 
+- SDL2_ttf (≥2.24.0)
+- Original Dune 2 PAK files (required for gameplay)
+
+## Important Directories
+- `src/` - Main source code
+- `include/` - Header files
+- `data/` - Game data files and PAK files
+- `IDE/` - Platform-specific IDE projects
+- `tests/` - Unit tests
+- `nsis/` - Windows installer scripts
+
+## Common Tasks
+
+### Building for macOS
+```bash
+cd IDE/xCode
+xcodebuild -project "Dune Legacy.xcodeproj" -configuration Release
+```
+
+### Creating macOS Installer
+```bash
+./create_dmg.sh
+```
+
+### Running Tests
+```bash
+./runUnitTests.sh
+```
+
+### Updating Localizations
+```bash
+./updatelocale.sh
+```
+
+## Recent Fixes
+- Network permission handling on macOS (prevents crashes when accessing multiplayer)
+- Socket initialization retry mechanism for permission prompts
+
+## Code Style Notes
+- C++17 standard
+- SDL2 for cross-platform compatibility
+- ENet for networking
+- Custom exception handling with THROW macro
+
+## Build Warnings
+- Some deprecation warnings in format.h are expected (legacy formatting library)
+- Integer precision warnings are known issues with existing codebase
+
+## When Making Changes
+- Test on multiple platforms when possible
+- Update version numbers in CMakeLists.txt and project files
+- Rebuild installers after significant changes
+- Consider PAK file compatibility with original Dune 2
+
+## Developer Tools
+- Xcode for macOS development
+- Visual Studio or Code::Blocks for Windows
+- Any C++17 compatible compiler for Linux
+- NSIS for Windows installer creation
+- hdiutil for macOS DMG creation

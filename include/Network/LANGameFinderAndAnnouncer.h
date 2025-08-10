@@ -39,6 +39,12 @@ public:
     LANGameFinderAndAnnouncer();
     ~LANGameFinderAndAnnouncer();
 
+    /**
+        Attempt to retry socket initialization if it failed during construction
+        \return true if socket was successfully initialized, false otherwise
+    */
+    bool retrySocketInitialization();
+
     void startAnnounce(const std::string& serverName, int serverPort, const std::string& mapName, Uint8 numPlayers, Uint8 maxPlayers) {
         this->serverName = serverName;
         this->serverPort = serverPort;
