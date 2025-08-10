@@ -1,3 +1,12 @@
+version 0.98.4
+	* Fix cursor system to match 0.98.3 implementation
+	* Restore software cursor drawing for both menus and gameplay
+	* Remove broken hardware cursor system
+	* Cherry-pick performance and AI improvements from 0.98.3
+	* Add SpatialGrid optimization system
+	* Improve pathfinding and targeting algorithms
+	* Balance adjustments for AI difficulty
+
 version 0.97.0
 	* Completely reworked air units (much more similar to the original game)
 	* Air unit limit increases with (ground) unit limit
