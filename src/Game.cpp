@@ -570,7 +570,8 @@ void Game::drawScreen()
         pInGameMentat->draw();
     }
 
-    // Remove cursor drawing since we're using hardware cursor now
+    // Draw cursor
+    drawCursor();
 }
 
 
