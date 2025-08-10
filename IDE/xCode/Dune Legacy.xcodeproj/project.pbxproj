@@ -893,8 +893,8 @@
 		CE6BA2191E1004D6000640F9 /* 5P - 128x128 - Gridlocked.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "5P - 128x128 - Gridlocked.ini"; sourceTree = "<group>"; };
 		CE6BA21A1E1004D6000640F9 /* 5P - 128x128 - Meadow.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "5P - 128x128 - Meadow.ini"; sourceTree = "<group>"; };
 		CE6BA21B1E1004D6000640F9 /* 6P - 64x128 - Rocking Fields.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "6P - 64x128 - Rocking Fields.ini"; sourceTree = "<group>"; };
-		CE8E0B711E07438400A71916 /* SDL2_mixer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_mixer.framework; path = /Library/Frameworks/SDL2_mixer.framework; sourceTree = "<group>"; };
-		CE8E0B731E07439B00A71916 /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = /Library/Frameworks/SDL2.framework; sourceTree = "<group>"; };
+		CE8E0B711E07438400A71916 /* SDL2_mixer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_mixer.framework; path = external/frameworks/SDL2_mixer.framework; sourceTree = "<group>"; };
+		CE8E0B731E07439B00A71916 /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = external/frameworks/SDL2.framework; sourceTree = "<group>"; };
 		CE8E0B751E07478600A71916 /* GFXHD.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = GFXHD.PAK; path = ../../data/GFXHD.PAK; sourceTree = "<group>"; };
 		CE8E0B761E0747A300A71916 /* Spanish.es.po */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Spanish.es.po; sourceTree = "<group>"; };
 		CE8E0B781E0747DC00A71916 /* 2P - 32x32 - X-Factor.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "2P - 32x32 - X-Factor.ini"; sourceTree = "<group>"; };
@@ -981,7 +981,7 @@
 		E375D32C2DB00C5D00F459C8 /* SOUND.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = SOUND.PAK; path = ../../data/SOUND.PAK; sourceTree = "<group>"; };
 		E375D32D2DB00C5D00F459C8 /* VOC.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = VOC.PAK; path = ../../data/VOC.PAK; sourceTree = "<group>"; };
 		E375D32E2DB00C5D00F459C8 /* GFXHD.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = GFXHD.PAK; path = ../../data/GFXHD.PAK; sourceTree = "<group>"; };
-		E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_ttf.framework; path = ../../../../../../../Library/Frameworks/SDL2_ttf.framework; sourceTree = "<group>"; };
+		E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_ttf.framework; path = external/frameworks/SDL2_ttf.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2281,7 +2281,7 @@
 				ENABLE_TESTABILITY = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+					"$(PROJECT_DIR)/external/frameworks",
 					"$(PROJECT_DIR)",
 				);
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -2297,9 +2297,9 @@
 				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					/Library/Frameworks/SDL2_ttf.framework/Versions/A/Headers,
-					/Library/Frameworks/SDL2.framework/Versions/A/Headers,
-					/Library/Frameworks/SDL2_mixer.framework/Versions/A/Headers,
+					../../external/frameworks/SDL2_ttf.framework/Headers,
+					../../external/frameworks/SDL2.framework/Headers,
+					../../external/frameworks/SDL2_mixer.framework/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				INFOPLIST_FILE = Info.plist;
@@ -2348,7 +2348,7 @@
 				ENABLE_TESTABILITY = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(LOCAL_LIBRARY_DIR)/Frameworks",
+					"$(PROJECT_DIR)/external/frameworks",
 					"$(PROJECT_DIR)",
 				);
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
@@ -2363,10 +2363,8 @@
 				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					"$(HOME)/Library/Frameworks/SDL2.framework/Headers",
-					/Library/Frameworks/SDL2.framework/Headers,
-					"$(HOME)/Library/Frameworks/SDL2_mixer.framework/Headers",
-					/Library/Frameworks/SDL2_mixer.framework/Headers,
+					../../external/frameworks/SDL2.framework/Headers,
+					../../external/frameworks/SDL2_mixer.framework/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				INFOPLIST_FILE = Info.plist;
@@ -2408,8 +2406,7 @@
 				DEPLOYMENT_POSTPROCESSING = YES;
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(HOME)/Library/Frameworks",
-					/Library/Frameworks,
+					"$(PROJECT_DIR)/external/frameworks",
 					"$(FRAMEWORK_SEARCH_PATHS)",
 				);
 				GCC_OPTIMIZATION_LEVEL = 3;
@@ -2433,10 +2430,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					"$(HOME)/Library/Frameworks/SDL2.framework/Headers",
-					/Library/Frameworks/SDL2.framework/Headers,
-					"$(HOME)/Library/Frameworks/SDL2_mixer.framework/Headers",
-					/Library/Frameworks/SDL2_mixer.framework/Headers,
+					../../external/frameworks/SDL2.framework/Headers,
+					../../external/frameworks/SDL2_mixer.framework/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				ONLY_ACTIVE_ARCH = YES;
@@ -2459,8 +2454,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEPLOYMENT_POSTPROCESSING = YES;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(HOME)/Library/Frameworks",
-					/Library/Frameworks,
+					"$(PROJECT_DIR)/external/frameworks",
 					"$(FRAMEWORK_SEARCH_PATHS)",
 					"$(inherited)",
 				);
@@ -2487,9 +2481,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					../../include,
-					/Library/Frameworks/SDL2_ttf.framework/Versions/A/Headers,
-					/Library/Frameworks/SDL2.framework/Versions/A/Headers,
-					/Library/Frameworks/SDL2_mixer.framework/Versions/A/Headers,
+					../../external/frameworks/SDL2_ttf.framework/Headers,
+					../../external/frameworks/SDL2.framework/Headers,
+					../../external/frameworks/SDL2_mixer.framework/Headers,
 					"$(HEADER_SEARCH_PATHS)",
 				);
 				OTHER_CPLUSPLUSFLAGS = "-mno-fused-madd";
