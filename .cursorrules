@@ -7,6 +7,23 @@ This is Dune Legacy, a modernized clone of Westwood Studios' "Dune 2" real-time 
 - Language: C++17
 - Graphics: SDL2, SDL2_mixer, SDL2_ttf
 
+## Development Environment
+
+### Windows Development
+- **Shell**: PowerShell (default on Windows)
+- **Terminal**: Windows Terminal or PowerShell
+- **Commands**: Use PowerShell syntax for Windows-specific operations
+- **Path Separator**: Use backslashes (`\`) for Windows paths in PowerShell commands
+- **Script Execution**: PowerShell scripts use `.ps1` extension
+
+### macOS Development
+- **Shell**: Bash/Zsh
+- **Terminal**: Terminal.app or iTerm2
+
+### Linux Development
+- **Shell**: Bash
+- **Terminal**: Various terminal emulators
+
 ## Build System & Platforms
 
 ### macOS (Primary Development Platform)
@@ -17,9 +34,11 @@ This is Dune Legacy, a modernized clone of Westwood Studios' "Dune 2" real-time 
 - **Dependencies**: SDL2 frameworks included in `IDE/xCode/external/frameworks/`
 
 ### Windows
-- **Cross-compilation**: `./buildcrosswin32.sh` (requires mingw)
+- **Shell**: PowerShell (use PowerShell syntax for commands)
+- **Cross-compilation**: `./buildcrosswin32.sh` (requires mingw, run in PowerShell)
 - **Native**: Visual Studio project in `IDE/VC/`
 - **Installer**: NSIS scripts in `nsis/` directory
+- **Build Commands**: Use PowerShell syntax, e.g., `.\buildcrosswin32.sh` or `& .\buildcrosswin32.sh`
 
 ### Linux
 - **Build System**: CMake or Autotools
