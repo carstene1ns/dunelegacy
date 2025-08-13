@@ -20,6 +20,7 @@
 		1358FE2213D3B72F00FAD5B7 /* Choam.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD5C13D3B72E00FAD5B7 /* Choam.cpp */; };
 		1358FE2313D3B72F00FAD5B7 /* Command.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD5D13D3B72E00FAD5B7 /* Command.cpp */; };
 		1358FE2413D3B72F00FAD5B7 /* CommandManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD5E13D3B72E00FAD5B7 /* CommandManager.cpp */; };
+		1358FE2413D3B72F00FAD5C8 /* CursorManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD5E13D3B72E00FAD5C8 /* CursorManager.cpp */; };
 		1358FE2513D3B72F00FAD5B7 /* CrossBlendVideoEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD6013D3B72E00FAD5B7 /* CrossBlendVideoEvent.cpp */; };
 		1358FE2613D3B72F00FAD5B7 /* CutScene.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD6113D3B72E00FAD5B7 /* CutScene.cpp */; };
 		1358FE2713D3B72F00FAD5B7 /* CutSceneTrigger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FD6213D3B72E00FAD5B7 /* CutSceneTrigger.cpp */; };
@@ -427,6 +428,7 @@
 		1358FB6813D3B71500FAD5B7 /* Choam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Choam.h; sourceTree = "<group>"; };
 		1358FB6913D3B71500FAD5B7 /* Command.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Command.h; sourceTree = "<group>"; };
 		1358FB6A13D3B71500FAD5B7 /* CommandManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CommandManager.h; sourceTree = "<group>"; };
+		1358FB6A13D3B71500FAD5C8 /* CursorManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CursorManager.h; sourceTree = "<group>"; };
 		1358FB6B13D3B71500FAD5B7 /* ConcatIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ConcatIterator.h; sourceTree = "<group>"; };
 		1358FB6C13D3B71500FAD5B7 /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
 		1358FB6E13D3B71500FAD5B7 /* CrossBlendVideoEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrossBlendVideoEvent.h; sourceTree = "<group>"; };
@@ -649,6 +651,7 @@
 		1358FD5C13D3B72E00FAD5B7 /* Choam.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Choam.cpp; sourceTree = "<group>"; };
 		1358FD5D13D3B72E00FAD5B7 /* Command.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Command.cpp; sourceTree = "<group>"; };
 		1358FD5E13D3B72E00FAD5B7 /* CommandManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CommandManager.cpp; sourceTree = "<group>"; };
+		1358FD5E13D3B72E00FAD5C8 /* CursorManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CursorManager.cpp; sourceTree = "<group>"; };
 		1358FD6013D3B72E00FAD5B7 /* CrossBlendVideoEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CrossBlendVideoEvent.cpp; sourceTree = "<group>"; };
 		1358FD6113D3B72E00FAD5B7 /* CutScene.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CutScene.cpp; sourceTree = "<group>"; };
 		1358FD6213D3B72E00FAD5B7 /* CutSceneTrigger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CutSceneTrigger.cpp; sourceTree = "<group>"; };
@@ -1035,6 +1038,7 @@
 				CEEB16B31CD6A04F00CF91D9 /* Colors.h */,
 				1358FB6913D3B71500FAD5B7 /* Command.h */,
 				1358FB6A13D3B71500FAD5B7 /* CommandManager.h */,
+				1358FB6A13D3B71500FAD5C8 /* CursorManager.h */,
 				1358FB6B13D3B71500FAD5B7 /* ConcatIterator.h */,
 				1358FB6C13D3B71500FAD5B7 /* config.h */,
 				1358FB6D13D3B71500FAD5B7 /* CutScenes */,
@@ -1428,6 +1432,7 @@
 				1358FD5C13D3B72E00FAD5B7 /* Choam.cpp */,
 				1358FD5D13D3B72E00FAD5B7 /* Command.cpp */,
 				1358FD5E13D3B72E00FAD5B7 /* CommandManager.cpp */,
+				1358FD5E13D3B72E00FAD5C8 /* CursorManager.cpp */,
 				1358FD5F13D3B72E00FAD5B7 /* CutScenes */,
 				1358FD6D13D3B72E00FAD5B7 /* enet */,
 				1358FD7813D3B72F00FAD5B7 /* Explosion.cpp */,
@@ -2056,6 +2061,7 @@
 				1358FE2213D3B72F00FAD5B7 /* Choam.cpp in Sources */,
 				1358FE2313D3B72F00FAD5B7 /* Command.cpp in Sources */,
 				1358FE2413D3B72F00FAD5B7 /* CommandManager.cpp in Sources */,
+				1358FE2413D3B72F00FAD5C8 /* CursorManager.cpp in Sources */,
 				1358FE2513D3B72F00FAD5B7 /* CrossBlendVideoEvent.cpp in Sources */,
 				1358FE2613D3B72F00FAD5B7 /* CutScene.cpp in Sources */,
 				1358FE2713D3B72F00FAD5B7 /* CutSceneTrigger.cpp in Sources */,
