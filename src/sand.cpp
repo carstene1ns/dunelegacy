@@ -38,34 +38,7 @@
 
 #include <algorithm>
 
-/**
-    This function draws the cursor to the screen. The coordinate is read from
-    the two global variables drawnMouseX and drawnMouseY.
-*/
-void drawCursor() {
-    if(!(SDL_GetWindowFlags(window) & SDL_WINDOW_MOUSE_FOCUS)) {
-        return;
-    }
 
-    SDL_Texture* tex = pGFXManager->getUIGraphic(cursorFrame);
-
-    SDL_Rect dest = calcDrawingRect(tex, drawnMouseX, drawnMouseY);
-
-    //reposition image so pointing on right spot
-
-    if (cursorFrame == UI_CursorRight) {
-        dest.x -= dest.w/2;
-    } else if (cursorFrame == UI_CursorDown) {
-        dest.y -= dest.h/2;
-    }
-
-    if ((cursorFrame == UI_CursorAttack_Zoomlevel0) || (cursorFrame == UI_CursorMove_Zoomlevel0)) {
-        dest.x -= dest.w/2;
-        dest.y -= dest.h/2;
-    }
-
-    SDL_RenderCopy(renderer, tex, nullptr, &dest);
-}
 
 /**
     This function resolves the picture corresponding to one item id.

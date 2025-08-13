@@ -31,6 +31,8 @@
 
 #include <ScreenBorder.h>
 #include <misc/SDL2pp.h>
+#include <CursorManager.h>
+#include <Game.h>
 
 #include <DataTypes.h>
 #include <AITeamInfo.h>
@@ -289,6 +291,8 @@ private:
 
 private:
     std::unique_ptr<MapEditorInterface> pInterface;     ///< This is the whole interface (top bar and side bar)
+
+    CursorManager                   cursorManager;      ///< This manages all hardware cursors
 
 
     SDL_Rect                        sideBarPos;

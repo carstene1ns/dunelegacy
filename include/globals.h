@@ -66,7 +66,6 @@ EXTERN SDL_Texture*         screenTexture;              ///< the texture
 EXTERN Palette              palette;                    ///< the palette for the screen
 EXTERN int                  drawnMouseX;                ///< the current mouse position (x coordinate)
 EXTERN int                  drawnMouseY;                ///< the current mouse position (y coordinate)
-EXTERN int                  cursorFrame;                ///< the current mouse cursor
 EXTERN int                  currentZoomlevel;           ///< 0 = the smallest zoom level, 1 = medium zoom level, 2 = maximum zoom level
 
 

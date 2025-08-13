@@ -337,47 +337,56 @@ GFXManager::GFXManager() {
     // unused: FARTR.WSA, FHARK.WSA, FORDOS.WSA
 
 
-    tinyPictureTex[TinyPicture_Spice] = convertSurfaceToTexture(shapes->getPicture(94));
-    tinyPictureTex[TinyPicture_Barracks] = convertSurfaceToTexture(shapes->getPicture(62));
-    tinyPictureTex[TinyPicture_ConstructionYard] = convertSurfaceToTexture(shapes->getPicture(60));
-    tinyPictureTex[TinyPicture_GunTurret] = convertSurfaceToTexture(shapes->getPicture(67));
-    tinyPictureTex[TinyPicture_HeavyFactory] = convertSurfaceToTexture(shapes->getPicture(56));
-    tinyPictureTex[TinyPicture_HighTechFactory] = convertSurfaceToTexture(shapes->getPicture(57));
-    tinyPictureTex[TinyPicture_IX] = convertSurfaceToTexture(shapes->getPicture(58));
-    tinyPictureTex[TinyPicture_LightFactory] = convertSurfaceToTexture(shapes->getPicture(55));
-    tinyPictureTex[TinyPicture_Palace] = convertSurfaceToTexture(shapes->getPicture(54));
-    tinyPictureTex[TinyPicture_Radar] = convertSurfaceToTexture(shapes->getPicture(70));
-    tinyPictureTex[TinyPicture_Refinery] = convertSurfaceToTexture(shapes->getPicture(64));
-    tinyPictureTex[TinyPicture_RepairYard] = convertSurfaceToTexture(shapes->getPicture(65));
-    tinyPictureTex[TinyPicture_RocketTurret] = convertSurfaceToTexture(shapes->getPicture(68));
-    tinyPictureTex[TinyPicture_Silo] = convertSurfaceToTexture(shapes->getPicture(69));
-    tinyPictureTex[TinyPicture_Slab1] = convertSurfaceToTexture(shapes->getPicture(53));
-    tinyPictureTex[TinyPicture_Slab4] = convertSurfaceToTexture(shapes->getPicture(71));
-    tinyPictureTex[TinyPicture_StarPort] = convertSurfaceToTexture(shapes->getPicture(63));
-    tinyPictureTex[TinyPicture_Wall] = convertSurfaceToTexture(shapes->getPicture(66));
-    tinyPictureTex[TinyPicture_WindTrap] = convertSurfaceToTexture(shapes->getPicture(61));
-    tinyPictureTex[TinyPicture_WOR] = convertSurfaceToTexture(shapes->getPicture(59));
-    tinyPictureTex[TinyPicture_Carryall] = convertSurfaceToTexture(shapes->getPicture(77));
-    tinyPictureTex[TinyPicture_Devastator] = convertSurfaceToTexture(shapes->getPicture(75));
-    tinyPictureTex[TinyPicture_Deviator] = convertSurfaceToTexture(shapes->getPicture(86));
-    tinyPictureTex[TinyPicture_Frigate] = convertSurfaceToTexture(shapes->getPicture(77));    // use carryall picture
-    tinyPictureTex[TinyPicture_Harvester] = convertSurfaceToTexture(shapes->getPicture(88));
-    tinyPictureTex[TinyPicture_Soldier] = convertSurfaceToTexture(shapes->getPicture(90));
-    tinyPictureTex[TinyPicture_Launcher] = convertSurfaceToTexture(shapes->getPicture(73));
-    tinyPictureTex[TinyPicture_MCV] = convertSurfaceToTexture(shapes->getPicture(89));
-    tinyPictureTex[TinyPicture_Ornithopter] = convertSurfaceToTexture(shapes->getPicture(85));
-    tinyPictureTex[TinyPicture_Quad] = convertSurfaceToTexture(shapes->getPicture(74));
-    tinyPictureTex[TinyPicture_Saboteur] = convertSurfaceToTexture(shapes->getPicture(84));
-    tinyPictureTex[TinyPicture_Sandworm] = convertSurfaceToTexture(shapes->getPicture(93));
-    tinyPictureTex[TinyPicture_SiegeTank] = convertSurfaceToTexture(shapes->getPicture(72));
-    tinyPictureTex[TinyPicture_SonicTank] = convertSurfaceToTexture(shapes->getPicture(79));
-    tinyPictureTex[TinyPicture_Tank] = convertSurfaceToTexture(shapes->getPicture(78));
-    tinyPictureTex[TinyPicture_Trike] = convertSurfaceToTexture(shapes->getPicture(80));
-    tinyPictureTex[TinyPicture_RaiderTrike] = convertSurfaceToTexture(shapes->getPicture(87));
-    tinyPictureTex[TinyPicture_Trooper] = convertSurfaceToTexture(shapes->getPicture(76));
-    tinyPictureTex[TinyPicture_Special] = convertSurfaceToTexture(shapes->getPicture(75));    // use devastator picture
-    tinyPictureTex[TinyPicture_Infantry] = convertSurfaceToTexture(shapes->getPicture(81));
-    tinyPictureTex[TinyPicture_Troopers] = convertSurfaceToTexture(shapes->getPicture(91));
+    // Helper function to safely create tiny picture textures
+    auto createTinyPictureTexture = [&](int pictureIndex, const char* name) {
+        sdl2::texture_ptr texture = convertSurfaceToTexture(shapes->getPicture(pictureIndex));
+        if(texture == nullptr) {
+            SDL_Log("Warning: Failed to create tiny picture texture for %s (index %d)", name, pictureIndex);
+        }
+        return texture;
+    };
+
+    tinyPictureTex[TinyPicture_Spice] = createTinyPictureTexture(94, "Spice");
+    tinyPictureTex[TinyPicture_Barracks] = createTinyPictureTexture(62, "Barracks");
+    tinyPictureTex[TinyPicture_ConstructionYard] = createTinyPictureTexture(60, "ConstructionYard");
+    tinyPictureTex[TinyPicture_GunTurret] = createTinyPictureTexture(67, "GunTurret");
+    tinyPictureTex[TinyPicture_HeavyFactory] = createTinyPictureTexture(56, "HeavyFactory");
+    tinyPictureTex[TinyPicture_HighTechFactory] = createTinyPictureTexture(57, "HighTechFactory");
+    tinyPictureTex[TinyPicture_IX] = createTinyPictureTexture(58, "IX");
+    tinyPictureTex[TinyPicture_LightFactory] = createTinyPictureTexture(55, "LightFactory");
+    tinyPictureTex[TinyPicture_Palace] = createTinyPictureTexture(54, "Palace");
+    tinyPictureTex[TinyPicture_Radar] = createTinyPictureTexture(70, "Radar");
+    tinyPictureTex[TinyPicture_Refinery] = createTinyPictureTexture(64, "Refinery");
+    tinyPictureTex[TinyPicture_RepairYard] = createTinyPictureTexture(65, "RepairYard");
+    tinyPictureTex[TinyPicture_RocketTurret] = createTinyPictureTexture(68, "RocketTurret");
+    tinyPictureTex[TinyPicture_Silo] = createTinyPictureTexture(69, "Silo");
+    tinyPictureTex[TinyPicture_Slab1] = createTinyPictureTexture(53, "Slab1");
+    tinyPictureTex[TinyPicture_Slab4] = createTinyPictureTexture(71, "Slab4");
+    tinyPictureTex[TinyPicture_StarPort] = createTinyPictureTexture(63, "StarPort");
+    tinyPictureTex[TinyPicture_Wall] = createTinyPictureTexture(66, "Wall");
+    tinyPictureTex[TinyPicture_WindTrap] = createTinyPictureTexture(61, "WindTrap");
+    tinyPictureTex[TinyPicture_WOR] = createTinyPictureTexture(59, "WOR");
+    tinyPictureTex[TinyPicture_Carryall] = createTinyPictureTexture(77, "Carryall");
+    tinyPictureTex[TinyPicture_Devastator] = createTinyPictureTexture(75, "Devastator");
+    tinyPictureTex[TinyPicture_Deviator] = createTinyPictureTexture(86, "Deviator");
+    tinyPictureTex[TinyPicture_Frigate] = createTinyPictureTexture(77, "Frigate");    // use carryall picture
+    tinyPictureTex[TinyPicture_Harvester] = createTinyPictureTexture(88, "Harvester");
+    tinyPictureTex[TinyPicture_Soldier] = createTinyPictureTexture(90, "Soldier");
+    tinyPictureTex[TinyPicture_Launcher] = createTinyPictureTexture(73, "Launcher");
+    tinyPictureTex[TinyPicture_MCV] = createTinyPictureTexture(89, "MCV");
+    tinyPictureTex[TinyPicture_Ornithopter] = createTinyPictureTexture(85, "Ornithopter");
+    tinyPictureTex[TinyPicture_Quad] = createTinyPictureTexture(74, "Quad");
+    tinyPictureTex[TinyPicture_Saboteur] = createTinyPictureTexture(84, "Saboteur");
+    tinyPictureTex[TinyPicture_Sandworm] = createTinyPictureTexture(93, "Sandworm");
+    tinyPictureTex[TinyPicture_SiegeTank] = createTinyPictureTexture(72, "SiegeTank");
+    tinyPictureTex[TinyPicture_SonicTank] = createTinyPictureTexture(79, "SonicTank");
+    tinyPictureTex[TinyPicture_Tank] = createTinyPictureTexture(78, "Tank");
+    tinyPictureTex[TinyPicture_Trike] = createTinyPictureTexture(80, "Trike");
+    tinyPictureTex[TinyPicture_RaiderTrike] = createTinyPictureTexture(87, "RaiderTrike");
+    tinyPictureTex[TinyPicture_Trooper] = createTinyPictureTexture(76, "Trooper");
+    tinyPictureTex[TinyPicture_Special] = createTinyPictureTexture(75, "Special");    // use devastator picture
+    tinyPictureTex[TinyPicture_Infantry] = createTinyPictureTexture(81, "Infantry");
+    tinyPictureTex[TinyPicture_Troopers] = createTinyPictureTexture(91, "Troopers");
 
     // load UI graphics
     uiGraphic[UI_RadarAnimation][HOUSE_HARKONNEN] = Scaler::doubleSurfaceNN(radar->getAnimationAsPictureRow(NUM_STATIC_ANIMATIONS_PER_ROW).get());
@@ -395,31 +404,15 @@ GFXManager::GFXManager() {
 
     uiGraphic[UI_CursorMove_Zoomlevel0][HOUSE_HARKONNEN] = mouse->getPicture(5);
     SDL_SetColorKey(uiGraphic[UI_CursorMove_Zoomlevel0][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorMove_Zoomlevel1][HOUSE_HARKONNEN] = Scaler::defaultDoubleTiledSurface(uiGraphic[UI_CursorMove_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorMove_Zoomlevel1][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorMove_Zoomlevel2][HOUSE_HARKONNEN] = Scaler::defaultTripleTiledSurface(uiGraphic[UI_CursorMove_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorMove_Zoomlevel2][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
 
     uiGraphic[UI_CursorAttack_Zoomlevel0][HOUSE_HARKONNEN] = mapSurfaceColorRange(uiGraphic[UI_CursorMove_Zoomlevel0][HOUSE_HARKONNEN].get(), 232, PALCOLOR_HARKONNEN);
     SDL_SetColorKey(uiGraphic[UI_CursorAttack_Zoomlevel0][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorAttack_Zoomlevel1][HOUSE_HARKONNEN] = Scaler::defaultDoubleTiledSurface(uiGraphic[UI_CursorAttack_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorAttack_Zoomlevel1][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorAttack_Zoomlevel2][HOUSE_HARKONNEN] = Scaler::defaultTripleTiledSurface(uiGraphic[UI_CursorAttack_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorAttack_Zoomlevel2][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
 
     uiGraphic[UI_CursorCapture_Zoomlevel0][HOUSE_HARKONNEN] = LoadPNG_RW(pFileManager->openFile("Capture.png").get());
     SDL_SetColorKey(uiGraphic[UI_CursorCapture_Zoomlevel0][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorCapture_Zoomlevel1][HOUSE_HARKONNEN] = Scaler::defaultDoubleTiledSurface(uiGraphic[UI_CursorCapture_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorCapture_Zoomlevel1][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorCapture_Zoomlevel2][HOUSE_HARKONNEN] = Scaler::defaultTripleTiledSurface(uiGraphic[UI_CursorCapture_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorCapture_Zoomlevel2][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
 
     uiGraphic[UI_CursorCarryallDrop_Zoomlevel0][HOUSE_HARKONNEN] = LoadPNG_RW(pFileManager->openFile("CarryallDrop.png").get());
     SDL_SetColorKey(uiGraphic[UI_CursorCarryallDrop_Zoomlevel0][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorCarryallDrop_Zoomlevel1][HOUSE_HARKONNEN] = Scaler::defaultDoubleTiledSurface(uiGraphic[UI_CursorCarryallDrop_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorCarryallDrop_Zoomlevel1][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
-    uiGraphic[UI_CursorCarryallDrop_Zoomlevel2][HOUSE_HARKONNEN] = Scaler::defaultTripleTiledSurface(uiGraphic[UI_CursorCarryallDrop_Zoomlevel0][HOUSE_HARKONNEN].get(), 1, 1);
-    SDL_SetColorKey(uiGraphic[UI_CursorCarryallDrop_Zoomlevel2][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
 
     uiGraphic[UI_ReturnIcon][HOUSE_HARKONNEN] = LoadPNG_RW(pFileManager->openFile("Return.png").get());
     SDL_SetColorKey(uiGraphic[UI_ReturnIcon][HOUSE_HARKONNEN].get(), SDL_TRUE, 0);
@@ -1114,7 +1107,13 @@ sdl2::texture_ptr GFXManager::extractSmallDetailPic(const std::string& filename)
         }
     }
 
-    return convertSurfaceToTexture(pSurface.get());
+    sdl2::texture_ptr texture = convertSurfaceToTexture(pSurface.get());
+    if(texture == nullptr) {
+        SDL_Log("Warning: Failed to create texture for small detail pic '%s'", filename.c_str());
+        // Return a nullptr texture instead of crashing
+        return nullptr;
+    }
+    return texture;
 }
 
 std::unique_ptr<Animation> GFXManager::loadAnimationFromWsa(const std::string& filename) const {

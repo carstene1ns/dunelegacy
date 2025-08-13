@@ -39,6 +39,8 @@ This is Dune Legacy, a modernized clone of Westwood Studios' "Dune 2" real-time 
 - **Native**: Visual Studio project in `IDE/VC/`
 - **Installer**: NSIS scripts in `nsis/` directory
 - **Build Commands**: Use PowerShell syntax, e.g., `.\buildcrosswin32.sh` or `& .\buildcrosswin32.sh`
+- **Visual Studio 2022**: Open `IDE/VC/DuneLegacy.sln` and build for x64 Release/Debug
+- **SDL Dependencies**: All SDL2 libraries are included as project references in the solution
 
 ### Linux
 - **Build System**: CMake or Autotools
@@ -86,6 +88,9 @@ xcodebuild -project "Dune Legacy.xcodeproj" -configuration Release
 ## Recent Fixes
 - Network permission handling on macOS (prevents crashes when accessing multiplayer)
 - Socket initialization retry mechanism for permission prompts
+- Visual Studio 2022 build configuration fixes for x64 Release/Debug builds
+- SDL2 library dependency resolution and project reference updates
+- **SDL2 DLL Copying Fix**: Fixed post-build events in `IDE/VC/DuneLegacy.vcxproj` for x64 configurations to correctly copy SDL2 DLLs from their build location to the output directory
 
 ## Code Style Notes
 - C++17 standard
@@ -96,12 +101,69 @@ xcodebuild -project "Dune Legacy.xcodeproj" -configuration Release
 ## Build Warnings
 - Some deprecation warnings in format.h are expected (legacy formatting library)
 - Integer precision warnings are known issues with existing codebase
+- STL4043 deprecation warnings for `stdext::checked_array_iterator` are suppressed with `_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING`
 
 ## When Making Changes
 - Test on multiple platforms when possible
 - Update version numbers in CMakeLists.txt and project files
 - Rebuild installers after significant changes
 - Consider PAK file compatibility with original Dune 2
+
+## Visual Studio Build Configuration (Fixed Issues)
+- **ToolsVersion**: Updated from `4.0` to `15.0` in all SDL project files
+- **PlatformToolset**: Set to `v143` for Visual Studio 2022 compatibility
+- **LibraryPath**: Corrected SDL2 library paths in SDL_mixer and SDL_ttf projects
+- **IncludePath**: Fixed SDL header include paths for proper compilation
+- **Project References**: Added all SDL projects (SDL2, SDL2_mixer, SDL_ttf, freetype) to main solution
+- **Dependencies**: Ensured proper build order with project dependencies
+- **x64 Support**: All configurations now properly support x64 Release and Debug builds
+
+## Windows Build Troubleshooting
+
+### SDL2 DLL Copying Issues
+**Problem**: Build succeeds but shows errors like "The file cannot be copied onto itself" and "SDL2.dll not found" in post-build events.
+
+**Root Cause**: Post-build events in `IDE/VC/DuneLegacy.vcxproj` for x64 configurations were attempting to copy SDL2 DLLs from `$(OutDir)` to `$(OutDir)`, but the DLLs are actually built to `IDE/VC/x64/Release` (or `Debug`), while `$(OutDir)` is set to `bin\Release-x64\`.
+
+**Solution**: 
+1. Open `IDE/VC/DuneLegacy.vcxproj`
+2. Locate the `PostBuildEvent` sections for `Debug|x64` (lines ~130-137) and `Release|x64` (lines ~204-211)
+3. Update the `copy` commands to use correct source paths:
+   - **Debug|x64**: Change from `copy "$(OutDir)SDL2.dll"` to `copy "x64\Debug\SDL2.dll"`
+   - **Release|x64**: Change from `copy "$(OutDir)SDL2.dll"` to `copy "x64\Release\SDL2.dll"`
+4. Apply the same pattern for all SDL2 DLLs: `SDL2.dll`, `SDL2main.dll`, `SDL2_mixer.dll`, `SDL2_ttf.dll`
+
+**Correct Post-Build Commands**:
+```xml
+<!-- Debug|x64 -->
+<Command>copy "x64\Debug\SDL2.dll" "$(OutDir)" 2&gt;nul || echo SDL2.dll not found
+copy "x64\Debug\SDL2main.dll" "$(OutDir)" 2&gt;nul || echo SDL2main.dll not found
+copy "x64\Debug\SDL2_mixer.dll" "$(OutDir)" 2&gt;nul || echo SDL2_mixer.dll not found
+copy "x64\Debug\SDL2_ttf.dll" "$(OutDir)" 2&gt;nul || echo SDL2_ttf.dll not found
+robocopy "..\..\data\." "$(OutDir)." /E /NP /NJH /NJS
+IF %ERRORLEVEL% LSS 8 exit 0</Command>
+
+<!-- Release|x64 -->
+<Command>copy "x64\Release\SDL2.dll" "$(OutDir)" 2&gt;nul || echo SDL2.dll not found
+copy "x64\Release\SDL2main.dll" "$(OutDir)" 2&gt;nul || echo SDL2main.dll not found
+copy "x64\Release\SDL2_mixer.dll" "$(OutDir)" 2&gt;nul || echo SDL2_mixer.dll not found
+copy "x64\Release\SDL2_ttf.dll" "$(OutDir)" 2&gt;nul || echo SDL2_ttf.dll not found
+robocopy "..\..\data\." "$(OutDir)." /E /NP /NJH /NJS
+IF %ERRORLEVEL% LSS 8 exit 0</Command>
+```
+
+**Note**: Win32 configurations don't have this issue because they only link `SDL2.lib` and `SDL2main.lib`, while x64 configurations also link `SDL2_mixer.lib` and `SDL2_ttf.lib` which require separate DLL copying.
+
+### MSBuild Command Issues
+**Problem**: `msbuild` command not found or syntax errors in PowerShell.
+
+**Solutions**:
+1. **Command not found**: Use full path to MSBuild:
+   ```powershell
+   "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" DuneLegacy.sln /p:Configuration=Release /p:Platform=x64
+   ```
+2. **Syntax errors**: Use PowerShell syntax (`;` instead of `&&` for command chaining)
+3. **Build without project references**: Add `/p:BuildProjectReferences=false` to build only the main project
 
 ## Developer Tools
 - Xcode for macOS development

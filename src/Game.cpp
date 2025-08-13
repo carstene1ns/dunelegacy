@@ -97,8 +97,8 @@ Game::Game() {
     The destructor frees up all the used memory.
 */
 Game::~Game() {
-    // Restore OS cursor
-    SDL_ShowCursor(SDL_ENABLE);
+    // Clean up cursor manager
+    cursorManager.cleanup();
 
     if(pNetworkManager != nullptr) {
         pNetworkManager->setOnReceiveChatMessage(std::function<void (const std::string&, const std::string&)>());
@@ -137,31 +137,8 @@ Game::~Game() {
 void Game::initGame(const GameInitSettings& newGameInitSettings) {
     gameInitSettings = newGameInitSettings;
 
-    // Create and set white cursor at game initialization
-    Uint8 data[4*32] = {0};  // All 0s for white
-    Uint8 mask[4*32] = {
-        0x80, 0x00, 0x00, 0x00,   // X.......
-        0xc0, 0x00, 0x00, 0x00,   // XX......
-        0xe0, 0x00, 0x00, 0x00,   // XXX.....
-        0xf0, 0x00, 0x00, 0x00,   // XXXX....
-        0xf8, 0x00, 0x00, 0x00,   // XXXXX...
-        0xfc, 0x00, 0x00, 0x00,   // XXXXXX..
-        0xfe, 0x00, 0x00, 0x00,   // XXXXXXX.
-        0xff, 0x00, 0x00, 0x00,   // XXXXXXXX
-        0xf8, 0x00, 0x00, 0x00,   // XXXXX...
-        0xb8, 0x00, 0x00, 0x00,   // X.XXX...
-        0x98, 0x00, 0x00, 0x00,   // X..XX...
-        0x0c, 0x00, 0x00, 0x00,   // ..XX....
-        0x0c, 0x00, 0x00, 0x00,   // ..XX....
-        0x06, 0x00, 0x00, 0x00,   // ..XX....
-        0x06, 0x00, 0x00, 0x00,   // .XX.....
-        0x03, 0x00, 0x00, 0x00,   // .X......
-    };
-
-    SDL_Cursor* cursor = SDL_CreateCursor(data, mask, 32, 16, 0, 0);
-    if(cursor) {
-        SDL_SetCursor(cursor);
-    }
+    // Initialize cursor manager
+    cursorManager.initialize();
 
     switch(gameInitSettings.getGameType()) {
         case GameType::LoadSavegame: {
@@ -241,7 +218,7 @@ void Game::processObjects()
     }
 
     if ((currentCursorMode == CursorMode_Placing) && selectedList.empty()) {
-        currentCursorMode = CursorMode_Normal;
+        setCursorMode(CursorMode_Normal);
     }
 
     for(UnitBase* pUnit : unitList) {
@@ -570,8 +547,8 @@ void Game::drawScreen()
         pInGameMentat->draw();
     }
 
-    // Draw cursor
-    drawCursor();
+    // Update cursor
+    updateCursor();
 }
 
 
@@ -717,7 +694,7 @@ void Game::doInput()
 
                             if(currentCursorMode != CursorMode_Normal) {
                                 //cancel special cursor mode
-                                currentCursorMode = CursorMode_Normal;
+                                setCursorMode(CursorMode_Normal);
                             } else if((!selectedList.empty()
                                             && (((objectManager.getObject(*selectedList.begin()))->getOwner() == pLocalHouse))
                                             && (((objectManager.getObject(*selectedList.begin()))->isRespondable())) ) )
@@ -869,130 +846,19 @@ void Game::doInput()
 }
 
 
-void Game::drawCursor() const
+void Game::updateCursor()
 {
-    if(!(SDL_GetWindowFlags(window) & SDL_WINDOW_MOUSE_FOCUS)) {
-        return;
+    if (cursorManager.isInitialized()) {
+        cursorManager.setCursorMode(currentCursorMode);
     }
+}
 
-    SDL_Texture* pCursor = nullptr;
-    SDL_Rect dest = { 0, 0, 0, 0};
-    if(scrollLeftMode || scrollRightMode || scrollUpMode || scrollDownMode) {
-        if(scrollLeftMode && !scrollRightMode) {
-            pCursor = pGFXManager->getUIGraphic(UI_CursorLeft);
-            dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY-5, HAlign::Left, VAlign::Top);
-        } else if(scrollRightMode && !scrollLeftMode) {
-            pCursor = pGFXManager->getUIGraphic(UI_CursorRight);
-            dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY-5, HAlign::Center, VAlign::Top);
-        }
-
-        if(pCursor == nullptr) {
-            if(scrollUpMode && !scrollDownMode) {
-                pCursor = pGFXManager->getUIGraphic(UI_CursorUp);
-                dest = calcDrawingRect(pCursor, drawnMouseX-5, drawnMouseY, HAlign::Left, VAlign::Top);
-            } else if(scrollDownMode && !scrollUpMode) {
-                pCursor = pGFXManager->getUIGraphic(UI_CursorDown);
-                dest = calcDrawingRect(pCursor, drawnMouseX-5, drawnMouseY, HAlign::Left, VAlign::Center);
-            } else {
-                pCursor = pGFXManager->getUIGraphic(UI_CursorNormal);
-                dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Left, VAlign::Top);
-            }
-        }
-    } else {
-        if( (pInGameMenu != nullptr) || (pInGameMentat != nullptr) || (pWaitingForOtherPlayers != nullptr) || (((drawnMouseX >= sideBarPos.x) || (drawnMouseY < topBarPos.h)) && (isOnRadarView(drawnMouseX, drawnMouseY) == false))) {
-            // Menu mode or Mentat Menu or Waiting for other players or outside of game screen but not inside minimap
-            pCursor = pGFXManager->getUIGraphic(UI_CursorNormal);
-            dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Left, VAlign::Top);
-        } else {
-
-            switch(currentCursorMode) {
-                case CursorMode_Normal:
-                case CursorMode_Placing: {
-                    pCursor = pGFXManager->getUIGraphic(UI_CursorNormal);
-                    dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Left, VAlign::Top);
-                } break;
-
-                case CursorMode_Move: {
-                    switch(currentZoomlevel) {
-                        case 0:     pCursor = pGFXManager->getUIGraphic(UI_CursorMove_Zoomlevel0); break;
-                        case 1:     pCursor = pGFXManager->getUIGraphic(UI_CursorMove_Zoomlevel1); break;
-                        case 2:
-                        default:    pCursor = pGFXManager->getUIGraphic(UI_CursorMove_Zoomlevel2); break;
-                    }
-
-                    dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Center, VAlign::Center);
-                } break;
-
-                case CursorMode_Attack: {
-                    switch(currentZoomlevel) {
-                        case 0:     pCursor = pGFXManager->getUIGraphic(UI_CursorAttack_Zoomlevel0); break;
-                        case 1:     pCursor = pGFXManager->getUIGraphic(UI_CursorAttack_Zoomlevel1); break;
-                        case 2:
-                        default:    pCursor = pGFXManager->getUIGraphic(UI_CursorAttack_Zoomlevel2); break;
-                    }
-
-                    dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Center, VAlign::Center);
-                } break;
-
-                case CursorMode_Capture: {
-                    switch(currentZoomlevel) {
-                        case 0:     pCursor = pGFXManager->getUIGraphic(UI_CursorCapture_Zoomlevel0); break;
-                        case 1:     pCursor = pGFXManager->getUIGraphic(UI_CursorCapture_Zoomlevel1); break;
-                        case 2:
-                        default:    pCursor = pGFXManager->getUIGraphic(UI_CursorCapture_Zoomlevel2); break;
-                    }
-
-                    dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Center, VAlign::Bottom);
-
-                    int xPos = INVALID_POS;
-                    int yPos = INVALID_POS;
-
-                    if(screenborder->isScreenCoordInsideMap(drawnMouseX, drawnMouseY) == true) {
-                        xPos = screenborder->screen2MapX(drawnMouseX);
-                        yPos = screenborder->screen2MapY(drawnMouseY);
-                    } else if(isOnRadarView(drawnMouseX, drawnMouseY)) {
-                        Coord position = pInterface->getRadarView().getWorldCoords(drawnMouseX - (sideBarPos.x + SIDEBAR_COLUMN_WIDTH), drawnMouseY - sideBarPos.y);
-
-                        xPos = position.x / TILESIZE;
-                        yPos = position.y / TILESIZE;
-                    }
-
-                    if((xPos != INVALID_POS) && (yPos != INVALID_POS)) {
-
-                        Tile* pTile = currentGameMap->getTile(xPos, yPos);
-
-                        if(pTile->isExploredByTeam(pLocalHouse->getTeamID())) {
-
-                            StructureBase* pStructure = dynamic_cast<StructureBase*>(pTile->getGroundObject());
-
-                            if((pStructure != nullptr) && (pStructure->canBeCaptured()) && (pStructure->getOwner()->getTeamID() != pLocalHouse->getTeamID())) {
-                                dest.y += ((getGameCycleCount() / 10) % 5);
-                            }
-                        }
-                    }
-
-                } break;
-
-                case CursorMode_CarryallDrop: {
-                    switch(currentZoomlevel) {
-                        case 0:     pCursor = pGFXManager->getUIGraphic(UI_CursorCarryallDrop_Zoomlevel0); break;
-                        case 1:     pCursor = pGFXManager->getUIGraphic(UI_CursorCarryallDrop_Zoomlevel1); break;
-                        case 2:
-                        default:    pCursor = pGFXManager->getUIGraphic(UI_CursorCarryallDrop_Zoomlevel2); break;
-                    }
-
-                    dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Center, VAlign::Bottom);
-                } break;
-
-
-                default: {
-                    THROW(std::runtime_error, "Game::drawCursor(): Unknown cursor mode");
-                };
-            }
-        }
+void Game::setCursorMode(int mode)
+{
+    if (cursorManager.canSetCursorMode(mode, std::vector<Uint32>(selectedList.begin(), selectedList.end()))) {
+        currentCursorMode = mode;
+        cursorManager.setCursorMode(mode);
     }
-
-    SDL_RenderCopy(renderer, pCursor, nullptr, &dest);
 }
 
 void Game::setupView()
@@ -1135,7 +1001,7 @@ void Game::initializeGameLoop() {
     // Configure hardware-accelerated rendering with pixel-perfect scaling
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");  // Use nearest-neighbor scaling for pixel-perfect look
     SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");       // Enable render batching for performance
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");    // Force OpenGL renderer
+    // Note: Renderer driver is set in setVideoMode(), no need to override here
     
     // Enable hardware acceleration
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -2010,34 +1876,12 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
 
         case SDLK_c: {
             //set object to capture
-            if(currentCursorMode != CursorMode_Capture) {
-                for(Uint32 objectID : selectedList) {
-                    ObjectBase* pObject = objectManager.getObject(objectID);
-                    if(pObject->isAUnit() && (pObject->getOwner() == pLocalHouse) && pObject->isRespondable() && pObject->canAttack() && pObject->isInfantry()) {
-                        currentCursorMode = CursorMode_Capture;
-                        break;
-                    }
-                }
-            }
+            setCursorMode(CursorMode_Capture);
         } break;
 
         case SDLK_a: {
             //set object to attack
-            if(currentCursorMode != CursorMode_Attack) {
-                for(Uint32 objectID : selectedList) {
-                    ObjectBase* pObject = objectManager.getObject(objectID);
-                    House* pOwner = pObject->getOwner();
-                    if(pObject->isAUnit() && (pOwner == pLocalHouse) && pObject->isRespondable() && pObject->canAttack()) {
-                        currentCursorMode = CursorMode_Attack;
-                        break;
-                    } else if((pObject->getItemID() == Structure_Palace) && ((pOwner->getHouseID() == HOUSE_HARKONNEN) || (pOwner->getHouseID() == HOUSE_SARDAUKAR))) {
-                        if(static_cast<Palace*>(pObject)->isSpecialWeaponReady()) {
-                            currentCursorMode = CursorMode_Attack;
-                            break;
-                        }
-                    }
-                }
-            }
+            setCursorMode(CursorMode_Attack);
         } break;
 
         case SDLK_t: {
@@ -2104,15 +1948,7 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
 
         case SDLK_m: {
             //set object to move
-            if(currentCursorMode != CursorMode_Move) {
-                for(Uint32 objectID : selectedList) {
-                    ObjectBase* pObject = objectManager.getObject(objectID);
-                    if(pObject->isAUnit() && (pObject->getOwner() == pLocalHouse) && pObject->isRespondable()) {
-                        currentCursorMode = CursorMode_Move;
-                        break;
-                    }
-                }
-            }
+            setCursorMode(CursorMode_Move);
         } break;
 
         case SDLK_g: {
@@ -2143,9 +1979,9 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
                     ConstructionYard* pConstructionYard = dynamic_cast<ConstructionYard*>(objectManager.getObject(*selectedList.begin()));
                     if(pConstructionYard != nullptr) {
                         if(currentCursorMode == CursorMode_Placing) {
-                            currentCursorMode = CursorMode_Normal;
+                            setCursorMode(CursorMode_Normal);
                         } else if(pConstructionYard->isWaitingToPlace()) {
-                            currentCursorMode = CursorMode_Placing;
+                            setCursorMode(CursorMode_Placing);
                         }
                     }
                 }
@@ -2187,15 +2023,7 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
 
 
         case SDLK_d: {
-            if(currentCursorMode != CursorMode_CarryallDrop){
-                for(Uint32 objectID : selectedList) {
-                    ObjectBase* pObject = objectManager.getObject(objectID);
-                    if(pObject->isAGroundUnit() && pObject->getOwner()->hasCarryalls()) {
-                        currentCursorMode = CursorMode_CarryallDrop;
-                    }
-                }
-            }
-
+            setCursorMode(CursorMode_CarryallDrop);
         } break;
 
         case SDLK_u: {
@@ -2257,15 +2085,15 @@ bool Game::handlePlacementClick(int xPos, int yPos) {
     int placeItem = pBuilder->getCurrentProducedItem();
     Coord structuresize = getStructureSize(placeItem);
 
-    if(placeItem == Structure_Slab1) {
-        if((currentGameMap->isWithinBuildRange(xPos, yPos, pBuilder->getOwner()))
-            && (currentGameMap->okayToPlaceStructure(xPos, yPos, 1, 1, false, pBuilder->getOwner()))
-            && (currentGameMap->getTile(xPos, yPos)->isConcrete() == false)) {
-            getCommandManager().addCommand(Command(pLocalPlayer->getPlayerID(), CMD_PLACE_STRUCTURE,pBuilder->getObjectID(), xPos, yPos));
-            //the user has tried to place and has been successful
-            soundPlayer->playSound(Sound_PlaceStructure);
-            currentCursorMode = CursorMode_Normal;
-            return true;
+            if(placeItem == Structure_Slab1) {
+            if((currentGameMap->isWithinBuildRange(xPos, yPos, pBuilder->getOwner()))
+                && (currentGameMap->okayToPlaceStructure(xPos, yPos, 1, 1, false, pBuilder->getOwner()))
+                && (currentGameMap->getTile(xPos, yPos)->isConcrete() == false)) {
+                getCommandManager().addCommand(Command(pLocalPlayer->getPlayerID(), CMD_PLACE_STRUCTURE,pBuilder->getObjectID(), xPos, yPos));
+                //the user has tried to place and has been successful
+                soundPlayer->playSound(Sound_PlaceStructure);
+                setCursorMode(CursorMode_Normal);
+                return true;
         } else {
             //the user has tried to place but clicked on impossible point
             currentGame->addToNewsTicker(_("@DUNE.ENG|135#Cannot place slab here."));
@@ -2285,7 +2113,7 @@ bool Game::handlePlacementClick(int xPos, int yPos) {
             getCommandManager().addCommand(Command(pLocalPlayer->getPlayerID(), CMD_PLACE_STRUCTURE,pBuilder->getObjectID(), xPos, yPos));
             //the user has tried to place and has been successful
             soundPlayer->playSound(Sound_PlaceStructure);
-            currentCursorMode = CursorMode_Normal;
+            setCursorMode(CursorMode_Normal);
             return true;
         } else {
             //the user has tried to place but clicked on impossible point
@@ -2298,7 +2126,7 @@ bool Game::handlePlacementClick(int xPos, int yPos) {
             getCommandManager().addCommand(Command(pLocalPlayer->getPlayerID(), CMD_PLACE_STRUCTURE,pBuilder->getObjectID(), xPos, yPos));
             //the user has tried to place and has been successful
             soundPlayer->playSound(Sound_PlaceStructure);
-            currentCursorMode = CursorMode_Normal;
+            setCursorMode(CursorMode_Normal);
             return true;
         } else {
             //the user has tried to place but clicked on impossible point
@@ -2357,7 +2185,7 @@ bool Game::handleSelectedObjectsAttackClick(int xPos, int yPos) {
         }
     }
 
-    currentCursorMode = CursorMode_Normal;
+    setCursorMode(CursorMode_Normal);
     if(pResponder) {
         pResponder->playConfirmSound();
         return true;
@@ -2377,7 +2205,7 @@ bool Game::handleSelectedObjectsMoveClick(int xPos, int yPos) {
         }
     }
 
-    currentCursorMode = CursorMode_Normal;
+    setCursorMode(CursorMode_Normal);
     if(pResponder) {
         pResponder->playConfirmSound();
         return true;
@@ -2397,7 +2225,7 @@ bool Game::handleSelectedObjectsRequestCarryallDropClick(int xPos, int yPos) {
         If manual carryall mode isn't enabled then turn this off...
     */
     if(!getGameInitSettings().getGameOptions().manualCarryallDrops) {
-        currentCursorMode = CursorMode_Normal;
+        setCursorMode(CursorMode_Normal);
         return false;
     }
 
@@ -2409,7 +2237,7 @@ bool Game::handleSelectedObjectsRequestCarryallDropClick(int xPos, int yPos) {
         }
     }
 
-    currentCursorMode = CursorMode_Normal;
+    setCursorMode(CursorMode_Normal);
     if(pResponder) {
         pResponder->playConfirmSound();
         return true;
@@ -2439,7 +2267,7 @@ bool Game::handleSelectedObjectsCaptureClick(int xPos, int yPos) {
             }
         }
 
-        currentCursorMode = CursorMode_Normal;
+        setCursorMode(CursorMode_Normal);
         if(pResponder) {
             pResponder->playConfirmSound();
             return true;

@@ -29,7 +29,7 @@ class GameInitSettings;
 extern SDL_Window* window;
 extern SDL_Renderer* renderer;
 
-void drawCursor();
+
 
 std::string     resolveItemName(int itemID);
 

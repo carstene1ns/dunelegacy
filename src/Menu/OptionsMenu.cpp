@@ -309,9 +309,25 @@ void OptionsMenu::onOptionsOK() {
     int selectedResolution = resolutionDropDownBox.getSelectedEntryIntData();
     settings.video.physicalWidth = (selectedResolution >= 0) ? availScreenRes[selectedResolution].x : 0;
     settings.video.physicalHeight = (selectedResolution >= 0) ? availScreenRes[selectedResolution].y : 0;
+    
+    // Validate resolution settings
+    if(settings.video.physicalWidth < SCREEN_MIN_WIDTH || settings.video.physicalHeight < SCREEN_MIN_HEIGHT) {
+        openWindow(MsgBox::create(_("Invalid resolution selected. Please choose a valid resolution.")));
+        return;
+    }
+    
     int factor = getLogicalToPhysicalResolutionFactor(settings.video.physicalWidth, settings.video.physicalHeight);
+    // Prevent division by zero and ensure minimum dimensions
+    if(factor <= 0) {
+        factor = 1;
+    }
     settings.video.width = settings.video.physicalWidth / factor;
     settings.video.height = settings.video.physicalHeight / factor;
+    
+    // Ensure minimum dimensions
+    if(settings.video.width < SCREEN_MIN_WIDTH) settings.video.width = SCREEN_MIN_WIDTH;
+    if(settings.video.height < SCREEN_MIN_HEIGHT) settings.video.height = SCREEN_MIN_HEIGHT;
+
     settings.video.preferredZoomLevel = zoomlevelDropDownBox.getSelectedEntryIntData();
     settings.video.scaler = scalerDropDownBox.getSelectedEntry();
     settings.video.fullscreen = fullScreenCheckbox.isChecked();
@@ -390,9 +406,42 @@ void OptionsMenu::saveConfiguration2File() {
 void OptionsMenu::determineAvailableScreenResolutions() {
     availScreenRes.clear();
 
+    // Safety check: ensure window exists before trying to get display index
+    if(window == nullptr) {
+        SDL_Log("Warning: Window not available, using fallback resolutions");
+        // Use fallback resolutions
+        availScreenRes.emplace_back(640, 480 );    // VGA (4:3)
+        availScreenRes.emplace_back(800, 600 );    // SVGA (4:3)
+        availScreenRes.emplace_back(1024, 768 );   // XGA (4:3)
+        availScreenRes.emplace_back(1280, 720 );   // WXGA (16:9)
+        availScreenRes.emplace_back(1280, 1024 );  // SXGA (5:4)
+        availScreenRes.emplace_back(1920, 1080 );  // 1080p (16:9)
+        return;
+    }
+
     SDL_DisplayMode displayMode;
     int displayIndex = SDL_GetWindowDisplayIndex(window);
+    
+    // Safety check: ensure display index is valid
+    if(displayIndex < 0) {
+        SDL_Log("Warning: Invalid display index, using fallback resolutions");
+        displayIndex = 0; // Use primary display
+    }
+    
     int numDisplayModes = SDL_GetNumDisplayModes(displayIndex);
+    
+    // Safety check: ensure we have display modes
+    if(numDisplayModes <= 0) {
+        SDL_Log("Warning: No display modes available, using fallback resolutions");
+        availScreenRes.emplace_back(640, 480 );    // VGA (4:3)
+        availScreenRes.emplace_back(800, 600 );    // SVGA (4:3)
+        availScreenRes.emplace_back(1024, 768 );   // XGA (4:3)
+        availScreenRes.emplace_back(1280, 720 );   // WXGA (16:9)
+        availScreenRes.emplace_back(1280, 1024 );  // SXGA (5:4)
+        availScreenRes.emplace_back(1920, 1080 );  // 1080p (16:9)
+        return;
+    }
+    
     for(int i = numDisplayModes-1; i >=0; i--) {
         if(SDL_GetDisplayMode(displayIndex, i, &displayMode) == 0) {
             Coord screenRes(displayMode.w, displayMode.h);

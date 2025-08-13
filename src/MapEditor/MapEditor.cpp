@@ -94,9 +94,15 @@ MapEditor::MapEditor() : pInterface(nullptr) {
     pInterface = std::make_unique<MapEditorInterface>(this);
 
     pInterface->onNew();
+
+    // Initialize cursor manager
+    cursorManager.initialize();
 }
 
 MapEditor::~MapEditor() {
+    // Clean up cursor manager
+    cursorManager.cleanup();
+    
     delete screenborder;
     screenborder = nullptr;
 }
@@ -1320,55 +1326,10 @@ void MapEditor::processInput() {
 }
 
 void MapEditor::drawCursor() {
-
-    if(!(SDL_GetWindowFlags(window) & SDL_WINDOW_MOUSE_FOCUS)) {
-        return;
+    // Map editor always uses normal cursor
+    if (cursorManager.isInitialized()) {
+        cursorManager.setCursorMode(Game::CursorMode_Normal);
     }
-
-    SDL_Texture* pCursor = nullptr;
-    SDL_Rect dest = { 0, 0, 0, 0};
-    if(scrollLeftMode || scrollRightMode || scrollUpMode || scrollDownMode) {
-        if(scrollLeftMode && !scrollRightMode) {
-            pCursor = pGFXManager->getUIGraphic(UI_CursorLeft);
-            dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY-5, HAlign::Left, VAlign::Top);
-        } else if(scrollRightMode && !scrollLeftMode) {
-            pCursor = pGFXManager->getUIGraphic(UI_CursorRight);
-            dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY-5, HAlign::Center, VAlign::Top);
-        }
-
-        if(pCursor == nullptr) {
-            if(scrollUpMode && !scrollDownMode) {
-                pCursor = pGFXManager->getUIGraphic(UI_CursorUp);
-                dest = calcDrawingRect(pCursor, drawnMouseX-5, drawnMouseY, HAlign::Left, VAlign::Top);
-            } else if(scrollDownMode && !scrollUpMode) {
-                pCursor = pGFXManager->getUIGraphic(UI_CursorDown);
-                dest = calcDrawingRect(pCursor, drawnMouseX-5, drawnMouseY, HAlign::Left, VAlign::Center);
-            } else {
-                pCursor = pGFXManager->getUIGraphic(UI_CursorNormal);
-                dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Left, VAlign::Top);
-            }
-        }
-    } else {
-        pCursor = pGFXManager->getUIGraphic(UI_CursorNormal);
-        dest = calcDrawingRect(pCursor, drawnMouseX, drawnMouseY, HAlign::Left, VAlign::Top);
-
-        if((drawnMouseX < sideBarPos.x) && (drawnMouseY > topBarPos.h) && (currentMirrorMode != MirrorModeNone) && (pInterface->hasChildWindow() == false)) {
-
-            SDL_Texture* pMirrorIcon = nullptr;
-            switch(currentMirrorMode) {
-                case MirrorModeHorizontal:  pMirrorIcon = pGFXManager->getUIGraphic(UI_MapEditor_MirrorHorizontalIcon);  break;
-                case MirrorModeVertical:    pMirrorIcon = pGFXManager->getUIGraphic(UI_MapEditor_MirrorVerticalIcon);    break;
-                case MirrorModeBoth:        pMirrorIcon = pGFXManager->getUIGraphic(UI_MapEditor_MirrorBothIcon);        break;
-                case MirrorModePoint:       pMirrorIcon = pGFXManager->getUIGraphic(UI_MapEditor_MirrorPointIcon);       break;
-                default:                    pMirrorIcon = pGFXManager->getUIGraphic(UI_MapEditor_MirrorNoneIcon);       break;
-            }
-
-            SDL_Rect dest2 = calcDrawingRect(pMirrorIcon, drawnMouseX + 5, drawnMouseY + 5);
-            SDL_RenderCopy(renderer, pMirrorIcon, nullptr, &dest2);
-        }
-    }
-
-    SDL_RenderCopy(renderer, pCursor, nullptr, &dest);
 }
 
 TERRAINTYPE MapEditor::getTerrain(int x, int y) {

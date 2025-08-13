@@ -36,6 +36,7 @@
 #include <GUI/dune/DuneStyle.h>
 
 #include <Menu/MainMenu.h>
+#include <Menu/OptionsMenu.h>
 
 #include <misc/fnkdat.h>
 #include <misc/FileSystem.h>
@@ -133,18 +134,39 @@ void setVideoMode(int displayIndex)
         SDL_Log("Warning: Falling back to a display resolution of 640x480!");
         settings.video.physicalWidth = 640;
         settings.video.physicalHeight = 480;
-        settings.video.width = 640;
-        settings.video.height = 480;
+        int factor = getLogicalToPhysicalResolutionFactor(settings.video.physicalWidth, settings.video.physicalHeight);
+        // Prevent division by zero and ensure minimum dimensions
+        if(factor <= 0) {
+            factor = 1;
+        }
+        settings.video.width = settings.video.physicalWidth / factor;
+        settings.video.height = settings.video.physicalHeight / factor;
+        // Ensure minimum dimensions
+        if(settings.video.width < 640) settings.video.width = 640;
+        if(settings.video.height < 480) settings.video.height = 480;
     } else {
         settings.video.physicalWidth = closestDisplayMode.w;
         settings.video.physicalHeight = closestDisplayMode.h;
         int factor = getLogicalToPhysicalResolutionFactor(settings.video.physicalWidth, settings.video.physicalHeight);
+        // Prevent division by zero and ensure minimum dimensions
+        if(factor <= 0) {
+            factor = 1;
+        }
         settings.video.width = settings.video.physicalWidth / factor;
         settings.video.height = settings.video.physicalHeight / factor;
+        
+        // Ensure minimum dimensions
+        if(settings.video.width < 640) settings.video.width = 640;
+        if(settings.video.height < 480) settings.video.height = 480;
     }
 
-    // Force OpenGL renderer
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+    // Prefer Direct3D on Windows, let SDL choose best renderer on other platforms
+#ifdef _WIN32
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
+#else
+    // On non-Windows platforms, let SDL choose the best renderer
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "");
+#endif
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");  // Use nearest-neighbor scaling for pixel-perfect look
     SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");       // Enable render batching for performance
 
@@ -164,17 +186,27 @@ void setVideoMode(int displayIndex)
     SDL_RenderSetLogicalSize(renderer, settings.video.width, settings.video.height);
     screenTexture = SDL_CreateTexture(renderer, SCREEN_FORMAT, SDL_TEXTUREACCESS_TARGET, settings.video.width, settings.video.height);
 
+    // Check if texture creation failed
+    if (!screenTexture) {
+        fprintf(stderr, "SDL_CreateTexture failed: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
     // Enable hardware acceleration
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    if(screenTexture != nullptr) {
-        SDL_SetTextureScaleMode(screenTexture, SDL_ScaleModeNearest);
-    }
+    SDL_SetTextureScaleMode(screenTexture, SDL_ScaleModeNearest);
 
     SDL_ShowCursor(SDL_DISABLE);
 }
 
 void toogleFullscreen()
 {
+    // Safety checks
+    if(window == nullptr || renderer == nullptr) {
+        SDL_Log("Warning: Cannot toggle fullscreen - window or renderer not available");
+        return;
+    }
+
     if(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN_DESKTOP) {
         // switch to windowed mode
         SDL_Log("Switching to windowed mode.");
@@ -186,12 +218,15 @@ void toogleFullscreen()
         // switch to fullscreen mode
         SDL_Log("Switching to fullscreen mode.");
         SDL_DisplayMode displayMode;
-        SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(window), &displayMode);
-
-        SDL_SetWindowFullscreen(window, (SDL_GetWindowFlags(window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP));
-
-        SDL_SetWindowSize(window, displayMode.w, displayMode.h);
-        SDL_RenderSetLogicalSize(renderer, settings.video.width, settings.video.height);
+        int displayIndex = SDL_GetWindowDisplayIndex(window);
+        if(displayIndex >= 0 && SDL_GetDesktopDisplayMode(displayIndex, &displayMode) == 0) {
+            SDL_SetWindowFullscreen(window, (SDL_GetWindowFlags(window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP));
+            SDL_SetWindowSize(window, displayMode.w, displayMode.h);
+            SDL_RenderSetLogicalSize(renderer, settings.video.width, settings.video.height);
+        } else {
+            SDL_Log("Warning: Could not get desktop display mode, using current window size");
+            SDL_SetWindowFullscreen(window, (SDL_GetWindowFlags(window) ^ SDL_WINDOW_FULLSCREEN_DESKTOP));
+        }
     }
 
     // we just need to flush all events; otherwise we might get them twice
@@ -493,7 +528,6 @@ int main(int argc, char *argv[]) {
         bool bFirstGamestart = false;
 
         debug = false;
-        cursorFrame = UI_CursorNormal;
 
         int currentDisplayIndex = SCREEN_DEFAULT_DISPLAYINDEX;
 
@@ -669,10 +703,19 @@ int main(int argc, char *argv[]) {
 
             SDL_Log("Setting video mode...");
             setVideoMode(currentDisplayIndex);
+            
+            // Give the renderer time to fully initialize
+            SDL_Delay(100);
+            
             SDL_RendererInfo rendererInfo;
             SDL_GetRendererInfo(renderer, &rendererInfo);
             SDL_Log("Renderer: %s (max texture size: %dx%d)", rendererInfo.name, rendererInfo.max_texture_width, rendererInfo.max_texture_height);
 
+            // Verify renderer is valid before proceeding
+            if(renderer == nullptr) {
+                SDL_Log("Error: Renderer is null after setVideoMode!");
+                THROW(std::runtime_error, "Failed to create renderer during video mode initialization");
+            }
 
             SDL_Log("Loading fonts...");
             pFontManager = std::make_unique<FontManager>();
@@ -721,10 +764,18 @@ int main(int argc, char *argv[]) {
 
             bFirstInit = false;
 
+            // Re-enable cursor for main menu (fixes Windows cursor visibility issue)
+            SDL_ShowCursor(SDL_ENABLE);
+
             SDL_Log("Starting main menu...");
             { // Scope
-                if (MainMenu().showMenu() == MENU_QUIT_DEFAULT) {
+                int menuResult = MainMenu().showMenu();
+                if (menuResult == MENU_QUIT_DEFAULT) {
                     bExitGame = true;
+                } else if (menuResult == MENU_QUIT_REINITIALIZE) {
+                    // Reinitialize video mode and continue the loop
+                    SDL_Log("Reinitializing video mode...");
+                    // The loop will continue and reinitialize everything
                 }
             }
 
@@ -740,7 +791,13 @@ int main(int argc, char *argv[]) {
                 Mix_CloseAudio();
             } else {
                 // save the current display index for later reuse
-                currentDisplayIndex = SDL_GetWindowDisplayIndex(window);
+                if(window != nullptr) {
+                    currentDisplayIndex = SDL_GetWindowDisplayIndex(window);
+                    // Safety check: ensure we got a valid display index
+                    if(currentDisplayIndex < 0) {
+                        currentDisplayIndex = 0; // Fallback to primary display
+                    }
+                }
             }
 
             pTextManager.reset();
@@ -749,9 +806,19 @@ int main(int argc, char *argv[]) {
             pFontManager.reset();
             pFileManager.reset();
 
-            SDL_DestroyTexture(screenTexture);
-            SDL_DestroyRenderer(renderer);
-            SDL_DestroyWindow(window);
+            // Safely destroy SDL objects
+            if(screenTexture != nullptr) {
+                SDL_DestroyTexture(screenTexture);
+                screenTexture = nullptr;
+            }
+            if(renderer != nullptr) {
+                SDL_DestroyRenderer(renderer);
+                renderer = nullptr;
+            }
+            if(window != nullptr) {
+                SDL_DestroyWindow(window);
+                window = nullptr;
+            }
 
             if(bExitGame == true) {
                 TTF_Quit();

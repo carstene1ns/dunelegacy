@@ -273,6 +273,12 @@ sdl2::texture_ptr convertSurfaceToTexture(SDL_Surface* inSurface) {
         return nullptr;
     }
 
+    // Safety check: ensure renderer is available
+    if(renderer == nullptr) {
+        SDL_Log("Error: convertSurfaceToTexture() called with null renderer!");
+        return nullptr;
+    }
+
     if(inSurface->w > 2048 || inSurface->h > 2048) {
         SDL_Log("Warning: Size of texture created in convertSurfaceToTexture is %dx%d; may exceed hardware limits on older GPUs!", inSurface->w, inSurface->h);
     }
@@ -280,7 +286,9 @@ sdl2::texture_ptr convertSurfaceToTexture(SDL_Surface* inSurface) {
     sdl2::texture_ptr pTexture{ SDL_CreateTextureFromSurface(renderer, inSurface) };
 
     if( pTexture == nullptr) {
-        THROW(std::invalid_argument, std::string("convertSurfaceToTexture(): SDL_CreateTextureFromSurface() failed: ") + std::string(SDL_GetError()));
+        SDL_Log("Error: SDL_CreateTextureFromSurface() failed: %s", SDL_GetError());
+        // Don't throw here, just return nullptr to allow graceful handling
+        return nullptr;
     }
 
     return pTexture;

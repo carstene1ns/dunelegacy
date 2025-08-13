@@ -12,7 +12,7 @@
 
   ;Name and file
   Name "Dune Legacy"
-  OutFile "Dune Legacy 0.97.0 Setup.exe"
+  OutFile "Dune Legacy 0.98.4 Setup.exe"
   Unicode True
 
   ;Default installation folder

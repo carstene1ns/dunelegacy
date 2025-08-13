@@ -648,7 +648,7 @@ StructureBase* House::placeStructure(Uint32 builderID, int itemID, int xPos, int
 
     if(currentGame->getGameInitSettings().getGameOptions().onlyOnePalace && pBuilder != nullptr && itemID == Structure_Palace && getNumItems(Structure_Palace) > 0) {
         if(this == pLocalHouse && pBuilder->isSelected()) {
-            currentGame->currentCursorMode = Game::CursorMode_Normal;
+            currentGame->setCursorMode(Game::CursorMode_Normal);
         }
         return nullptr;
     }
@@ -666,7 +666,7 @@ StructureBase* House::placeStructure(Uint32 builderID, int itemID, int xPos, int
 
                 if(this == pLocalHouse) {
                     if(pBuilder->isSelected()) {
-                        currentGame->currentCursorMode = Game::CursorMode_Normal;
+                        currentGame->setCursorMode(Game::CursorMode_Normal);
                     }
 
                     pLocalPlayer->onPlaceStructure(nullptr);
@@ -695,7 +695,7 @@ StructureBase* House::placeStructure(Uint32 builderID, int itemID, int xPos, int
 
                 if(this == pLocalHouse) {
                     if(pBuilder->isSelected()) {
-                        currentGame->currentCursorMode = Game::CursorMode_Normal;
+                        currentGame->setCursorMode(Game::CursorMode_Normal);
                     }
 
                     pLocalPlayer->onPlaceStructure(nullptr);
@@ -763,7 +763,7 @@ StructureBase* House::placeStructure(Uint32 builderID, int itemID, int xPos, int
 
                 if (this == pLocalHouse) {
                     if(pBuilder->isSelected()) {
-                        currentGame->currentCursorMode = Game::CursorMode_Normal;
+                        currentGame->setCursorMode(Game::CursorMode_Normal);
                     }
                     pLocalPlayer->onPlaceStructure(newStructure);
                 }

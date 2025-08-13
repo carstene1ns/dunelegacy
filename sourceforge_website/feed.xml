@@ -8,6 +8,35 @@
     <atom:link href="http://dunelegacy.sourceforge.net/website/feed.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <title>Dune Legacy 0.98.4 Released</title>
+      <description>&lt;p&gt;I am excited to announce the release of Dune Legacy version 0.98.4 for Windows and macOS! This update brings further performance improvements, enhanced stability, and various bug fixes.&lt;/p&gt;
+
+&lt;h3&gt;Key Improvements in 0.98.4&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Enhanced graphics performance and rendering optimizations&lt;/li&gt;
+  &lt;li&gt;Improved AI behavior and decision making&lt;/li&gt;
+  &lt;li&gt;Better memory management and reduced memory usage&lt;/li&gt;
+  &lt;li&gt;Fixed various crashes and stability issues&lt;/li&gt;
+  &lt;li&gt;Updated SDL2 libraries for better compatibility&lt;/li&gt;
+  &lt;li&gt;Improved network play stability&lt;/li&gt;
+  &lt;li&gt;Enhanced user interface responsiveness&lt;/li&gt;
+  &lt;li&gt;Better support for high-resolution displays&lt;/li&gt;
+  &lt;li&gt;Various gameplay tweaks and balance improvements&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;Download&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;Windows:&lt;/b&gt; &lt;a href=&quot;https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.4/Dune%20Legacy%200.98.4%20Setup.exe/download&quot;&gt;Dune Legacy 0.98.4 Setup.exe&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;macOS:&lt;/b&gt; &lt;a href=&quot;https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.4/DuneLegacy-0.98.4-macOS.dmg/download&quot;&gt;DuneLegacy-0.98.4-macOS.dmg&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;As always, you'll need the original Dune 2 PAK files to play. Thank you to all contributors and testers who helped make this release possible!&lt;/p&gt;</description>
+      <pubDate>Sun, 08 Dec 2025 00:00:00 +0000</pubDate>
+      <link>http://dunelegacy.sourceforge.net/website/news.html#2025-12-08-00-00-00</link>
+      <guid isPermaLink="true">http://dunelegacy.sourceforge.net/website/news.html#2025-12-08-00-00-00</guid>
+    </item>
+
+    <item>
       <title>Dune Legacy 0.97.04 Released</title>
       <description>&lt;p&gt;I am pleased to announce that Dune Legacy version 0.97.04 is now available for Windows! This release brings significant performance optimizations and gameplay improvements.&lt;/p&gt;
 

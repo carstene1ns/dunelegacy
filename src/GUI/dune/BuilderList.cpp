@@ -114,9 +114,9 @@ bool BuilderList::handleMouseLeft(Sint32 x, Sint32 y, bool pressed) {
             if((getItemIDFromIndex(mouseLeftButton) == static_cast<int>(pBuilder->getCurrentProducedItem())) && (pBuilder->isWaitingToPlace() == true)) {
                 soundPlayer->playSound(Sound_ButtonClick);
                 if(currentGame->currentCursorMode == Game::CursorMode_Placing) {
-                    currentGame->currentCursorMode = Game::CursorMode_Normal;
+                    currentGame->setCursorMode(Game::CursorMode_Normal);
                 } else {
-                    currentGame->currentCursorMode = Game::CursorMode_Placing;
+                    currentGame->setCursorMode(Game::CursorMode_Placing);
                 }
             } else if((getItemIDFromIndex(mouseLeftButton) == static_cast<int>(pBuilder->getCurrentProducedItem())) && (pBuilder->isOnHold() == true)) {
                 soundPlayer->playSound(Sound_ButtonClick);

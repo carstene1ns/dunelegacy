@@ -32,6 +32,7 @@
 #include <players/Player.h>
 #include <players/HumanPlayer.h>
 #include <misc/SDL2pp.h>
+#include <CursorManager.h>
 
 #include <DataTypes.h>
 
@@ -163,6 +164,8 @@ public:
         Draws the cursor.
     */
     void drawCursor() const;
+    void updateCursor();
+    void setCursorMode(int mode);
 
     /**
         This method sets up the view. The start position is the center point of all owned units/structures
@@ -570,6 +573,8 @@ private:
     ObjectManager       objectManager;          ///< This manages all the object and maps object ids to the actual objects
 
     CommandManager      cmdManager;             ///< This is the manager for all the game commands (e.g. moving a unit)
+
+    CursorManager       cursorManager;          ///< This manages all hardware cursors
 
     TriggerManager      triggerManager;         ///< This is the manager for all the triggers the scenario has (e.g. reinforcements)
 

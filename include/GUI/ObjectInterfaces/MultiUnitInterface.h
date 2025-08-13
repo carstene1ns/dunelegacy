@@ -21,6 +21,7 @@
 #include "ObjectInterface.h"
 
 #include <globals.h>
+#include <Game.h>
 
 #include <GUI/StaticContainer.h>
 #include <GUI/HBox.h>
@@ -191,19 +192,19 @@ protected:
     }
 
     void onMove() {
-        currentGame->currentCursorMode = Game::CursorMode_Move;
+        currentGame->setCursorMode(Game::CursorMode_Move);
     }
 
     void onAttack() {
-        currentGame->currentCursorMode = Game::CursorMode_Attack;
+        currentGame->setCursorMode(Game::CursorMode_Attack);
     }
 
     void onCapture() {
-        currentGame->currentCursorMode = Game::CursorMode_Capture;
+        currentGame->setCursorMode(Game::CursorMode_Capture);
     }
 
     void onCarryallDrop() {
-        currentGame->currentCursorMode = Game::CursorMode_CarryallDrop;
+        currentGame->setCursorMode(Game::CursorMode_CarryallDrop);
     }
 
     void onReturn() {
