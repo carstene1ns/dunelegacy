@@ -902,93 +902,67 @@ void Game::runMainLoop() {
     SDL_Log("Starting game...");
     initializeGameLoop();
 
-    const int MAX_UPDATES_PER_FRAME = 5;
-    const Uint32 MIN_FRAME_TIME = 1;  // Minimum 1ms between frames to prevent CPU overload
-    
-    Uint32 lastGameCycle = SDL_GetTicks();
-    Uint32 accumulator = 0;
-    bool wasMenuOpen = false;
-    
+    int frameStart = SDL_GetTicks();
+    int frameTime = 0;
+
     do {
-        const Uint32 frameStart = SDL_GetTicks();
-        const Uint32 frameTime = frameStart - lastGameCycle;
-        lastGameCycle = frameStart;
-        
-        // Check for menu state changes
-        bool isMenuOpen = (pInGameMenu != nullptr) || (pInGameMentat != nullptr) || (pWaitingForOtherPlayers != nullptr);
-        if (isMenuOpen != wasMenuOpen) {
-            accumulator = 0;
-            lastGameCycle = frameStart;
-            wasMenuOpen = isMenuOpen;
-        }
-        
-        if (!isMenuOpen) {
-            accumulator += std::min(frameTime, Uint32(200));  // Cap at 200ms to prevent spiral of death
-        }
-        
-        // Process all input through normal game loop
-        processInput();
-        
-        bool bWaitForNetwork = false;
-        if(pNetworkManager != nullptr) {
-            bWaitForNetwork = handleNetworkUpdates();
-        }
-        
-        if(bReplay && !bPause) {
-            skipToGameCycle = gameCycleCount + (10*1000)/GAMESPEED_DEFAULT;
-        }
-        
-        if(!bPause && !bWaitForNetwork && !bMenu) {
-            if(skipToGameCycle != INVALID_GAMECYCLE) {
-                int updates = 0;
-                while((gameCycleCount < skipToGameCycle) && (updates < MAX_UPDATES_PER_FRAME)) {
-                    if(!processNetwork()) {
-                        break;
-                    }
-                    updateGameState();
-                    updates++;
-                }
-                
-                if(gameCycleCount >= skipToGameCycle) {
-                    skipToGameCycle = INVALID_GAMECYCLE;
-                }
-            } else {
-                const float speedFactor = std::pow(5.0f, (float(settings.gameOptions.gameSpeed) - float(GAMESPEED_MAX/2)) / (GAMESPEED_MAX/2));
-                const Uint32 updateInterval = Uint32(GAMESPEED_DEFAULT * speedFactor);
-                int updates = 0;
-                
-                while(accumulator >= updateInterval && updates < MAX_UPDATES_PER_FRAME) {
-                    if(!processNetwork()) {
-                        break;
-                    }
-                    updateGameState();
-                    accumulator -= updateInterval;
-                    updates++;
-                }
-            }
-        }
-        
         renderFrame();
-        
-        const Uint32 totalFrameTime = SDL_GetTicks() - frameStart;
-        if(totalFrameTime < MIN_FRAME_TIME) {
-            SDL_Delay(1);  // Give up timeslice but don't force delay
+
+        const int frameEnd = SDL_GetTicks();
+        frameTime += frameEnd - frameStart;
+        frameStart = frameEnd;
+
+        if(settings.video.frameLimit == true && frameTime < 32) {
+            SDL_Delay(32 - frameTime);
         }
-        
+
         if(bShowFPS) {
-            averageFrameTime = 0.99f * averageFrameTime + 0.01f * totalFrameTime;
+            averageFrameTime = 0.99f * averageFrameTime + 0.01f * frameTime;
         }
-        
+
         if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {
             finishedLevel = true;
         }
-        
+
         if(takePeriodicalScreenshots && ((gameCycleCount % (MILLI2CYCLES(10*1000))) == 0)) {
             takeScreenshot();
         }
-        
+
+        if(bReplay && !bPause) {
+            skipToGameCycle = gameCycleCount + (10*1000)/GAMESPEED_DEFAULT;
+        }
+
+        while((frameTime > getGameSpeed()) || (!finished && (gameCycleCount < skipToGameCycle))) {
+            bool bWaitForNetwork = false;
+            if(pNetworkManager != nullptr) {
+                bWaitForNetwork = handleNetworkUpdates();
+            }
+
+            processInput();
+
+            if(pInGameMentat != nullptr) {
+                pInGameMentat->update();
+            }
+
+            if(pWaitingForOtherPlayers != nullptr) {
+                pWaitingForOtherPlayers->update();
+            }
+
+            cmdManager.update();
+
+            if(!bWaitForNetwork && !bPause) {
+                updateGameState();
+            }
+
+            if(gameCycleCount <= skipToGameCycle) {
+                frameTime = 0;
+            } else {
+                frameTime -= getGameSpeed();
+            }
+        }
+
         musicPlayer->musicCheck();
-        
+
     } while (!bQuitGame && !finishedLevel);
 }
 
@@ -1062,58 +1036,47 @@ void Game::processInput() {
         return;
     } else if(pWaitingForOtherPlayers != nullptr) {
         if(bMenu == false) {
-                    pWaitingForOtherPlayers.reset();
-                }
-        return;
-            }
-
-    // Only update interface and network if no menu is active
-            pInterface->updateObjectInterface();
-
-    if(pNetworkManager != nullptr && bSelectionChanged) {
-                    pNetworkManager->sendSelectedList(selectedList);
-                    bSelectionChanged = false;
-                }
-            }
-
-bool Game::processNetwork() {
-    if(pNetworkManager != nullptr) {
-        if(handleNetworkUpdates()) {
-            return false;
+            pWaitingForOtherPlayers.reset();
         }
+        return;
     }
 
-    return true;
+    // Only update interface and network if no menu is active
+    pInterface->updateObjectInterface();
+
+    if(pNetworkManager != nullptr && bSelectionChanged) {
+        pNetworkManager->sendSelectedList(selectedList);
+        bSelectionChanged = false;
+    }
 }
 
 void Game::updateGameState() {
     if(bPause) {
         return;
-            }
+    }
 
-            cmdManager.update();
-                pInterface->getRadarView().update();
-                cmdManager.executeCommands(gameCycleCount);
+    pInterface->getRadarView().update();
+    cmdManager.executeCommands(gameCycleCount);
 
     // Update all houses
     for(int i = 0; i < NUM_HOUSES; i++) {
         if(house[i] != nullptr) {
-                        house[i]->update();
-                    }
-                }
+            house[i]->update();
+        }
+    }
 
-                screenborder->update();
-                triggerManager.trigger(gameCycleCount);
-                processObjects();
+    screenborder->update();
+    triggerManager.trigger(gameCycleCount);
+    processObjects();
 
     if((indicatorFrame != NONE_ID) && (--indicatorTimer <= 0)) {
-                    indicatorTimer = indicatorTime;
+        indicatorTimer = indicatorTime;
         if(++indicatorFrame > 2) {
-                        indicatorFrame = NONE_ID;
-                    }
-                }
+            indicatorFrame = NONE_ID;
+        }
+    }
 
-                gameCycleCount++;
+    gameCycleCount++;
     
     if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {
         finishedLevel = true;
@@ -2407,7 +2370,12 @@ bool Game::handleNetworkUpdates() {
         SDL_Delay(10);
     } else {
         startWaitingForOtherPlayersTime = 0;
-        pWaitingForOtherPlayers.reset();
+        if(pWaitingForOtherPlayers != nullptr) {
+            pWaitingForOtherPlayers.reset();
+            if(pInGameMenu == nullptr && pInGameMentat == nullptr) {
+                bMenu = false;
+            }
+        }
     }
     
     return bWaitForNetwork;
