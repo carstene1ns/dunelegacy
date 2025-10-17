@@ -203,11 +203,7 @@ public:
     /**
         This method pauses the current game.
     */
-    void pauseGame() {
-        if(gameType != GameType::CustomMultiplayer) {
-            bPause = true;
-        }
-    }
+    void pauseGame();
 
     /**
         This method resumes the current paused game.

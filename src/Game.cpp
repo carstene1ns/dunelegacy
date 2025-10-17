@@ -1133,9 +1133,11 @@ void Game::initializeNetwork() {
 void Game::resumeGame()
 {
     bMenu = false;
-    if(gameType != GameType::CustomMultiplayer) {
-        bPause = false;
-    }
+    bPause = false;
+}
+
+void Game::pauseGame() {
+    bPause = true;
 }
 
 
@@ -2022,13 +2024,21 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
         } break;
 
         case SDLK_SPACE: {
-            if(gameType != GameType::CustomMultiplayer) {
-                if(bPause) {
-                    resumeGame();
-                    pInterface->getChatManager().addInfoMessage(_("Game resumed!"));
-                } else {
-                    pauseGame();
-                    pInterface->getChatManager().addInfoMessage(_("Game paused!"));
+            bool isMultiplayer = (gameType == GameType::CustomMultiplayer);
+
+            if(bPause) {
+                resumeGame();
+                const std::string message = _("Game resumed!");
+                pInterface->getChatManager().addInfoMessage(message);
+                if(isMultiplayer && pNetworkManager != nullptr) {
+                    pNetworkManager->sendChatMessage(message);
+                }
+            } else {
+                pauseGame();
+                const std::string message = _("Game paused!");
+                pInterface->getChatManager().addInfoMessage(message);
+                if(isMultiplayer && pNetworkManager != nullptr) {
+                    pNetworkManager->sendChatMessage(message);
                 }
             }
         } break;
