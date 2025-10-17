@@ -40,6 +40,8 @@
 #include <string>
 #include <map>
 #include <utility>
+#include <deque>
+#include <unordered_set>
 
 // forward declarations
 class ObjectBase;
@@ -49,6 +51,8 @@ class WaitingForOtherPlayers;
 class ObjectManager;
 class House;
 class Explosion;
+class SpatialGrid;
+class UnitBase;
 
 
 #define END_WAIT_TIME               (6*1000)
@@ -227,6 +231,10 @@ public:
 
     inline ObjectManager& getObjectManager() { return objectManager; };
     inline GameInterface& getGameInterface() { return *pInterface; };
+    void queueTargetRequest(Uint32 objectId);
+    void queuePathRequest(Uint32 objectId);
+    SpatialGrid* getSpatialGrid() const { return spatialGrid.get(); }
+    void initializeSpatialGrid(int mapWidth, int mapHeight);
 
     const GameInitSettings& getGameInitSettings() const { return gameInitSettings; };
     void setNextGameInitSettings(const GameInitSettings& nextGameInitSettings) { this->nextGameInitSettings = nextGameInitSettings; };
@@ -566,6 +574,7 @@ private:
     GameInitSettings::HouseInfoList     houseInfoListSetup;     ///< this saves with which houses and players the game was actually set up. It is a copy of gameInitSettings::houseInfoList but without random houses
 
 
+    std::unique_ptr<SpatialGrid>    spatialGrid;            ///< Spatial partition for fast proximity queries
     ObjectManager       objectManager;          ///< This manages all the object and maps object ids to the actual objects
 
     CommandManager      cmdManager;             ///< This is the manager for all the game commands (e.g. moving a unit)
@@ -607,6 +616,22 @@ private:
 
     std::array<std::unique_ptr<House>, NUM_HOUSES> house;   ///< All the houses of this game, index by their houseID; has the size NUM_HOUSES; unused houses are nullptr
 
+    struct TargetRequest {
+        Uint32 objectId;
+    };
+
+    struct PathRequest {
+        Uint32 objectId;
+    };
+
+    std::deque<TargetRequest> targetRequestQueue;
+    std::unordered_set<Uint32> pendingTargetRequestIds;
+    std::deque<PathRequest> pathRequestQueue;
+    std::unordered_set<Uint32> pendingPathRequestIds;
+
+    static constexpr double TargetBudgetMs = 3.0;
+    static constexpr double PathBudgetMs = 3.0;
+
     // Game loop methods
     void initializeGameLoop();
     void renderFrame();
@@ -615,6 +640,8 @@ private:
     bool handleNetworkUpdates();
     void initializeReplay();
     void initializeNetwork();
+    void processTargetRequests();
+    void processPathRequests();
 };
 
 #endif // GAME_H

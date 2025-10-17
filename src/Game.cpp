@@ -51,6 +51,7 @@
 
 #include <House.h>
 #include <Map.h>
+#include <SpatialGrid.h>
 #include <Bullet.h>
 #include <Explosion.h>
 #include <GameInitSettings.h>
@@ -66,6 +67,7 @@
 #include <units/InfantryBase.h>
 
 #include <algorithm>
+#include <exception>
 #include <sstream>
 #include <iomanip>
 
@@ -92,6 +94,41 @@ Game::Game() {
     screenborder = new ScreenBorder(gameBoardRect);
 }
 
+void Game::initializeSpatialGrid(int mapWidth, int mapHeight) {
+    constexpr int kSpatialGridCellSize = 4;
+
+    if(mapWidth <= 0 || mapHeight <= 0) {
+        spatialGrid.reset();
+        return;
+    }
+
+    try {
+        spatialGrid = std::make_unique<SpatialGrid>(mapWidth, mapHeight, kSpatialGridCellSize);
+    } catch(const std::exception& ex) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize spatial grid (%s)", ex.what());
+        spatialGrid.reset();
+    }
+}
+
+void Game::queueTargetRequest(Uint32 objectId) {
+    if(objectId == NONE_ID) {
+        return;
+    }
+
+    if(pendingTargetRequestIds.insert(objectId).second) {
+        targetRequestQueue.push_back({objectId});
+    }
+}
+
+void Game::queuePathRequest(Uint32 objectId) {
+    if(objectId == NONE_ID) {
+        return;
+    }
+
+    if(pendingPathRequestIds.insert(objectId).second) {
+        pathRequestQueue.push_back({objectId});
+    }
+}
 
 /**
     The destructor frees up all the used memory.
@@ -127,6 +164,11 @@ Game::~Game() {
     }
     explosionList.clear();
 
+    if(spatialGrid) {
+        spatialGrid->clear();
+        spatialGrid.reset();
+    }
+
     delete currentGameMap;
     currentGameMap = nullptr;
     delete screenborder;
@@ -136,6 +178,11 @@ Game::~Game() {
 
 void Game::initGame(const GameInitSettings& newGameInitSettings) {
     gameInitSettings = newGameInitSettings;
+
+    targetRequestQueue.clear();
+    pendingTargetRequestIds.clear();
+    pathRequestQueue.clear();
+    pendingPathRequestIds.clear();
 
     // Initialize cursor manager
     cursorManager.initialize();
@@ -206,6 +253,9 @@ void Game::initReplay(const std::string& filename) {
 
 void Game::processObjects()
 {
+    processTargetRequests();
+    processPathRequests();
+
     // update all tiles
     for(int y = 0; y < currentGameMap->getSizeY(); y++) {
         for(int x = 0; x < currentGameMap->getSizeX(); x++) {
@@ -231,6 +281,66 @@ void Game::processObjects()
 
     for(Explosion* pExplosion : explosionList) {
         pExplosion->update();
+    }
+}
+
+void Game::processTargetRequests() {
+    if(targetRequestQueue.empty()) {
+        return;
+    }
+
+    const Uint64 start = SDL_GetPerformanceCounter();
+    const Uint64 frequency = SDL_GetPerformanceFrequency();
+    const double budgetSeconds = TargetBudgetMs / 1000.0;
+
+    bool processedAny = false;
+    while(!targetRequestQueue.empty()) {
+        const Uint64 now = SDL_GetPerformanceCounter();
+        const double elapsed = static_cast<double>(now - start) / static_cast<double>(frequency);
+        if(processedAny && elapsed >= budgetSeconds) {
+            break;
+        }
+
+        TargetRequest request = targetRequestQueue.front();
+        targetRequestQueue.pop_front();
+        pendingTargetRequestIds.erase(request.objectId);
+
+        auto* unit = dynamic_cast<UnitBase*>(objectManager.getObject(request.objectId));
+        if(unit != nullptr) {
+            unit->resolvePendingTargetRequest();
+        }
+
+        processedAny = true;
+    }
+}
+
+void Game::processPathRequests() {
+    if(pathRequestQueue.empty()) {
+        return;
+    }
+
+    const Uint64 start = SDL_GetPerformanceCounter();
+    const Uint64 frequency = SDL_GetPerformanceFrequency();
+    const double budgetSeconds = PathBudgetMs / 1000.0;
+
+    bool processedAny = false;
+    while(!pathRequestQueue.empty()) {
+        const Uint64 now = SDL_GetPerformanceCounter();
+        const double elapsed = static_cast<double>(now - start) / static_cast<double>(frequency);
+        if(processedAny && elapsed >= budgetSeconds) {
+            break;
+        }
+
+        PathRequest request = pathRequestQueue.front();
+        pathRequestQueue.pop_front();
+        pendingPathRequestIds.erase(request.objectId);
+
+        auto* unit = dynamic_cast<UnitBase*>(objectManager.getObject(request.objectId));
+        if(unit != nullptr) {
+            unit->resolvePendingPathRequest();
+        }
+
+        processedAny = true;
     }
 }
 
@@ -912,8 +1022,8 @@ void Game::runMainLoop() {
         frameTime += frameEnd - frameStart;
         frameStart = frameEnd;
 
-        if(settings.video.frameLimit == true && frameTime < 32) {
-            SDL_Delay(32 - frameTime);
+        if(settings.video.frameLimit == true && frameTime < 16) {
+            SDL_Delay(16 - frameTime);
         }
 
         if(bShowFPS) {
@@ -1278,6 +1388,11 @@ bool Game::loadSaveGame(const std::string& filename) {
 bool Game::loadSaveGame(InputStream& stream) {
     gameState = GameState::Loading;
 
+    targetRequestQueue.clear();
+    pendingTargetRequestIds.clear();
+    pathRequestQueue.clear();
+    pendingPathRequestIds.clear();
+
     Uint32 magicNum = stream.readUint32();
     if (magicNum != SAVEMAGIC) {
         SDL_Log("Game::loadSaveGame(): No valid savegame! Expected magic number %.8X, but got %.8X!", SAVEMAGIC, magicNum);
@@ -1311,6 +1426,7 @@ bool Game::loadSaveGame(InputStream& stream) {
 
     //create the new map
     currentGameMap = new Map(mapSizeX, mapSizeY);
+    initializeSpatialGrid(mapSizeX, mapSizeY);
 
     //read GameCycleCount
     gameCycleCount = stream.readUint32();

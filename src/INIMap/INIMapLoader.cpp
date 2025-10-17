@@ -118,6 +118,7 @@ void INIMapLoader::loadMap() {
         logicalSizeY = 64;
 
         currentGameMap = new Map(sizeX, sizeY);
+        pGame->initializeSpatialGrid(sizeX, sizeY);
 
         int SeedNum = inifile->getIntValue("MAP","Seed",-1);
         Uint16 SeedMap[64*64];
@@ -254,6 +255,7 @@ void INIMapLoader::loadMap() {
         logicalOffsetY = 0;
 
         currentGameMap = new Map(sizeX, sizeY);
+        pGame->initializeSpatialGrid(sizeX, sizeY);
 
         for(int y=0;y<sizeY;y++) {
             std::string rowKey = fmt::sprintf("%.3d", y);

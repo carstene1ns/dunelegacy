@@ -94,6 +94,7 @@
 		1358FE7313D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDB613D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp */; };
 		1358FE7413D3B72F00FAD5B7 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDB713D3B72F00FAD5B7 /* main.cpp */; };
 		1358FE7613D3B72F00FAD5B7 /* Map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDB913D3B72F00FAD5B7 /* Map.cpp */; };
+		7E147A1A2C677F8200A82F0B /* SpatialGrid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E147A192C677F8200A82F0B /* SpatialGrid.cpp */; };
 		1358FE7913D3B72F00FAD5B7 /* MapSeed.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDBC13D3B72F00FAD5B7 /* MapSeed.cpp */; };
 		1358FE7A13D3B72F00FAD5B7 /* AboutMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDBE13D3B72F00FAD5B7 /* AboutMenu.cpp */; };
 		1358FE7B13D3B72F00FAD5B7 /* BriefingMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDBF13D3B72F00FAD5B7 /* BriefingMenu.cpp */; };
@@ -725,6 +726,7 @@
 		1358FDB613D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = INIMapPreviewCreator.cpp; sourceTree = "<group>"; };
 		1358FDB713D3B72F00FAD5B7 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		1358FDB913D3B72F00FAD5B7 /* Map.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Map.cpp; sourceTree = "<group>"; };
+		7E147A192C677F8200A82F0B /* SpatialGrid.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpatialGrid.cpp; sourceTree = "<group>"; };
 		1358FDBC13D3B72F00FAD5B7 /* MapSeed.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MapSeed.cpp; sourceTree = "<group>"; };
 		1358FDBE13D3B72F00FAD5B7 /* AboutMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AboutMenu.cpp; sourceTree = "<group>"; };
 		1358FDBF13D3B72F00FAD5B7 /* BriefingMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BriefingMenu.cpp; sourceTree = "<group>"; };
@@ -1447,6 +1449,7 @@
 				1358FDB413D3B72F00FAD5B7 /* INIMap */,
 				1358FDB713D3B72F00FAD5B7 /* main.cpp */,
 				1358FDB913D3B72F00FAD5B7 /* Map.cpp */,
+				7E147A192C677F8200A82F0B /* SpatialGrid.cpp */,
 				13E5646D169B52AB00D282B9 /* MapEditor */,
 				1358FDBC13D3B72F00FAD5B7 /* MapSeed.cpp */,
 				1358FDBD13D3B72F00FAD5B7 /* Menu */,
@@ -2146,6 +2149,7 @@
 				1358FE7313D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp in Sources */,
 				1358FE7413D3B72F00FAD5B7 /* main.cpp in Sources */,
 				1358FE7613D3B72F00FAD5B7 /* Map.cpp in Sources */,
+				7E147A1A2C677F8200A82F0B /* SpatialGrid.cpp in Sources */,
 				1358FE7913D3B72F00FAD5B7 /* MapSeed.cpp in Sources */,
 				1358FE7A13D3B72F00FAD5B7 /* AboutMenu.cpp in Sources */,
 				1358FE7B13D3B72F00FAD5B7 /* BriefingMenu.cpp in Sources */,

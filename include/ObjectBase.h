@@ -22,6 +22,7 @@
 
 #include <Definitions.h>
 #include <DataTypes.h>
+#include <SpatialGridHandle.h>
 #include <fixmath/FixPoint.h>
 #include <misc/SDL2pp.h>
 #include <mmath.h>
@@ -181,6 +182,8 @@ public:
     inline const House* getOwner() const { return owner; }
 
     inline void setOwner(House* no) { owner = no; }
+    inline SpatialGridHandle& getGridHandle() noexcept { return gridHandle; }
+    inline const SpatialGridHandle& getGridHandle() const noexcept { return gridHandle; }
 
     static ObjectBase* createObject(int itemID, House* Owner, bool byScenario);
     static ObjectBase* loadObject(InputStream& stream, int itemID, Uint32 objectID);
@@ -240,6 +243,7 @@ protected:
 private:
     FixPoint health;                 ///< The health of this object
     void init();
+    SpatialGridHandle gridHandle;
 };
 
 

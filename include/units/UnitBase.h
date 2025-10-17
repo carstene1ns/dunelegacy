@@ -23,6 +23,7 @@
 #include <House.h>
 
 #include <list>
+#include <cstdint>
 
 // forward declarations
 class Tile;
@@ -30,6 +31,11 @@ class Tile;
 class UnitBase : public ObjectBase
 {
 public:
+    enum class TargetRequestKind : uint8_t {
+        None,
+        Refresh,
+        Acquire
+    };
     explicit UnitBase(House* newOwner);
     explicit UnitBase(InputStream& stream);
     void init();
@@ -215,12 +221,16 @@ public:
 
     virtual FixPoint getMaxSpeed() const;
 
+    void resolvePendingTargetRequest();
+    void resolvePendingPathRequest();
+
     inline void clearPath() {
         pathList.clear();
         nextSpotFound = false;
         recalculatePathTimer = 0;
         nextSpotAngle = INVALID;
         noCloserPointCount = 0;
+        pathRequestQueued = false;
     }
 
     inline bool isTracked() const { return tracked; }
@@ -261,6 +271,8 @@ protected:
     virtual void setSpeeds();
 
     virtual void targeting();
+    void enqueueTargetRequest(TargetRequestKind kind);
+    void enqueuePathRequest();
 
     virtual void turn();
     void turnLeft();
@@ -304,6 +316,8 @@ protected:
     Sint32   recalculatePathTimer;   ///< This timer is for recalculating the best path after x ticks
     Coord    nextSpot;               ///< The next spot to move to
     std::list<Coord> pathList;       ///< The path to the destination found so far
+    TargetRequestKind pendingTargetRequest = TargetRequestKind::None;
+    bool pathRequestQueued = false;
 
     Sint32  findTargetTimer;         ///< When to look for the next target?
     Sint32  primaryWeaponTimer;      ///< When can the primary weapon shot again?

@@ -21,6 +21,7 @@
 
 #include <Game.h>
 #include <ObjectBase.h>
+#include <SpatialGrid.h>
 
 void ObjectManager::save(OutputStream& stream) const {
     stream.writeUint32(nextFreeObjectID);
@@ -45,6 +46,13 @@ void ObjectManager::load(InputStream& stream) {
         }
 
         objectMap.insert( std::pair<Uint32,ObjectBase*>(objectID, pObject) );
+
+        if(auto* spatialGrid = currentGame->getSpatialGrid()) {
+            const Coord loc = pObject->getLocation();
+            if(loc.isValid()) {
+                spatialGrid->registerObject(*pObject, loc, pObject->getGridHandle());
+            }
+        }
     }
 }
 

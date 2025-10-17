@@ -66,6 +66,7 @@ target_sources(dunelegacy
         GameInterface.cpp
         House.cpp
         Map.cpp
+        SpatialGrid.cpp
         MapSeed.cpp
         globals.cpp
         main.cpp

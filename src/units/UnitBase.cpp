@@ -23,6 +23,7 @@
 
 #include <SoundPlayer.h>
 #include <Map.h>
+#include <SpatialGrid.h>
 #include <Bullet.h>
 #include <ScreenBorder.h>
 #include <House.h>
@@ -38,6 +39,7 @@
 #include <structures/Refinery.h>
 #include <structures/RepairYard.h>
 #include <units/Harvester.h>
+#include <units/GroundUnit.h>
 
 #define SMOKEDELAY 30
 #define UNITIDLETIMER (GAMESPEED_DEFAULT *  315)  // about every 5s
@@ -116,6 +118,13 @@ UnitBase::UnitBase(InputStream& stream) : ObjectBase(stream) {
     secondaryWeaponTimer = stream.readSint32();
 
     deviationTimer = stream.readSint32();
+
+    if(findTargetTimer < 0) {
+        findTargetTimer = 0;
+    }
+    if(recalculatePathTimer < 0) {
+        recalculatePathTimer = 0;
+    }
 }
 
 void UnitBase::init() {
@@ -128,6 +137,9 @@ void UnitBase::init() {
     bulletType = Bullet_DRocket;
 
     drawnFrame = 0;
+
+    pendingTargetRequest = TargetRequestKind::None;
+    pathRequestQueued = false;
 
     unitList.push_back(this);
 }
@@ -574,6 +586,10 @@ void UnitBase::move() {
                 oldLocation = location;
                 location = nextSpot;
 
+                if(auto* spatialGrid = currentGame->getSpatialGrid()) {
+                    spatialGrid->move(*this, getGridHandle(), oldLocation, location);
+                }
+
                 if(isAFlyingUnit() == false && itemID != Unit_Sandworm) {
                     currentGameMap->viewMap(owner->getHouseID(), location, getViewRange());
                 }
@@ -668,37 +684,8 @@ void UnitBase::navigate() {
             if(location != destination) {
                 if(nextSpotFound == false)  {
 
-                    if(pathList.empty() && (recalculatePathTimer == 0)) {
-                        recalculatePathTimer = 100;
-
-                        if(!SearchPathWithAStar() && (++noCloserPointCount >= 3)
-                            && (location != oldLocation))
-                        {   //try searching for a path a number of times then give up
-                            if (target.getObjPointer() != nullptr && targetFriendly
-                                && (target.getObjPointer()->getItemID() != Structure_RepairYard)
-                                && ((target.getObjPointer()->getItemID() != Structure_Refinery)
-                                || (getItemID() != Unit_Harvester))) {
-                                setTarget(nullptr);
-                            }
-
-                            /// This method will transport units if they get stuck inside a base
-                            /// This often happens after an AI get nuked and has a hole in their base
-                            if(getOwner()->hasCarryalls()
-                               && this->isAGroundUnit()
-                               && (currentGame->getGameInitSettings().getGameOptions().manualCarryallDrops || getOwner()->isAI())
-                               && blockDistance(location, destination) >= MIN_CARRYALL_LIFT_DISTANCE ) {
-                               static_cast<GroundUnit*>(this)->requestCarryall();
-                            } else if(  getOwner()->isAI()
-                                        && (getItemID() == Unit_Harvester)
-                                        && !static_cast<Harvester*>(this)->isReturning()
-                                        && blockDistance(location, destination) >= 2) {
-                                // try getting back to a refinery
-                                static_cast<Harvester*>(this)->doReturn();
-                            } else {
-                                setDestination(location);   //can't get any closer, give up
-                                forced = false;
-                            }
-                        }
+                    if(pathList.empty() && (recalculatePathTimer == 0) && !pathRequestQueued) {
+                        enqueuePathRequest();
                     }
 
                     if(!pathList.empty()) {
@@ -1080,6 +1067,10 @@ void UnitBase::setGettingRepaired() {
 
         currentGameMap->removeObjectFromMap(getObjectID());
 
+        if(auto* spatialGrid = currentGame->getSpatialGrid()) {
+            spatialGrid->unregister(getGridHandle());
+        }
+
         static_cast<RepairYard*>(target.getObjPointer())->assignUnit(this);
 
         respondable = false;
@@ -1142,6 +1133,10 @@ void UnitBase::setPickedUp(UnitBase* newCarrier) {
 
     if(goingToRepairYard) {
         static_cast<RepairYard*>(target.getObjPointer())->unBook();
+    }
+
+    if(auto* spatialGrid = currentGame->getSpatialGrid()) {
+        spatialGrid->unregister(getGridHandle());
     }
 
     if(getItemID() == Unit_Harvester) {
@@ -1210,54 +1205,150 @@ void UnitBase::setTarget(const ObjectBase* newTarget) {
     }
 }
 
+void UnitBase::enqueueTargetRequest(TargetRequestKind kind) {
+    if(currentGame == nullptr || location.isInvalid()) {
+        return;
+    }
+
+    if(pendingTargetRequest == TargetRequestKind::None) {
+        pendingTargetRequest = kind;
+    } else {
+        if(pendingTargetRequest == TargetRequestKind::Refresh && kind == TargetRequestKind::Acquire) {
+            pendingTargetRequest = kind;
+        } else {
+            return;
+        }
+    }
+
+    findTargetTimer = -1;
+    currentGame->queueTargetRequest(getObjectID());
+}
+
+void UnitBase::enqueuePathRequest() {
+    if(currentGame == nullptr || pathRequestQueued || location.isInvalid() || destination.isInvalid()) {
+        return;
+    }
+
+    pathRequestQueued = true;
+    recalculatePathTimer = -1;
+    currentGame->queuePathRequest(getObjectID());
+}
+
 void UnitBase::targeting() {
-    if(findTargetTimer == 0) {
-
+    if(findTargetTimer == 0 && pendingTargetRequest == TargetRequestKind::None) {
         if(attackMode != STOP && attackMode != CARRYALLREQUESTED) {
-
-            // lets add a bit of logic to make units recalibrate their nearest target if the target isn't in weapon range
-            if(target && !attackPos && !forced &&(attackMode == GUARD || attackMode == AREAGUARD || attackMode == HUNT)){
-                if(!isInWeaponRange(target.getObjPointer())){
-                    const ObjectBase* pNewTarget = findTarget();
-
-                    if(pNewTarget != nullptr) {
-
-                        doAttackObject(pNewTarget, false);
-
-                        findTargetTimer = 500;
-                    }
-                }
-            }
-
-
-            if(!target && !attackPos && !moving && !justStoppedMoving && !forced) {
-                // we have no target, we have stopped moving and we weren't forced to do anything else
-
-                const ObjectBase* pNewTarget = findTarget();
-
-                if(pNewTarget != nullptr && isInGuardRange(pNewTarget)) {
-                    // we have found a new target => attack it
-                    if(attackMode == AMBUSH) {
-                        doSetAttackMode(HUNT);
-                    }
-                    doAttackObject(pNewTarget, false);
-                    /*
-                    if(getItemID() == Unit_Sandworm) {
-                        doSetAttackMode(HUNT);   -- Don't automatically set sandworms to HUNT mode, this makes them too aggressive
-                    }*/
-                } else if(attackMode == HUNT) {
-                    setGuardPoint(location);
-                    doSetAttackMode(AMBUSH);
-                }
-
-                // reset target timer
-                findTargetTimer = MILLI2CYCLES(2*1000);
+            if(target && !attackPos && !forced &&
+               (attackMode == GUARD || attackMode == AREAGUARD || attackMode == HUNT) &&
+               !isInWeaponRange(target.getObjPointer())) {
+                enqueueTargetRequest(TargetRequestKind::Refresh);
+            } else if(!target && !attackPos && !moving && !justStoppedMoving && !forced) {
+                enqueueTargetRequest(TargetRequestKind::Acquire);
             }
         }
-
     }
 
     engageTarget();
+}
+
+void UnitBase::resolvePendingTargetRequest() {
+    TargetRequestKind request = pendingTargetRequest;
+    pendingTargetRequest = TargetRequestKind::None;
+
+    if(findTargetTimer < 0) {
+        findTargetTimer = 0;
+    }
+
+    if(request == TargetRequestKind::None || currentGame == nullptr) {
+        return;
+    }
+
+    if(location.isInvalid()) {
+        findTargetTimer = MILLI2CYCLES(2*1000);
+        return;
+    }
+
+    if(attackMode == STOP || attackMode == CARRYALLREQUESTED) {
+        findTargetTimer = MILLI2CYCLES(2*1000);
+        return;
+    }
+
+    if(request == TargetRequestKind::Refresh) {
+        if(target && !attackPos && !forced &&
+           (attackMode == GUARD || attackMode == AREAGUARD || attackMode == HUNT) &&
+           !isInWeaponRange(target.getObjPointer())) {
+            const ObjectBase* pNewTarget = findTarget();
+
+            if(pNewTarget != nullptr) {
+                doAttackObject(pNewTarget, false);
+                findTargetTimer = 500;
+                return;
+            }
+        }
+
+        request = TargetRequestKind::Acquire;
+    }
+
+    if(request == TargetRequestKind::Acquire) {
+        if(!target && !attackPos && !moving && !justStoppedMoving && !forced) {
+            const ObjectBase* pNewTarget = findTarget();
+
+            if(pNewTarget != nullptr && isInGuardRange(pNewTarget)) {
+                if(attackMode == AMBUSH) {
+                    doSetAttackMode(HUNT);
+                }
+                doAttackObject(pNewTarget, false);
+            } else if(attackMode == HUNT) {
+                setGuardPoint(location);
+                doSetAttackMode(AMBUSH);
+            }
+
+            findTargetTimer = MILLI2CYCLES(2*1000);
+        } else {
+            findTargetTimer = MILLI2CYCLES(2*1000);
+        }
+    }
+}
+
+void UnitBase::resolvePendingPathRequest() {
+    pathRequestQueued = false;
+
+    if(currentGame == nullptr) {
+        recalculatePathTimer = 0;
+        return;
+    }
+
+    if(location.isInvalid() || destination.isInvalid()) {
+        recalculatePathTimer = 0;
+        return;
+    }
+
+    recalculatePathTimer = 100;
+
+    if(!SearchPathWithAStar()) {
+        if((++noCloserPointCount >= 3) && (location != oldLocation)) {
+            if (target.getObjPointer() != nullptr && targetFriendly
+                && (target.getObjPointer()->getItemID() != Structure_RepairYard)
+                && ((target.getObjPointer()->getItemID() != Structure_Refinery)
+                || (getItemID() != Unit_Harvester))) {
+                setTarget(nullptr);
+            }
+
+            if(getOwner()->hasCarryalls()
+               && this->isAGroundUnit()
+               && (currentGame->getGameInitSettings().getGameOptions().manualCarryallDrops || getOwner()->isAI())
+               && blockDistance(location, destination) >= MIN_CARRYALL_LIFT_DISTANCE ) {
+               static_cast<GroundUnit*>(this)->requestCarryall();
+            } else if(  getOwner()->isAI()
+                        && (getItemID() == Unit_Harvester)
+                        && !static_cast<Harvester*>(this)->isReturning()
+                        && blockDistance(location, destination) >= 2) {
+                static_cast<Harvester*>(this)->doReturn();
+            } else {
+                setDestination(location);
+                forced = false;
+            }
+        }
+    }
 }
 
 void UnitBase::turn() {

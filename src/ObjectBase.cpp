@@ -23,6 +23,7 @@
 #include <FileClasses/music/MusicPlayer.h>
 
 #include <Game.h>
+#include <SpatialGrid.h>
 #include <House.h>
 #include <SoundPlayer.h>
 #include <Map.h>
@@ -70,6 +71,7 @@
 #include <units/Trooper.h>
 
 #include <array>
+#include <vector>
 
 ObjectBase::ObjectBase(House* newOwner) : originalHouseID(newOwner->getHouseID()), owner(newOwner) {
     ObjectBase::init();
@@ -100,6 +102,8 @@ ObjectBase::ObjectBase(House* newOwner) : originalHouseID(newOwner->getHouseID()
     attackMode = GUARD;
 
     setVisible(VIS_ALL, false);
+
+    gridHandle.invalidate();
 }
 
 ObjectBase::ObjectBase(InputStream& stream) {
@@ -147,6 +151,8 @@ ObjectBase::ObjectBase(InputStream& stream) {
 
     for (decltype(visible.size()) i = 0; i < visible.size(); ++i)
         visible[i] = b[i];
+
+    gridHandle.invalidate();
 }
 
 void ObjectBase::init() {
@@ -169,7 +175,11 @@ void ObjectBase::init() {
 
 }
 
-ObjectBase::~ObjectBase() = default;
+ObjectBase::~ObjectBase() {
+    if(gridHandle.owner != nullptr) {
+        gridHandle.owner->unregister(gridHandle);
+    }
+}
 
 void ObjectBase::save(OutputStream& stream) const {
     stream.writeUint32(originalHouseID);
@@ -278,7 +288,13 @@ void ObjectBase::setHealth(FixPoint newHealth) {
 }
 
 void ObjectBase::setLocation(int xPos, int yPos) {
+    SpatialGrid* spatialGrid = (currentGame != nullptr) ? currentGame->getSpatialGrid() : nullptr;
+    const Coord previousLocation = location;
+
     if((xPos == INVALID_POS) && (yPos == INVALID_POS)) {
+        if(spatialGrid != nullptr && gridHandle.isValid()) {
+            spatialGrid->unregister(gridHandle);
+        }
         location.invalidate();
     } else if (currentGameMap->tileExists(xPos, yPos))  {
         location.x = xPos;
@@ -287,6 +303,10 @@ void ObjectBase::setLocation(int xPos, int yPos) {
         realY = location.y*TILESIZE;
 
         assignToMap(location);
+
+        if(spatialGrid != nullptr) {
+            spatialGrid->move(*this, gridHandle, previousLocation, location);
+        }
     }
 }
 
@@ -357,6 +377,241 @@ Uint32 ObjectBase::getHealthColor() const {
     }
 }
 
+namespace {
+
+bool isDeprioritizedTarget(const ObjectBase& candidate) {
+    return candidate.getItemID() == Structure_Wall || candidate.getItemID() == Unit_Carryall;
+}
+
+bool isTileVisibleToSeeker(const ObjectBase& seeker, const Coord& tileCoord) {
+    if(!currentGameMap->tileExists(tileCoord)) {
+        return false;
+    }
+
+    const Tile* tile = currentGameMap->getTile(tileCoord);
+    const int teamId = seeker.getOwner()->getTeamID();
+
+    return tile->isExploredByTeam(teamId) && !tile->isFoggedByTeam(teamId);
+}
+
+const ObjectBase* findClosestTargetLegacy(const ObjectBase& seeker) {
+    const Coord seekerLocation = seeker.getLocation();
+    if(!seekerLocation.isValid()) {
+        return nullptr;
+    }
+
+    const int maxRadiusX = std::max(seekerLocation.x, currentGameMap->getSizeX() - 1 - seekerLocation.x);
+    const int maxRadiusY = std::max(seekerLocation.y, currentGameMap->getSizeY() - 1 - seekerLocation.y);
+    const int maxRadius = std::max(maxRadiusX, maxRadiusY);
+
+    for(int radius = 1; radius <= maxRadius; ++radius) {
+        for(int dx = -radius; dx <= radius; ++dx) {
+            for(int dy = -radius; dy <= radius; ++dy) {
+                if(std::abs(dx) != radius && std::abs(dy) != radius) {
+                    continue;
+                }
+
+                const Coord checkCoord(seekerLocation.x + dx, seekerLocation.y + dy);
+                if(!currentGameMap->tileExists(checkCoord)) {
+                    continue;
+                }
+
+                Tile* tile = currentGameMap->getTile(checkCoord);
+                if(!tile->hasAnObject()) {
+                    continue;
+                }
+
+                ObjectBase* candidate = tile->getObject();
+                if(candidate != nullptr && seeker.canAttack(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+const ObjectBase* findTargetLegacy(const ObjectBase& seeker, int checkRange) {
+    const Coord seekerLocation = seeker.getLocation();
+    if(!seekerLocation.isValid()) {
+        return nullptr;
+    }
+
+    ObjectBase* closestTarget = nullptr;
+    auto closestDistance = FixPt_MAX;
+
+    for(int ring = 0; ring <= checkRange; ++ring) {
+        for(int dx = -ring; dx <= ring; ++dx) {
+            for(int dy = -ring; dy <= ring; ++dy) {
+                if(std::abs(dx) != ring && std::abs(dy) != ring) {
+                    continue;
+                }
+
+                const Coord checkCoord(seekerLocation.x + dx, seekerLocation.y + dy);
+                if(!currentGameMap->tileExists(checkCoord)) {
+                    continue;
+                }
+
+                const FixPoint distance = blockDistance(seekerLocation, checkCoord);
+                if(distance > FixPoint(checkRange)) {
+                    continue;
+                }
+
+                Tile* tile = currentGameMap->getTile(checkCoord);
+                if(tile->hasAnObject() == false) {
+                    continue;
+                }
+
+                if(!isTileVisibleToSeeker(seeker, checkCoord)) {
+                    continue;
+                }
+
+                ObjectBase* candidate = tile->getObject();
+                if(candidate == nullptr) {
+                    continue;
+                }
+
+                if(isDeprioritizedTarget(*candidate) && closestTarget != nullptr) {
+                    continue;
+                }
+
+                if(seeker.canAttack(candidate) && distance < closestDistance) {
+                    closestTarget = candidate;
+                    closestDistance = distance;
+                }
+            }
+        }
+
+        if(closestTarget != nullptr) {
+            break;
+        }
+    }
+
+    return closestTarget;
+}
+
+const ObjectBase* findTargetViaGrid(const ObjectBase& seeker,
+                                    const SpatialGrid& grid,
+                                    int checkRange,
+                                    bool huntMode) {
+    const Coord seekerLocation = seeker.getLocation();
+    if(!seekerLocation.isValid()) {
+        return nullptr;
+    }
+
+    const Coord centerCell = grid.clampToCell(seekerLocation);
+    if(!centerCell.isValid()) {
+        return nullptr;
+    }
+
+    const int cellSize = grid.getCellSize();
+    const int gridWidth = grid.getGridWidth();
+    const int gridHeight = grid.getGridHeight();
+
+    const int maxRadiusX = std::max(centerCell.x, gridWidth - 1 - centerCell.x);
+    const int maxRadiusY = std::max(centerCell.y, gridHeight - 1 - centerCell.y);
+    const int maxReachableRadius = std::max(maxRadiusX, maxRadiusY);
+
+    int searchRadius = 0;
+    if(huntMode) {
+        searchRadius = maxReachableRadius;
+    } else {
+        searchRadius = std::min((checkRange + cellSize - 1) / cellSize, maxReachableRadius);
+    }
+
+    std::vector<SpatialGridEntry> entries;
+    entries.reserve(16);
+
+    const ObjectBase* bestTarget = nullptr;
+    auto bestDistance = FixPt_MAX;
+
+    for(int ring = 0; ring <= searchRadius; ++ring) {
+        bool ringProducedCandidate = false;
+
+        for(int dx = -ring; dx <= ring; ++dx) {
+            for(int dy = -ring; dy <= ring; ++dy) {
+                if(ring != 0 && std::max(std::abs(dx), std::abs(dy)) != ring) {
+                    continue;
+                }
+
+                Coord cell(centerCell.x + dx, centerCell.y + dy);
+                if(!grid.isCellCoordValid(cell)) {
+                    continue;
+                }
+
+                entries.clear();
+                if(!grid.collectEntries(cell, entries)) {
+                    continue;
+                }
+
+                for(const SpatialGridEntry& entry : entries) {
+                    ObjectBase* candidate = entry.object;
+                    if(candidate == nullptr || candidate == &seeker) {
+                        continue;
+                    }
+
+                    const SpatialGridHandle& candidateHandle = candidate->getGridHandle();
+                    if(!candidateHandle.matches(entry.key.objectId, entry.key.generation)) {
+                        continue;
+                    }
+
+                    if(!seeker.canAttack(candidate)) {
+                        continue;
+                    }
+
+                    const Coord candidatePoint = candidate->getClosestPoint(seekerLocation);
+                    if(!isTileVisibleToSeeker(seeker, candidatePoint)) {
+                        continue;
+                    }
+
+                    const FixPoint distance = blockDistance(seekerLocation, candidatePoint);
+                    if(!huntMode && distance > FixPoint(checkRange)) {
+                        continue;
+                    }
+
+                    const bool candidateDeprioritized = isDeprioritizedTarget(*candidate);
+                    if(candidateDeprioritized && bestTarget != nullptr) {
+                        continue;
+                    }
+
+                    const bool bestIsDeprioritized = (bestTarget != nullptr) && isDeprioritizedTarget(*bestTarget);
+
+                    if(distance < bestDistance ||
+                       (bestIsDeprioritized && !candidateDeprioritized)) {
+                        bestTarget = candidate;
+                        bestDistance = distance;
+                        ringProducedCandidate = true;
+                    }
+                }
+            }
+        }
+
+        if(bestTarget != nullptr) {
+            const FixPoint nextRingLowerBound = FixPoint((ring + 1) * cellSize);
+            if(bestDistance <= nextRingLowerBound || ring == searchRadius) {
+                break;
+            }
+        } else if(!huntMode) {
+            const int ringOuterBound = (ring + 1) * cellSize;
+            if(ringOuterBound > checkRange) {
+                break;
+            }
+        }
+
+        if(!ringProducedCandidate && !huntMode) {
+            const int ringOuterBound = (ring + 1) * cellSize;
+            if(ringOuterBound > checkRange) {
+                break;
+            }
+        }
+    }
+
+    return bestTarget;
+}
+
+} // namespace
+
 Coord ObjectBase::getClosestPoint(const Coord& point) const {
     return location;
 }
@@ -402,55 +657,19 @@ const UnitBase* ObjectBase::findClosestTargetUnit() const {
 }
 
 const ObjectBase* ObjectBase::findClosestTarget() const {
-    // Start with small radius and expand outward
-    int maxRadius = std::max(currentGameMap->getSizeX(), currentGameMap->getSizeY());
-    
-    // Search in expanding rings
-    for(int radius = 1; radius <= maxRadius; radius++) {
-        // Check each coordinate in the current ring
-        for(int dx = -radius; dx <= radius; dx++) {
-            for(int dy = -radius; dy <= radius; dy++) {
-                // Only check coordinates that form the ring (not the inside)
-                if(abs(dx) != radius && abs(dy) != radius) {
-                    continue;
-                }
-
-                int checkX = location.x + dx;
-                int checkY = location.y + dy;
-
-                // Skip if outside map bounds
-                if(!currentGameMap->tileExists(checkX, checkY)) {
-                    continue;
-                }
-
-                Tile* pTile = currentGameMap->getTile(checkX, checkY);
-                if(!pTile->hasAnObject()) {
-                    continue;
-                }
-
-                ObjectBase* pObject = pTile->getObject();
-                if(canAttack(pObject)) {
-                    return pObject;  // Found a valid target, return immediately
-                }
-            }
+    if(const SpatialGrid* grid = currentGame->getSpatialGrid()) {
+        if(const ObjectBase* target = findTargetViaGrid(*this, *grid, 0, true)) {
+            return target;
         }
     }
 
-    return nullptr;  // No target found
+    return findClosestTargetLegacy(*this);
 }
 
 const ObjectBase* ObjectBase::findTarget() const {
-    //searches for a target in an area like as shown below
-    //
-    //                    *
-    //                  *****
-    //                  *****
-    //                 ***T***
-    //                  *****
-    //                  *****
-    //                    *
+    int checkRange = 0;
+    bool huntMode = false;
 
-    auto checkRange = 0;
     switch(attackMode) {
         case GUARD: {
             checkRange = getWeaponRange();
@@ -465,8 +684,7 @@ const ObjectBase* ObjectBase::findTarget() const {
         } break;
 
         case HUNT: {
-            // check whole map
-            return findClosestTarget();
+            huntMode = true;
         } break;
 
         case STOP:
@@ -475,62 +693,17 @@ const ObjectBase* ObjectBase::findTarget() const {
         } break;
     }
 
-    if(getItemID() == Unit_Sandworm) {
+    if(!huntMode && getItemID() == Unit_Sandworm) {
         checkRange = getViewRange();
     }
 
-    ObjectBase *pClosestTarget = nullptr;
-    auto closestTargetDistance = FixPt_MAX;
-
-    // Start from center and expand outward in rings
-    for(auto ring = 0; ring <= checkRange; ring++) {
-        // Check each point in the current ring
-        for(auto x = -ring; x <= ring; x++) {
-            for(auto y = -ring; y <= ring; y++) {
-                // Only check points on the ring's perimeter
-                if(std::abs(x) != ring && std::abs(y) != ring) {
-                    continue;
-                }
-
-                const auto checkX = location.x + x;
-                const auto checkY = location.y + y;
-
-                // Skip if out of bounds
-                if(checkX < 0 || checkX >= currentGameMap->getSizeX() ||
-                   checkY < 0 || checkY >= currentGameMap->getSizeY()) {
-                    continue;
-                }
-
-                const auto targetDistance = blockDistance(location, Coord(checkX, checkY));
-                if(targetDistance <= checkRange) {
-                    Tile* pTile = currentGameMap->getTile(Coord(checkX, checkY));
-                    if(pTile->isExploredByTeam(getOwner()->getTeamID()) &&
-                       !pTile->isFoggedByTeam(getOwner()->getTeamID()) &&
-                       pTile->hasAnObject()) {
-
-                        const auto pNewTarget = pTile->getObject();
-                        if(((pNewTarget->getItemID() != Structure_Wall && 
-                             pNewTarget->getItemID() != Unit_Carryall) || 
-                            pClosestTarget == nullptr) && 
-                           canAttack(pNewTarget)) {
-                            if(targetDistance < closestTargetDistance) {
-                                pClosestTarget = pNewTarget;
-                                closestTargetDistance = targetDistance;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // If we found a target in this ring, we can stop searching
-        // as we won't find a closer one in outer rings
-        if(pClosestTarget != nullptr) {
-            break;
+    if(const SpatialGrid* grid = currentGame->getSpatialGrid()) {
+        if(const ObjectBase* target = findTargetViaGrid(*this, *grid, checkRange, huntMode)) {
+            return target;
         }
     }
 
-    return pClosestTarget;
+    return huntMode ? findClosestTargetLegacy(*this) : findTargetLegacy(*this, checkRange);
 }
 
 int ObjectBase::getViewRange() const {
