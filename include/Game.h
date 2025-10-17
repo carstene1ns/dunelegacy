@@ -615,7 +615,7 @@ private:
     void initializeGameLoop();
     void renderFrame();
     void processInput();
-    void processNetwork();
+    bool processNetwork();
     void updateGameState();
     bool handleNetworkUpdates();
     void initializeReplay();

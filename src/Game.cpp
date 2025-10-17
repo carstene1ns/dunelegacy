@@ -942,7 +942,9 @@ void Game::runMainLoop() {
             if(skipToGameCycle != INVALID_GAMECYCLE) {
                 int updates = 0;
                 while((gameCycleCount < skipToGameCycle) && (updates < MAX_UPDATES_PER_FRAME)) {
-                    processNetwork();
+                    if(!processNetwork()) {
+                        break;
+                    }
                     updateGameState();
                     updates++;
                 }
@@ -956,7 +958,9 @@ void Game::runMainLoop() {
                 int updates = 0;
                 
                 while(accumulator >= updateInterval && updates < MAX_UPDATES_PER_FRAME) {
-                    processNetwork();
+                    if(!processNetwork()) {
+                        break;
+                    }
                     updateGameState();
                     accumulator -= updateInterval;
                     updates++;
@@ -1072,13 +1076,14 @@ void Game::processInput() {
                 }
             }
 
-void Game::processNetwork() {
+bool Game::processNetwork() {
     if(pNetworkManager != nullptr) {
-        bool bWaitForNetwork = handleNetworkUpdates();
-        if(bWaitForNetwork) {
-            return;
+        if(handleNetworkUpdates()) {
+            return false;
         }
     }
+
+    return true;
 }
 
 void Game::updateGameState() {
