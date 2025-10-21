@@ -1084,7 +1084,12 @@ void Game::runMainLoop() {
         frameTime += actualFrameTime;
         frameStart = frameEnd;
 
-        // FPS limiter REMOVED per user request
+        // Software FPS limiter at 60 FPS for consistent frame pacing
+        // VSync is disabled to avoid compositor blocking, so we use software limiting instead
+        const int targetFrameTime = 16; // 60 FPS = 16.67ms per frame
+        if(actualFrameTime < targetFrameTime) {
+            SDL_Delay(targetFrameTime - actualFrameTime);
+        }
 
         if(bShowFPS) {
             // Use actual frame time, not the accumulator
