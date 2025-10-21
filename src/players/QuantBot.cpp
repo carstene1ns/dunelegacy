@@ -1692,14 +1692,36 @@ void QuantBot::build(int militaryValue) {
 							else if (itemCount[Structure_IX] == 0 && pBuilder->isAvailableToBuild(Structure_IX) && money > 1000) {
 								itemID = Structure_IX; // House of IX for special units (after essential production buildings)
 							}
-							// HIGH PRIORITY: Heavy factories when we have good economy and infrastructure
-							else if (money > 3000 && pBuilder->isAvailableToBuild(Structure_HeavyFactory)
-								&& itemCount[Structure_IX] >= 1 && itemCount[Structure_RepairYard] >= 1
-								&& (activeHeavyFactoryCount >= itemCount[Structure_HeavyFactory] || itemCount[Structure_HeavyFactory] < money / 4000)) {
-								// Build heavy factories when we have good credits, infrastructure, and need production capacity
-								itemID = Structure_HeavyFactory;
-								logDebug("PRIORITY Heavy Factory - active: %d  total: %d  money: %d  capacity_limit: %d", activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory), money, money / 4000);
+						// HIGH PRIORITY: Heavy factories when we have good economy and infrastructure
+						// Requirements are progressive based on tech level:
+						// Tech 4: No prerequisites (just money and need)
+						// Tech 5-6: Require Repair Yard
+						// Tech 7+: Require Repair Yard + IX
+						else if (money > 3000 && pBuilder->isAvailableToBuild(Structure_HeavyFactory)
+							&& (activeHeavyFactoryCount >= itemCount[Structure_HeavyFactory] || itemCount[Structure_HeavyFactory] < money / 4000)) {
+							
+							int techLevel = currentGame ? currentGame->techLevel : 8;
+							bool prerequisitesMet = false;
+							
+							if (techLevel <= 4) {
+								// Tech 4: Can build additional Heavy Factories without prerequisites
+								prerequisitesMet = true;
 							}
+							else if (techLevel <= 6) {
+								// Tech 5-6: Require Repair Yard
+								prerequisitesMet = (itemCount[Structure_RepairYard] >= 1);
+							}
+							else {
+								// Tech 7+: Require both Repair Yard and IX
+								prerequisitesMet = (itemCount[Structure_RepairYard] >= 1 && itemCount[Structure_IX] >= 1);
+							}
+							
+							if (prerequisitesMet) {
+								itemID = Structure_HeavyFactory;
+								logDebug("PRIORITY Heavy Factory - active: %d  total: %d  money: %d  capacity_limit: %d  tech: %d", 
+									activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory), money, money / 4000, techLevel);
+							}
+						}
 							// If we need more refinerys for our harvesters or we don't have a heavy factory
 							else if (((itemCount[Structure_Refinery] * 3.5_fix < harvesterLimit)
 							|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
