@@ -637,17 +637,22 @@ void Tile::setType(int newType) {
 
 void Tile::squash() const {
     if (!hasInfantry()) return;
+    if (currentGame == nullptr) return; // Safety check during cleanup
 
-    auto iter = assignedInfantryList.begin();
-    do {
-        InfantryBase* current = static_cast<InfantryBase*>(currentGame->getObjectManager().getObject(*iter));
-        ++iter;
+    // Copy IDs to avoid iterator invalidation when units are destroyed
+    std::vector<Uint32> infantryIDs;
+    infantryIDs.reserve(assignedInfantryList.size());
+    for (Uint32 id : assignedInfantryList) {
+        infantryIDs.push_back(id);
+    }
 
-        if(current == nullptr)
-            continue;
-
-        current->squash();
-    } while(iter != assignedInfantryList.end());
+    // Now safely iterate and squash
+    for (Uint32 id : infantryIDs) {
+        InfantryBase* current = dynamic_cast<InfantryBase*>(currentGame->getObjectManager().getObject(id));
+        if (current != nullptr) {
+            current->squash();
+        }
+    }
 }
 
 
