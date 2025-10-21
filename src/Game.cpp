@@ -254,7 +254,12 @@ void Game::initReplay(const std::string& filename) {
 void Game::processObjects()
 {
     processTargetRequests();
+    
+    // Time pathfinding
+    Uint64 pathStart = SDL_GetPerformanceCounter();
     processPathRequests();
+    Uint64 pathEnd = SDL_GetPerformanceCounter();
+    frameTiming.pathfindingMs += getElapsedMs(pathStart, pathEnd);
 
     // update all tiles
     for(int y = 0; y < currentGameMap->getSizeY(); y++) {
@@ -263,17 +268,25 @@ void Game::processObjects()
         }
     }
 
+    // Time structure updates
+    Uint64 structStart = SDL_GetPerformanceCounter();
     for(StructureBase* pStructure : structureList) {
         pStructure->update();
     }
+    Uint64 structEnd = SDL_GetPerformanceCounter();
+    frameTiming.structuresMs += getElapsedMs(structStart, structEnd);
 
     if ((currentCursorMode == CursorMode_Placing) && selectedList.empty()) {
         setCursorMode(CursorMode_Normal);
     }
 
+    // Time unit updates
+    Uint64 unitStart = SDL_GetPerformanceCounter();
     for(UnitBase* pUnit : unitList) {
         pUnit->update();
     }
+    Uint64 unitEnd = SDL_GetPerformanceCounter();
+    frameTiming.unitsMs += getElapsedMs(unitStart, unitEnd);
 
     for(Bullet* pBullet : bulletList) {
         pBullet->update();
@@ -1115,6 +1128,8 @@ void Game::initializeGameLoop() {
 }
 
 void Game::renderFrame() {
+    const Uint64 renderStart = SDL_GetPerformanceCounter();
+    
     SDL_SetRenderTarget(renderer, screenTexture);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -1125,6 +1140,9 @@ void Game::renderFrame() {
     SDL_SetRenderTarget(renderer, nullptr);
     SDL_RenderCopy(renderer, screenTexture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
+    
+    const Uint64 renderEnd = SDL_GetPerformanceCounter();
+    frameTiming.renderingMs += getElapsedMs(renderStart, renderEnd);
 }
 
 void Game::processInput() {
@@ -1165,6 +1183,8 @@ void Game::updateGameState() {
         return;
     }
 
+    const Uint64 frameStart = SDL_GetPerformanceCounter();
+
     pInterface->getRadarView().update();
     cmdManager.executeCommands(gameCycleCount);
 
@@ -1197,6 +1217,18 @@ void Game::updateGameState() {
     }
     
     musicPlayer->musicCheck();
+
+    // Record total frame time
+    const Uint64 frameEnd = SDL_GetPerformanceCounter();
+    frameTiming.totalMs += getElapsedMs(frameStart, frameEnd);
+    frameTiming.frameCount++;
+
+    // Log timing stats every 2 seconds
+    const Uint32 now = SDL_GetTicks();
+    if(now - lastTimingLogMs >= 2000) {
+        logFrameTiming();
+        lastTimingLogMs = now;
+    }
 }
 
 void Game::initializeReplay() {
@@ -1250,6 +1282,28 @@ void Game::pauseGame() {
     bPause = true;
 }
 
+void Game::logFrameTiming() {
+    if(frameTiming.frameCount <= 0) {
+        return;
+    }
+
+    const double avgUnits = frameTiming.unitsMs / frameTiming.frameCount;
+    const double avgStructures = frameTiming.structuresMs / frameTiming.frameCount;
+    const double avgPathfinding = frameTiming.pathfindingMs / frameTiming.frameCount;
+    const double avgRendering = frameTiming.renderingMs / frameTiming.frameCount;
+    const double avgTotal = frameTiming.totalMs / frameTiming.frameCount;
+
+    SDL_Log("[Performance] Avg frame: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms | Frames: %d",
+        avgTotal, avgUnits, avgStructures, avgPathfinding, avgRendering, frameTiming.frameCount);
+
+    // Reset counters
+    frameTiming.unitsMs = 0.0;
+    frameTiming.structuresMs = 0.0;
+    frameTiming.pathfindingMs = 0.0;
+    frameTiming.renderingMs = 0.0;
+    frameTiming.totalMs = 0.0;
+    frameTiming.frameCount = 0;
+}
 
 void Game::onOptions()
 {

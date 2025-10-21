@@ -642,6 +642,26 @@ private:
     void initializeNetwork();
     void processTargetRequests();
     void processPathRequests();
+
+    // Performance timing system
+    struct FrameTiming {
+        double unitsMs = 0.0;
+        double structuresMs = 0.0;
+        double pathfindingMs = 0.0;
+        double renderingMs = 0.0;
+        double totalMs = 0.0;
+        int frameCount = 0;
+    };
+
+    FrameTiming frameTiming;
+    Uint32 lastTimingLogMs = 0;
+
+    inline double getElapsedMs(Uint64 start, Uint64 end) const {
+        const Uint64 frequency = SDL_GetPerformanceFrequency();
+        return (static_cast<double>(end - start) / static_cast<double>(frequency)) * 1000.0;
+    }
+
+    void logFrameTiming();
 };
 
 #endif // GAME_H
