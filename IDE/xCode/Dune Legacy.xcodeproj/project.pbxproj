@@ -2300,10 +2300,10 @@
 				GCC_ENABLE_SSE41_EXTENSIONS = YES;
 				GCC_ENABLE_SSE42_EXTENSIONS = YES;
 				GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS = YES;
-				GCC_FEEDBACK_DIRECTED_OPTIMIZATION = GenerateProfile;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_FEEDBACK_DIRECTED_OPTIMIZATION = OFF;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					../../include,
@@ -2315,17 +2315,12 @@
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				LLVM_LTO = YES;
+				LLVM_LTO = NO;
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 0.98.4;
-				ONLY_ACTIVE_ARCH = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
-				OTHER_CPLUSPLUSFLAGS = (
-					"-ffast-math",
-					"-funroll-loops",
-					"-fvectorize",
-					"-fslp-vectorize",
-				);
+				OTHER_CPLUSPLUSFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-dylib_file",
 					"@loader_path/Frameworks/mikmod.framework/Versions/A/mikmod:/Library/Frameworks/SDL2_mixer.framework/Versions/A/Frameworks/mikmod.framework/Versions/A/mikmod",
@@ -2413,13 +2408,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/external/frameworks",
 					"$(FRAMEWORK_SEARCH_PATHS)",
 				);
-				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"HAS_POLL=1",
 					"HAS_FCNTL=1",
