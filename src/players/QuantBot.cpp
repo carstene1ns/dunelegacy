@@ -859,6 +859,93 @@ Coord QuantBot::findPlaceLocation(Uint32 itemID) {
 	return bestLocation;
 }
 
+Coord QuantBot::findPlaceLocationSimple(Uint32 itemID) {
+	int newSizeX = getStructureSize(itemID).x;
+	int newSizeY = getStructureSize(itemID).y;
+	
+	squadRallyLocation = findSquadRallyLocation();
+	
+	FixPoint bestScore = -FixPt_MAX;
+	Coord bestLocation = Coord::Invalid();
+	
+	// Check every tile on the map for valid placement
+	for (int x = 0; x <= getMap().getSizeX() - newSizeX; x++) {
+		for (int y = 0; y <= getMap().getSizeY() - newSizeY; y++) {
+			// First check if this location is valid for building
+			if (getMap().okayToPlaceStructure(x, y, newSizeX, newSizeY, false, 
+				(itemID == Structure_ConstructionYard) ? nullptr : getHouse())) {
+				
+				FixPoint score = 0;
+				
+				// Base scoring - favor being close to existing buildings
+				FixPoint closestOwnBuildingDistance = FixPt_MAX;
+				for (const StructureBase* pStructure : getStructureList()) {
+					if (pStructure->getOwner() == getHouse()) {
+						FixPoint distance = blockDistance(Coord(x, y), Coord(pStructure->getX(), pStructure->getY()));
+						if (distance < closestOwnBuildingDistance) {
+							closestOwnBuildingDistance = distance;
+						}
+					}
+				}
+				if (closestOwnBuildingDistance < FixPt_MAX) {
+					score += 50 - closestOwnBuildingDistance; // Bonus for being close to our buildings
+				}
+				
+				// Building-specific placement preferences
+				if (itemID == Structure_GunTurret || itemID == Structure_RocketTurret) {
+					// Turrets prefer map edges for defensive positioning
+					int distanceToEdge = std::min({x, y, getMap().getSizeX() - 1 - x, getMap().getSizeY() - 1 - y});
+					score += (10 - distanceToEdge) * 5; // Higher score for being closer to edges
+					
+					// Rocket turrets also prefer being close to squad rally point
+					if (itemID == Structure_RocketTurret) {
+						FixPoint distanceToRally = blockDistance(squadRallyLocation, Coord(x, y));
+						score += 30 - distanceToRally * 2; // Bonus for being close to rally point
+					}
+				}
+				else if (itemID == Structure_Refinery) {
+					// Refineries prefer being close to spice deposits
+					FixPoint closestSpiceDistance = FixPt_MAX;
+					for (int spiceX = 0; spiceX < getMap().getSizeX(); spiceX++) {
+						for (int spiceY = 0; spiceY < getMap().getSizeY(); spiceY++) {
+							if (getMap().tileExists(spiceX, spiceY) && getMap().getTile(spiceX, spiceY)->hasSpice()) {
+								FixPoint spiceDistance = blockDistance(Coord(x, y), Coord(spiceX, spiceY));
+								if (spiceDistance < closestSpiceDistance) {
+									closestSpiceDistance = spiceDistance;
+								}
+							}
+						}
+					}
+					if (closestSpiceDistance < FixPt_MAX) {
+						score += 50 - closestSpiceDistance * 2; // Higher bonus for being closer to spice
+					}
+				}
+				else if (itemID == Structure_HeavyFactory || itemID == Structure_LightFactory || 
+						 itemID == Structure_WOR || itemID == Structure_Barracks || itemID == Structure_StarPort) {
+					// Production buildings prefer being close to rally point and base center
+					FixPoint distanceToRally = blockDistance(squadRallyLocation, Coord(x, y));
+					FixPoint distanceToBase = blockDistance(findBaseCentre(getHouse()->getHouseID()), Coord(x, y));
+					score += 20 - distanceToRally / 2; // Bonus for being close to rally point
+					score += 20 - distanceToBase; // Bonus for being close to base center
+				}
+				
+				// Favor map edges in general for defensive positioning
+				if (x == 0 || x == getMap().getSizeX() - newSizeX || y == 0 || y == getMap().getSizeY() - newSizeY) {
+					score += 10;
+				}
+				
+				// Check if this is the best location so far
+				if (score > bestScore) {
+					bestScore = score;
+					bestLocation = Coord(x, y);
+				}
+			}
+		}
+	}
+	
+	return bestLocation;
+}
+
 	
 void QuantBot::build(int militaryValue) {
 	int houseID = getHouse()->getHouseID();
