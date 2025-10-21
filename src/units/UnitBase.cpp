@@ -476,22 +476,14 @@ void UnitBase::engageTarget() {
         Coord targetLocation = target.getObjPointer()->getClosestPoint(location);
 
         if(destination != targetLocation) {
-            // Check how far the target has moved
+            // Only recalculate path if target moved significantly (> 1 tile)
+            // This prevents constant path recalculation for minor movement
             FixPoint movementDistance = blockDistance(destination, targetLocation);
-            
-            if(movementDistance > 3) {
-                // Target moved very far (>3 tiles) - clear path and stop
-                // Unit will wait for new path calculation
+            if(movementDistance > 1) {
+                // Target moved significantly, recalculate path
                 clearPath();
-            } else if(movementDistance > 1) {
-                // Target moved 1-3 tiles - keep following old path but queue new one
-                // This prevents stuttering while new path is being calculated
-                destination = targetLocation;
-                if(!pathRequestQueued) {
-                    enqueuePathRequest();
-                }
             } else {
-                // Minor movement (<1 tile) - just update destination, no recalc needed
+                // Minor movement, just update destination without clearing path
                 destination = targetLocation;
             }
         }
