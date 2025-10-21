@@ -1,6 +1,13 @@
-# Ornithopter Counter Priority Fix
+# AI Attack & Defense Improvements
 
-## Problem
+## Changes Summary
+
+1. **Ornithopter Counter Priority Fix** - AI builds turrets matching enemy ornithopter count
+2. **Attack Squad Limit Removed** - AI now sends all available units to attack (no 70-unit cap)
+
+---
+
+## Problem 1: Ornithopter Counter Not Working
 
 AI was not building rocket turrets to counter enemy ornithopters, despite having logic for it. The AI would build only 2 rocket turrets and then keep building refineries even while under heavy ornithopter attack.
 
@@ -138,9 +145,128 @@ Look for these in logs:
 ...
 ```
 
-## Summary
+## Summary (Ornithopter Counter)
 
 **Fixed:** Ornithopter counter now has **HIGHEST PRIORITY** in build order and will build turrets to **MATCH enemy ornithopter count** (not capped at 2).
 
 **Result:** AI will properly defend against air attacks by building sufficient rocket turrets before economic expansion.
+
+---
+
+## Problem 2: Attack Squad Size Limited to 70 Units
+
+The AI had an arbitrary limit of 70 units in attack squads. On large maps with many units, this prevented the AI from using its full military force, making it less aggressive and less challenging.
+
+### Root Cause
+
+**Hard-coded limit** in `attack()` method:
+
+```cpp
+int maxAttackSquadSize = 70; // max units that AI can send
+
+// Later in the code:
+if (attackSquadSize >= maxAttackSquadSize) {
+    logDebug("Attacking with %d units", attackSquadSize);
+    return; // Stop adding units - squad is full
+}
+```
+
+**Why this was bad:**
+- Large maps (128×128) can support 100+ military units
+- AI would only send 70 units, leaving 30+ units idle
+- Made AI less aggressive and easier to defeat
+- No strategic reason for this limit
+
+### Solution
+
+**Removed the squad size limit entirely:**
+
+```cpp
+// BEFORE (Limited):
+int maxAttackSquadSize = 70;
+if (attackSquadSize >= maxAttackSquadSize) {
+    return; // Stop at 70 units
+}
+
+// AFTER (Unlimited):
+// Send all available military units to attack (no squad size limit)
+doSetAttackMode(pUnit, HUNT);
+attackSquadSize++;
+```
+
+### Changes Made
+
+**File**: `src/players/QuantBot.cpp`
+
+**Removed** (line 1959):
+```cpp
+int maxAttackSquadSize = 70; // DELETED
+```
+
+**Simplified** (lines 1995-1999):
+```cpp
+// OLD:
+if (attackSquadSize >= maxAttackSquadSize) {
+    logDebug("Attacking with %d units", attackSquadSize);
+    return;
+}
+else {
+    doSetAttackMode(pUnit, HUNT);
+    attackSquadSize++;
+}
+
+// NEW:
+// Send all available military units to attack (no squad size limit)
+doSetAttackMode(pUnit, HUNT);
+attackSquadSize++;
+```
+
+### Expected Behavior
+
+**Before (Limited):**
+```
+AI has 100 military units
+Only 70 units sent to attack
+30 units remain idle at base
+Enemy easily defends against 70 units
+```
+
+**After (Unlimited):**
+```
+AI has 100 military units
+All 100 units sent to attack
+Massive overwhelming force
+Much more challenging to defend against
+```
+
+### Impact by Map Size
+
+| Map Size | Typical Military Units | Before (70 cap) | After (No cap) |
+|----------|------------------------|-----------------|----------------|
+| 32×32    | 20-30 units           | All sent ✓      | All sent ✓     |
+| 64×64    | 40-60 units           | All sent ✓      | All sent ✓     |
+| 128×128  | 100+ units            | 70 sent (30% idle) ❌ | All sent ✓ |
+
+### Notes
+
+- This makes the AI more aggressive and challenging
+- Combined with proper turret placement, creates better strategic gameplay
+- The `attackSquadSize` counter still exists for logging/diagnostics
+- Units excluded from attacks: Harvesters, MCVs, Carryalls, Ornithopters (have separate logic), Sandworms
+
+## Summary (Attack Squad Limit)
+
+**Fixed:** Removed arbitrary 70-unit cap on attack squads.
+
+**Result:** AI now uses its full military force, making it more aggressive and challenging, especially on large maps.
+
+---
+
+## Overall Impact
+
+These two changes together create a much more competent AI:
+1. ✅ **Defends properly** - Builds turrets to counter air threats
+2. ✅ **Attacks aggressively** - Sends all available units (no arbitrary limits)
+3. ✅ **Prioritizes correctly** - Defense before economy when under threat
+4. ✅ **Scales with map size** - Effective on both small and large maps
 

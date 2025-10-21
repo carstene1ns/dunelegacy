@@ -1080,13 +1080,15 @@ void Game::runMainLoop() {
         renderFrame();
 
         const int frameEnd = SDL_GetTicks();
-        frameTime += frameEnd - frameStart;
+        const int actualFrameTime = frameEnd - frameStart;  // Actual time for this frame
+        frameTime += actualFrameTime;
         frameStart = frameEnd;
 
         // FPS limiter REMOVED per user request
 
         if(bShowFPS) {
-            averageFrameTime = 0.99f * averageFrameTime + 0.01f * frameTime;
+            // Use actual frame time, not the accumulator
+            averageFrameTime = 0.99f * averageFrameTime + 0.01f * actualFrameTime;
         }
 
         if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {

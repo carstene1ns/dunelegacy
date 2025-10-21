@@ -1956,7 +1956,6 @@ void QuantBot::attack(int militaryValue) {
 	}
 
 	int attackSquadSize = 0; // how many units AI will send in attack squad
-	int maxAttackSquadSize = 70; // max units that AI can send
 	
 	// First count existing hunting units
 	for (const UnitBase* pUnit : getUnitList()) {
@@ -1994,14 +1993,9 @@ void QuantBot::attack(int militaryValue) {
 			&& pUnit->getItemID() != Unit_Sandworm)
 
 		{	
-			if (attackSquadSize >= maxAttackSquadSize) {
-				logDebug("Attacking with %d units", attackSquadSize);
-				return; // return if we have reached the squad size for the map
-			}
-			else {
-				doSetAttackMode(pUnit, HUNT);
-				attackSquadSize++;
-			}
+			// Send all available military units to attack (no squad size limit)
+			doSetAttackMode(pUnit, HUNT);
+			attackSquadSize++;
 		}
 	}
 	logDebug("Attacking with %d units", attackSquadSize);
