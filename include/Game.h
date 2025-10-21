@@ -630,7 +630,7 @@ private:
     std::unordered_set<Uint32> pendingPathRequestIds;
 
     static constexpr double TargetBudgetMs = 3.0;
-    static constexpr double PathBudgetMs = 6.0;
+    static constexpr double PathBudgetMs = 12.0;  // Increased for 32ms frames - handles 10-20ms spikes
     static constexpr std::size_t kPathNodeBudget = 2048;
 
     // Game loop methods
@@ -651,6 +651,7 @@ private:
         double structuresMs = 0.0;
         double pathfindingMs = 0.0;
         double renderingMs = 0.0;
+        double networkWaitMs = 0.0;
         double totalMs = 0.0;
         int gameCyclesThisFrame = 0;
         int totalGameCycles = 0;
@@ -668,6 +669,7 @@ private:
         double unitsMsThisFrame = 0.0;
         double structuresMsThisFrame = 0.0;
         double renderingMsThisFrame = 0.0;
+        double networkWaitMsThisFrame = 0.0;
         
         // Max values
         double maxAiMs = 0.0;
@@ -676,6 +678,7 @@ private:
         double maxPathfindingMs = 0.0;
         double maxPathfindingMsPerCycle = 0.0;
         double maxRenderingMs = 0.0;
+        double maxNetworkWaitMs = 0.0;
         double maxTotalMs = 0.0;
         int maxGameCyclesPerFrame = 0;
         int maxPathsPerCycle = 0;
@@ -688,6 +691,7 @@ private:
         double minStructuresMs = 999999.0;
         double minPathfindingMs = 999999.0;
         double minRenderingMs = 999999.0;
+        double minNetworkWaitMs = 999999.0;
     };
 
     FrameTiming frameTiming;

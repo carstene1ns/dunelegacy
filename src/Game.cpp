@@ -1073,6 +1073,7 @@ void Game::runMainLoop() {
         frameTiming.structuresMsThisFrame = 0.0;
         frameTiming.pathfindingMsThisFrame = 0.0;
         frameTiming.renderingMsThisFrame = 0.0;
+        frameTiming.networkWaitMsThisFrame = 0.0;
         
         // Reset pathfinding budget for this frame
         pathfindingBudgetRemainingMs = PathBudgetMs;
@@ -1110,6 +1111,7 @@ void Game::runMainLoop() {
         }
 
         while((frameTime > getGameSpeed()) || (!finished && (gameCycleCount < skipToGameCycle))) {
+            Uint64 networkWaitStart = SDL_GetPerformanceCounter();
             bool bWaitForNetwork = false;
             if(pNetworkManager != nullptr) {
                 bWaitForNetwork = handleNetworkUpdates();
@@ -1130,6 +1132,13 @@ void Game::runMainLoop() {
             if(!bWaitForNetwork && !bPause) {
                 updateGameState();
                 frameTiming.gameCyclesThisFrame++;
+            } else if(bWaitForNetwork) {
+                // Measure time spent waiting for network
+                Uint64 networkWaitEnd = SDL_GetPerformanceCounter();
+                const double networkWaitMs = getElapsedMs(networkWaitStart, networkWaitEnd);
+                frameTiming.networkWaitMs += networkWaitMs;
+                frameTiming.networkWaitMsThisFrame += networkWaitMs;
+                if(networkWaitMs > frameTiming.maxNetworkWaitMs) frameTiming.maxNetworkWaitMs = networkWaitMs;
             }
 
             if(gameCycleCount <= skipToGameCycle) {
@@ -1166,6 +1175,7 @@ void Game::runMainLoop() {
         if(frameTiming.structuresMsThisFrame < frameTiming.minStructuresMs) frameTiming.minStructuresMs = frameTiming.structuresMsThisFrame;
         if(frameTiming.pathfindingMsThisFrame < frameTiming.minPathfindingMs) frameTiming.minPathfindingMs = frameTiming.pathfindingMsThisFrame;
         if(frameTiming.renderingMsThisFrame < frameTiming.minRenderingMs) frameTiming.minRenderingMs = frameTiming.renderingMsThisFrame;
+        if(frameTiming.networkWaitMsThisFrame < frameTiming.minNetworkWaitMs) frameTiming.minNetworkWaitMs = frameTiming.networkWaitMsThisFrame;
         
         // Track max values (per frame)
         if(frameTiming.aiMsThisFrame > frameTiming.maxAiMs) frameTiming.maxAiMs = frameTiming.aiMsThisFrame;
@@ -1173,6 +1183,7 @@ void Game::runMainLoop() {
         if(frameTiming.structuresMsThisFrame > frameTiming.maxStructuresMs) frameTiming.maxStructuresMs = frameTiming.structuresMsThisFrame;
         if(frameTiming.pathfindingMsThisFrame > frameTiming.maxPathfindingMs) frameTiming.maxPathfindingMs = frameTiming.pathfindingMsThisFrame;
         if(frameTiming.renderingMsThisFrame > frameTiming.maxRenderingMs) frameTiming.maxRenderingMs = frameTiming.renderingMsThisFrame;
+        if(frameTiming.networkWaitMsThisFrame > frameTiming.maxNetworkWaitMs) frameTiming.maxNetworkWaitMs = frameTiming.networkWaitMsThisFrame;
         
         // Log every 30 seconds
         const Uint32 now = SDL_GetTicks();
@@ -1379,6 +1390,7 @@ void Game::logFrameTiming() {
     const double avgUnits = frameTiming.unitsMs / frameTiming.frameCount;
     const double avgStructures = frameTiming.structuresMs / frameTiming.frameCount;
     const double avgPathfinding = frameTiming.pathfindingMs / frameTiming.frameCount;
+    const double avgNetworkWait = frameTiming.networkWaitMs / frameTiming.frameCount;
     const double avgRendering = frameTiming.renderingMs / frameTiming.frameCount;
     const double avgTotal = frameTiming.totalMs / frameTiming.frameCount;
     const double avgFps = avgTotal > 0.0 ? 1000.0 / avgTotal : 0.0;
@@ -1407,15 +1419,17 @@ void Game::logFrameTiming() {
         frameTiming.minStructuresMs, avgStructures, frameTiming.maxStructuresMs);
     SDL_Log("[Performance] Pathfinding: min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minPathfindingMs, avgPathfinding, frameTiming.maxPathfindingMs);
+    SDL_Log("[Performance] NetworkWait: min=%.2fms avg=%.2fms max=%.2fms",
+        frameTiming.minNetworkWaitMs, avgNetworkWait, frameTiming.maxNetworkWaitMs);
     SDL_Log("[Performance] Rendering:  min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minRenderingMs, avgRendering, frameTiming.maxRenderingMs);
     SDL_Log("[Performance] Pathfinding Detail: %.1f paths/frame | %.2f paths/cycle | %.2fms/cycle | %.2fms/path",
         avgPathsPerFrame, avgPathsPerCycle, avgPathfindingPerCycle, avgMsPerPath);
     SDL_Log("[Performance] === PEAKS (worst case) ===");
-    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms",
+    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | NetworkWait: %.2fms | Rendering: %.2fms",
         maxFps, frameTiming.maxTotalMs,
         frameTiming.maxAiMs, frameTiming.maxUnitsMs, frameTiming.maxStructuresMs, 
-        frameTiming.maxPathfindingMs, frameTiming.maxRenderingMs);
+        frameTiming.maxPathfindingMs, frameTiming.maxNetworkWaitMs, frameTiming.maxRenderingMs);
     SDL_Log("[Performance] Pathfinding Peaks: %d paths/frame | %d paths/cycle | %.2fms/cycle",
         frameTiming.maxPathsPerFrame, frameTiming.maxPathsPerCycle, frameTiming.maxPathfindingMsPerCycle);
 
@@ -1424,6 +1438,7 @@ void Game::logFrameTiming() {
     frameTiming.unitsMs = 0.0;
     frameTiming.structuresMs = 0.0;
     frameTiming.pathfindingMs = 0.0;
+    frameTiming.networkWaitMs = 0.0;
     frameTiming.renderingMs = 0.0;
     frameTiming.totalMs = 0.0;
     frameTiming.totalGameCycles = 0;
@@ -1434,6 +1449,7 @@ void Game::logFrameTiming() {
     frameTiming.maxStructuresMs = 0.0;
     frameTiming.maxPathfindingMs = 0.0;
     frameTiming.maxPathfindingMsPerCycle = 0.0;
+    frameTiming.maxNetworkWaitMs = 0.0;
     frameTiming.maxRenderingMs = 0.0;
     frameTiming.maxTotalMs = 0.0;
     frameTiming.maxGameCyclesPerFrame = 0;
@@ -1444,6 +1460,7 @@ void Game::logFrameTiming() {
     frameTiming.minUnitsMs = 999999.0;
     frameTiming.minStructuresMs = 999999.0;
     frameTiming.minPathfindingMs = 999999.0;
+    frameTiming.minNetworkWaitMs = 999999.0;
     frameTiming.minRenderingMs = 999999.0;
 }
 
