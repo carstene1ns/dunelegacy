@@ -866,15 +866,19 @@ Coord QuantBot::findTurretPlaceLocation(Uint32 itemID) {
 	squadRallyLocation = findSquadRallyLocation();
 	Coord baseCenter = findBaseCentre(getHouse()->getHouseID());
 	
-	// Find closest enemy structure to determine threat direction
-	Coord enemyDirection = Coord::Invalid();
-	FixPoint closestEnemyDistance = FixPt_MAX;
-	for (const StructureBase* pStructure : getStructureList()) {
-		if (pStructure && pStructure->getOwner() && pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
-			FixPoint distance = blockDistance(baseCenter, pStructure->getLocation());
-			if (distance < closestEnemyDistance) {
-				closestEnemyDistance = distance;
-				enemyDirection = pStructure->getLocation();
+	// Use squad rally location (enemy direction) as approximation of threat
+	Coord enemyDirection = squadRallyLocation.isValid() ? squadRallyLocation : Coord::Invalid();
+	
+	// If no squad rally, find closest enemy structure
+	if (!enemyDirection.isValid()) {
+		FixPoint closestEnemyDistance = FixPt_MAX;
+		for (const StructureBase* pStructure : getStructureList()) {
+			if (pStructure && pStructure->getOwner() && pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
+				FixPoint distance = blockDistance(baseCenter, pStructure->getLocation());
+				if (distance < closestEnemyDistance) {
+					closestEnemyDistance = distance;
+					enemyDirection = pStructure->getLocation();
+				}
 			}
 		}
 	}
@@ -890,38 +894,62 @@ Coord QuantBot::findTurretPlaceLocation(Uint32 itemID) {
 				(itemID == Structure_ConstructionYard) ? nullptr : getHouse())) {
 				
 				FixPoint score = 0;
+				Coord candidatePos(x, y);
 				
-				// CRITICAL: Favor being AWAY from base center (push to perimeter)
-				FixPoint distanceFromBase = blockDistance(Coord(x, y), baseCenter);
-				score += distanceFromBase * 3; // Strong bonus for being away from center
+				// 1. Favor being CLOSE to base center (integrated into base, not perimeter)
+				FixPoint distanceFromBase = blockDistance(candidatePos, baseCenter);
+				score -= distanceFromBase * 2; // Penalty for being far from center
 				
-				// Favor being TOWARDS enemy direction (if known)
-				if (enemyDirection.isValid()) {
-					FixPoint distanceToEnemy = blockDistance(Coord(x, y), enemyDirection);
-					score -= distanceToEnemy * 2; // Penalty for being far from enemy
+				// 2. Strong bonus for adjacency to own buildings
+				int adjacentOwnBuildings = 0;
+				for (int dx = -1; dx <= newSizeX; dx++) {
+					for (int dy = -1; dy <= newSizeY; dy++) {
+						// Check tiles around the structure
+						if ((dx == -1 || dx == newSizeX || dy == -1 || dy == newSizeY) && 
+							getMap().tileExists(x + dx, y + dy)) {
+							const Tile* pTile = getMap().getTile(x + dx, y + dy);
+							if (pTile->hasAStructure()) {
+								const StructureBase* pStructure = dynamic_cast<const StructureBase*>(pTile->getObject());
+								if (pStructure && pStructure->getOwner() == getHouse()) {
+									adjacentOwnBuildings++;
+								}
+							}
+						}
+					}
+				}
+				score += adjacentOwnBuildings * 15; // Strong bonus for being next to own buildings
+				
+				// 3. Favor the side of the base closest to the enemy
+				// We want turrets between our base and the enemy
+				if (enemyDirection.isValid() && baseCenter.isValid()) {
+					// Calculate vector from base to enemy
+					int baseToEnemyX = enemyDirection.x - baseCenter.x;
+					int baseToEnemyY = enemyDirection.y - baseCenter.y;
+					
+					// Calculate vector from base to candidate position
+					int baseToCandidateX = candidatePos.x - baseCenter.x;
+					int baseToCandidateY = candidatePos.y - baseCenter.y;
+					
+					// Dot product: positive if candidate is on the enemy side of base
+					int dotProduct = baseToEnemyX * baseToCandidateX + baseToEnemyY * baseToCandidateY;
+					if (dotProduct > 0) {
+						score += dotProduct / 10; // Bonus for being on enemy-facing side
+					}
 				}
 				
-				// Favor map edges for defensive positioning
-				int distanceToEdge = std::min({x, y, getMap().getSizeX() - 1 - x, getMap().getSizeY() - 1 - y});
-				score += (15 - distanceToEdge) * 4; // Strong bonus for being close to edges
-				
-				// Check terrain quality around the turret
+				// 4. Slight preference for sand over rock (buildable terrain)
 				int sandTiles = 0;
-				int rockTiles = 0;
 				for (int dx = 0; dx < newSizeX; dx++) {
 					for (int dy = 0; dy < newSizeY; dy++) {
 						if (getMap().tileExists(x + dx, y + dy)) {
 							const Tile* pTile = getMap().getTile(x + dx, y + dy);
 							if (!pTile->isRock()) {
 								sandTiles++;
-							} else {
-								rockTiles++;
 							}
 						}
 					}
 				}
-				score += sandTiles * 10; // Strong bonus for sand
-				score -= rockTiles * 5;  // Penalty for rock
+				score += sandTiles * 2; // Minor bonus for sand
 				
 				// Check if this is the best location so far
 				if (score > bestScore) {

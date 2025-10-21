@@ -1146,7 +1146,7 @@ void UnitBase::setPickedUp(UnitBase* newCarrier) {
 
     currentGameMap->removeObjectFromMap(getObjectID());
 
-    if(goingToRepairYard) {
+    if(goingToRepairYard && target.getObjPointer() != nullptr) {
         static_cast<RepairYard*>(target.getObjPointer())->unBook();
     }
 
