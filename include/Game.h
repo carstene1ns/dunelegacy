@@ -656,14 +656,28 @@ private:
         int totalGameCycles = 0;
         int frameCount = 0;
         
+        // Pathfinding detailed stats
+        int pathsProcessedThisCycle = 0;
+        int totalPathsProcessedThisFrame = 0;
+        int totalPathsProcessed = 0;
+        double pathfindingMsThisCycle = 0.0;
+        double pathfindingMsThisFrame = 0.0;
+        
         // Max values
         double maxAiMs = 0.0;
         double maxUnitsMs = 0.0;
         double maxStructuresMs = 0.0;
         double maxPathfindingMs = 0.0;
+        double maxPathfindingMsPerCycle = 0.0;
         double maxRenderingMs = 0.0;
         double maxTotalMs = 0.0;
         int maxGameCyclesPerFrame = 0;
+        int maxPathsPerCycle = 0;
+        int maxPathsPerFrame = 0;
+        
+        // Min values
+        int minGameCyclesPerFrame = 999999;
+        double minPathfindingMs = 999999.0;
     };
 
     FrameTiming frameTiming;

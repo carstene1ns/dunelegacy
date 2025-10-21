@@ -261,7 +261,7 @@ void Game::processObjects()
     Uint64 pathEnd = SDL_GetPerformanceCounter();
     const double pathMs = getElapsedMs(pathStart, pathEnd);
     frameTiming.pathfindingMs += pathMs;
-    if(pathMs > frameTiming.maxPathfindingMs) frameTiming.maxPathfindingMs = pathMs;
+    frameTiming.pathfindingMsThisFrame += pathMs;
 
     // update all tiles
     for(int y = 0; y < currentGameMap->getSizeY(); y++) {
@@ -342,6 +342,9 @@ void Game::processPathRequests() {
     const Uint64 frequency = SDL_GetPerformanceFrequency();
     const double budgetSeconds = PathBudgetMs / 1000.0;
 
+    frameTiming.pathsProcessedThisCycle = 0;
+    frameTiming.pathfindingMsThisCycle = 0.0;
+
     bool processedAny = false;
     while(!pathRequestQueue.empty()) {
         const Uint64 now = SDL_GetPerformanceCounter();
@@ -357,9 +360,23 @@ void Game::processPathRequests() {
         auto* unit = dynamic_cast<UnitBase*>(objectManager.getObject(request.objectId));
         if(unit != nullptr) {
             unit->resolvePendingPathRequest();
+            frameTiming.pathsProcessedThisCycle++;
+            frameTiming.totalPathsProcessedThisFrame++;
+            frameTiming.totalPathsProcessed++;
         }
 
         processedAny = true;
+    }
+    
+    const Uint64 end = SDL_GetPerformanceCounter();
+    frameTiming.pathfindingMsThisCycle = getElapsedMs(start, end);
+    
+    // Track max per-cycle values
+    if(frameTiming.pathfindingMsThisCycle > frameTiming.maxPathfindingMsPerCycle) {
+        frameTiming.maxPathfindingMsPerCycle = frameTiming.pathfindingMsThisCycle;
+    }
+    if(frameTiming.pathsProcessedThisCycle > frameTiming.maxPathsPerCycle) {
+        frameTiming.maxPathsPerCycle = frameTiming.pathsProcessedThisCycle;
     }
 }
 
@@ -1038,6 +1055,8 @@ void Game::runMainLoop() {
         // Start timing this rendered frame
         const Uint64 frameStartPerf = SDL_GetPerformanceCounter();
         frameTiming.gameCyclesThisFrame = 0;
+        frameTiming.totalPathsProcessedThisFrame = 0;
+        frameTiming.pathfindingMsThisFrame = 0.0;
         
         renderFrame();
 
@@ -1106,6 +1125,22 @@ void Game::runMainLoop() {
         if(thisFrameMs > frameTiming.maxTotalMs) frameTiming.maxTotalMs = thisFrameMs;
         if(frameTiming.gameCyclesThisFrame > frameTiming.maxGameCyclesPerFrame) {
             frameTiming.maxGameCyclesPerFrame = frameTiming.gameCyclesThisFrame;
+        }
+        if(frameTiming.totalPathsProcessedThisFrame > frameTiming.maxPathsPerFrame) {
+            frameTiming.maxPathsPerFrame = frameTiming.totalPathsProcessedThisFrame;
+        }
+        
+        // Track min values
+        if(frameTiming.gameCyclesThisFrame < frameTiming.minGameCyclesPerFrame) {
+            frameTiming.minGameCyclesPerFrame = frameTiming.gameCyclesThisFrame;
+        }
+        if(frameTiming.pathfindingMsThisFrame < frameTiming.minPathfindingMs) {
+            frameTiming.minPathfindingMs = frameTiming.pathfindingMsThisFrame;
+        }
+        
+        // Track max pathfinding per frame
+        if(frameTiming.pathfindingMsThisFrame > frameTiming.maxPathfindingMs) {
+            frameTiming.maxPathfindingMs = frameTiming.pathfindingMsThisFrame;
         }
         
         // Log every 30 seconds
@@ -1318,15 +1353,32 @@ void Game::logFrameTiming() {
     const double avgFps = avgTotal > 0.0 ? 1000.0 / avgTotal : 0.0;
     const double maxFps = frameTiming.maxTotalMs > 0.0 ? 1000.0 / frameTiming.maxTotalMs : 0.0;
     const double avgGameCycles = static_cast<double>(frameTiming.totalGameCycles) / frameTiming.frameCount;
+    
+    // Pathfinding detailed stats
+    const double avgPathsPerFrame = static_cast<double>(frameTiming.totalPathsProcessed) / frameTiming.frameCount;
+    const double avgPathsPerCycle = frameTiming.totalGameCycles > 0 ? 
+        static_cast<double>(frameTiming.totalPathsProcessed) / frameTiming.totalGameCycles : 0.0;
+    const double avgPathfindingPerCycle = frameTiming.totalGameCycles > 0 ? 
+        avgPathfinding / avgGameCycles : 0.0;
+    const double avgMsPerPath = frameTiming.totalPathsProcessed > 0 ? 
+        avgPathfinding / avgPathsPerFrame : 0.0;
 
     SDL_Log("[Performance] === AVERAGES over %d frames ===", frameTiming.frameCount);
-    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | GameCycles/Frame: %.1f | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms",
-        avgFps, avgTotal, avgGameCycles, avgAi, avgUnits, avgStructures, avgPathfinding, avgRendering);
+    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Rendering: %.2fms",
+        avgFps, avgTotal, avgAi, avgUnits, avgStructures, avgRendering);
+    SDL_Log("[Performance] GameCycles/Frame: min=%d avg=%.1f max=%d",
+        frameTiming.minGameCyclesPerFrame, avgGameCycles, frameTiming.maxGameCyclesPerFrame);
+    SDL_Log("[Performance] Pathfinding/Frame: min=%.2fms avg=%.2fms max=%.2fms",
+        frameTiming.minPathfindingMs, avgPathfinding, frameTiming.maxPathfindingMs);
+    SDL_Log("[Performance] Pathfinding Detail: %.1f paths/frame | %.2f paths/cycle | %.2fms/cycle | %.2fms/path",
+        avgPathsPerFrame, avgPathsPerCycle, avgPathfindingPerCycle, avgMsPerPath);
     SDL_Log("[Performance] === PEAKS (worst case) ===");
-    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | GameCycles/Frame: %d | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms",
-        maxFps, frameTiming.maxTotalMs, frameTiming.maxGameCyclesPerFrame, 
+    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms",
+        maxFps, frameTiming.maxTotalMs,
         frameTiming.maxAiMs, frameTiming.maxUnitsMs, frameTiming.maxStructuresMs, 
         frameTiming.maxPathfindingMs, frameTiming.maxRenderingMs);
+    SDL_Log("[Performance] Pathfinding Peaks: %d paths/frame | %d paths/cycle | %.2fms/cycle",
+        frameTiming.maxPathsPerFrame, frameTiming.maxPathsPerCycle, frameTiming.maxPathfindingMsPerCycle);
 
     // Reset counters
     frameTiming.aiMs = 0.0;
@@ -1336,14 +1388,20 @@ void Game::logFrameTiming() {
     frameTiming.renderingMs = 0.0;
     frameTiming.totalMs = 0.0;
     frameTiming.totalGameCycles = 0;
+    frameTiming.totalPathsProcessed = 0;
     frameTiming.frameCount = 0;
     frameTiming.maxAiMs = 0.0;
     frameTiming.maxUnitsMs = 0.0;
     frameTiming.maxStructuresMs = 0.0;
     frameTiming.maxPathfindingMs = 0.0;
+    frameTiming.maxPathfindingMsPerCycle = 0.0;
     frameTiming.maxRenderingMs = 0.0;
     frameTiming.maxTotalMs = 0.0;
     frameTiming.maxGameCyclesPerFrame = 0;
+    frameTiming.maxPathsPerCycle = 0;
+    frameTiming.maxPathsPerFrame = 0;
+    frameTiming.minGameCyclesPerFrame = 999999;
+    frameTiming.minPathfindingMs = 999999.0;
 }
 
 void Game::onOptions()
