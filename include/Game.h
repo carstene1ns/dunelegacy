@@ -630,7 +630,8 @@ private:
     std::unordered_set<Uint32> pendingPathRequestIds;
 
     static constexpr double TargetBudgetMs = 3.0;
-    static constexpr double PathBudgetMs = 3.0;
+    static constexpr double PathBudgetMs = 6.0;
+    static constexpr std::size_t kPathNodeBudget = 2048;
 
     // Game loop methods
     void initializeGameLoop();
