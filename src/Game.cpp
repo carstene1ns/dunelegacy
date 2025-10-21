@@ -1084,9 +1084,10 @@ void Game::runMainLoop() {
         frameTime += actualFrameTime;
         frameStart = frameEnd;
 
-        // Software FPS limiter at 60 FPS for consistent frame pacing
+        // Software FPS limiter at ~31 FPS for multiplayer stability
         // VSync is disabled to avoid compositor blocking, so we use software limiting instead
-        const int targetFrameTime = 16; // 60 FPS = 16.67ms per frame
+        // Using 32ms (not 16ms) to match 0.97.0 behavior and reduce multiplayer jitter
+        const int targetFrameTime = 32; // ~31 FPS = 32ms per frame
         if(actualFrameTime < targetFrameTime) {
             SDL_Delay(targetFrameTime - actualFrameTime);
         }
