@@ -453,9 +453,11 @@ void QuantBot::update() {
 			
 			for (int x = 0; x < mapSizeX; x++) {
 				for (int y = 0; y < mapSizeY; y++) {
-					Tile* pTile = currentGameMap->getTile(x, y);
-					if (pTile && pTile->hasSpice()) {
-						lastCalculatedSpice += pTile->getSpice().lround();
+					if (currentGameMap->tileExists(x, y)) {
+						Tile* pTile = currentGameMap->getTile(x, y);
+						if (pTile && pTile->hasSpice()) {
+							lastCalculatedSpice += pTile->getSpice().lround();
+						}
 					}
 				}
 			}
@@ -483,9 +485,11 @@ void QuantBot::update() {
 		
 		for (int x = 0; x < mapSizeX; x++) {
 			for (int y = 0; y < mapSizeY; y++) {
-				Tile* pTile = currentGameMap->getTile(x, y);
-				if (pTile && pTile->hasSpice()) {
-					lastCalculatedSpice += pTile->getSpice().lround();
+				if (currentGameMap->tileExists(x, y)) {
+					Tile* pTile = currentGameMap->getTile(x, y);
+					if (pTile && pTile->hasSpice()) {
+						lastCalculatedSpice += pTile->getSpice().lround();
+					}
 				}
 			}
 		}
@@ -1929,6 +1933,11 @@ void QuantBot::retreatAllUnits() {
 
 */
     void QuantBot::checkAllUnits() {
+        // Safety check: if our house is null (e.g., during game cleanup), don't check units
+        if (getHouse() == nullptr) {
+            return;
+        }
+        
         Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
 
         for (const UnitBase* pUnit : getUnitList()) {
@@ -1986,7 +1995,7 @@ void QuantBot::retreatAllUnits() {
                     
                     // Calculate current military value for ornithopter attack decisions
                     int militaryValue = 0;
-                    if (currentGame) {
+                    if (currentGame && getHouse()) {
                         for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
                             if (i != Unit_Carryall && i != Unit_Harvester && i != Unit_MCV && i != Unit_Sandworm) {
                                 militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
@@ -2002,7 +2011,8 @@ void QuantBot::retreatAllUnits() {
                         FixPoint closestDistance = FixPt_MAX;
 
                         for (const StructureBase* pStructure : getStructureList()) {
-                            if (pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
+                            if (pStructure && pStructure->getOwner() != nullptr 
+                                && pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
                                 FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
                                 if (distance < closestDistance) {
                                     closestDistance = distance;
@@ -2011,11 +2021,12 @@ void QuantBot::retreatAllUnits() {
                             }
                         }
 
-                        if (primaryTarget != nullptr) {
+                        if (primaryTarget != nullptr && primaryTarget->getOwner() != nullptr) {
                             // Count rocket turrets belonging to the same player as our target
                             int targetPlayerRocketTurrets = 0;
                             for (const StructureBase* pStructure : getStructureList()) {
-                                if (pStructure->getOwner()->getHouseID() == primaryTarget->getOwner()->getHouseID()
+                                if (pStructure && pStructure->getOwner() != nullptr 
+                                    && pStructure->getOwner()->getHouseID() == primaryTarget->getOwner()->getHouseID()
                                     && pStructure->getItemID() == Structure_RocketTurret) {
                                     targetPlayerRocketTurrets++;
                                 }
@@ -2062,7 +2073,8 @@ void QuantBot::retreatAllUnits() {
                                 }
                                 
                                 for (const StructureBase* pTurret : getStructureList()) {
-                                    if (pTurret->getOwner()->getTeamID() != getHouse()->getTeamID() 
+                                    if (pTurret && pTurret->getOwner() != nullptr
+                                        && pTurret->getOwner()->getTeamID() != getHouse()->getTeamID() 
                                         && pTurret->getItemID() == Structure_RocketTurret) {
                                         FixPoint distanceToNearestBuilding = blockDistance(pTurret->getLocation(), primaryTarget->getLocation());
                                         if (distanceToNearestBuilding <= rocketTurretRange) {
