@@ -957,6 +957,7 @@ void QuantBot::build(int militaryValue) {
 	}
 
 	int activeHeavyFactoryCount = 0;
+	int activeHighTechFactoryCount = 0;
 	int activeRepairYardCount = 0;
 
 	// Let's try just running this once...
@@ -977,6 +978,9 @@ void QuantBot::build(int militaryValue) {
 					itemCount[pBuilder->getCurrentProducedItem()]++;
 					if (pBuilder->getItemID() == Structure_HeavyFactory) {
 						activeHeavyFactoryCount++;
+					}
+					else if (pBuilder->getItemID() == Structure_HighTechFactory) {
+						activeHighTechFactoryCount++;
 					}
 				}
 			}
@@ -1541,15 +1545,15 @@ void QuantBot::build(int militaryValue) {
 							}
 							else if ((getHouse()->getProducedPower() < getHouse()->getPowerRequirement())
 								&& pBuilder->isAvailableToBuild(Structure_WindTrap)
+								&& itemCount[Structure_WindTrap] < initialItemCount[Structure_WindTrap]  // Only build up to initial count
 								&& findPlaceLocation(Structure_WindTrap).isValid()
 								&& pBuilder->getProductionQueueSize() == 0) {
 
 								doProduceItem(pBuilder, Structure_WindTrap);
-								itemCount[Structure_WindTrap]++;
 
-								logDebug("***CampAI Build A new Windtrap increasing count to: %d", itemCount[Structure_WindTrap]);
+								logDebug("***CampAI Build A new Windtrap increasing count to: %d (max: %d)", itemCount[Structure_WindTrap], initialItemCount[Structure_WindTrap]);
 							}
-							else if ((getHouse()->getCapacity() < getHouse()->getStoredCredits() + 2000)
+							else if ((getHouse()->getStoredCredits() > getHouse()->getCapacity() * 0.90_fix)  // Only build when 90% full
 								&& pBuilder->isAvailableToBuild(Structure_Silo)
 								&& findPlaceLocation(Structure_Silo).isValid()
 								&& pBuilder->getProductionQueueSize() == 0) {
@@ -1557,7 +1561,7 @@ void QuantBot::build(int militaryValue) {
 								doProduceItem(pBuilder, Structure_Silo);
 								itemCount[Structure_Silo]++;
 
-								logDebug("***CampAI Build A new Silo increasing count to: %d", itemCount[Structure_Silo]);
+								logDebug("***CampAI Build A new Silo increasing count to: %d (credits: %d/%d)", itemCount[Structure_Silo], getHouse()->getStoredCredits().lround(), getHouse()->getCapacity());
 							}
 							else if (money > 3000
 								&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
@@ -1579,132 +1583,194 @@ void QuantBot::build(int militaryValue) {
 
 							Uint32 itemID = NONE_ID;
 
+							// Count enemy ornithopters at the start
+							int enemyOrnithopterCount = 0;
+							if (currentGame) {
+								for (int i = 0; i < NUM_HOUSES; i++) {
+									const House* pHouse = currentGame->getHouse(i);
+									if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
+										enemyOrnithopterCount += pHouse->getNumItems(Unit_Ornithopter);
+									}
+								}
+							}
+
 							if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
 								itemID = Structure_WindTrap;
-								itemCount[Structure_WindTrap]++;
 							}
 							else if ((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
-								itemCount[Structure_Refinery]++;
 							}
-							else if (itemCount[Structure_Refinery] < 3 && pBuilder->isAvailableToBuild(Structure_Refinery) && money < 4000) {
+							else if (itemCount[Structure_Refinery] < 4 && pBuilder->isAvailableToBuild(Structure_Refinery) && money < 4000) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
-								itemCount[Structure_Refinery]++;
 							}
 							else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
 								itemID = Structure_StarPort;
 							}
-							else if (itemCount[Structure_Refinery] < 4
-								&& pBuilder->isAvailableToBuild(Structure_Refinery)
-								&& money < 4000) {
-								itemID = Structure_Refinery;
-								itemCount[Unit_Harvester]++;
-								itemCount[Structure_Refinery]++;
+							// Build essential infrastructure with reasonable credit requirements
+							else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
+								itemID = Structure_Radar; // Outpost for unit coordination
 							}
-							else if (itemCount[Structure_LightFactory] == 0 && pBuilder->isAvailableToBuild(Structure_LightFactory) && ((itemCount[Unit_Harvester] > 4 && money > 1500) || money > 3000)) {
-								itemID = Structure_LightFactory;
-							}
-							else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && ((itemCount[Unit_Harvester] > 4 && money > 1500 || money > 3000))) {
-								itemID = Structure_Radar;
-							}
-							else if (itemCount[Structure_HeavyFactory] == 0 && money > 10000 && pBuilder->isAvailableToBuild(Structure_HeavyFactory)) {
-								itemID = Structure_HeavyFactory;
-							}
-							else if (itemCount[Structure_RepairYard] == 0 && pBuilder->isAvailableToBuild(Structure_RepairYard)) {
-								itemID = Structure_RepairYard;
-							}
-							else if (itemCount[Structure_HeavyFactory] == 0 && money > 2000) {
-								if (pBuilder->isAvailableToBuild(Structure_HeavyFactory)) {
-									itemID = Structure_HeavyFactory;
+							// Counter enemy ornithopters with rocket turrets or upgrades
+							else if (enemyOrnithopterCount > itemCount[Structure_RocketTurret]) {
+								if (pBuilder->getCurrentUpgradeLevel() < 2) {
+									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+										// Repair construction yard first if damaged
+										doRepair(pBuilder);
+										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
+									}
+									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
+										// Upgrade construction yard to unlock rocket turrets
+										doUpgrade(pBuilder);
+										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
+									}
+								}
+								else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
+									&& findPlaceLocation(Structure_RocketTurret).isValid()
+									&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+									// Build rocket turret to counter ornithopters
+									itemID = Structure_RocketTurret;
+									logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d", enemyOrnithopterCount, itemCount[Structure_RocketTurret]);
 								}
 							}
-							else if (itemCount[Structure_HighTechFactory] == 0 && money > 2000) {
+							else if (pBuilder->isAvailableToBuild(Structure_LightFactory)
+								&& itemCount[Structure_LightFactory] == 0 && money > 500) {
+								itemID = Structure_LightFactory; // Essential for basic units
+							}
+							else if (pBuilder->isAvailableToBuild(Structure_HeavyFactory)
+								&& itemCount[Structure_HeavyFactory] == 0 && money > 1000) {
+								itemID = Structure_HeavyFactory; // First heavy factory
+								logDebug("Build first Heavy Factory... money: %d", money);
+							}							
+							else if (itemCount[Structure_RepairYard] == 0 && pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 1000) {
+								itemID = Structure_RepairYard; // Essential for unit maintenance
+							}
+							else if (pBuilder->isAvailableToBuild(Structure_Refinery)
+								&& money < 4000
+								&& itemCount[Unit_Harvester] < harvesterLimit) {
+								itemID = Structure_Refinery;
+								itemCount[Unit_Harvester]++;
+														}
+							// Upgrade Construction Yard to unlock rocket turrets and advanced units
+							else if (pBuilder->getCurrentUpgradeLevel() < 2 
+								&& !pBuilder->isUpgrading() 
+								&& pBuilder->getHealth() >= pBuilder->getMaxHealth()
+								&& money > 1000) {
+									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+										// Repair construction yard first if damaged
+										doRepair(pBuilder);
+										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
+									}
+									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
+										// Upgrade construction yard to unlock rocket turrets
+										doUpgrade(pBuilder);
+										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
+									}
+							}
+							// Progressive rocket turret building after starport (if they don't need power or we have power)
+							else if (itemCount[Structure_RocketTurret] < 2
+										&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
+										&& findPlaceLocation(Structure_RocketTurret).isValid()
+										&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())
+										&& money > 1000) {
+								itemID = Structure_RocketTurret;
+							}
+							else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
 								if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
 									itemID = Structure_HighTechFactory;
 								}
 							}
 							// If we need more refinerys for our harvesters or we don't have a heavy factory
-							else if (((money > 2000 && itemCount[Structure_Refinery] * 3.5_fix < harvesterLimit)
-								|| (currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit && money > 1000))
+							else if (((itemCount[Structure_Refinery] * 3 < itemCount[Unit_Harvester])
+								|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
 									&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
-								itemCount[Structure_Refinery]++;
-
+					
 							}
-							else if (itemCount[Structure_IX] == 0 && money > 2500) {
-								// Let's trial special units
-								if (pBuilder->isAvailableToBuild(Structure_IX)) {
-									itemID = Structure_IX;
-								}
+							else if (itemCount[Structure_IX] == 0 && pBuilder->isAvailableToBuild(Structure_IX) && money > 1000) {
+								itemID = Structure_IX; // House of IX for special units (after essential production buildings)
+							}
+							// HIGH PRIORITY: Heavy factories when we have good economy and infrastructure
+							else if (money > 3000 && pBuilder->isAvailableToBuild(Structure_HeavyFactory)
+								&& itemCount[Structure_IX] >= 1 && itemCount[Structure_RepairYard] >= 1
+								&& (activeHeavyFactoryCount >= itemCount[Structure_HeavyFactory] || itemCount[Structure_HeavyFactory] < money / 4000)) {
+								// Build heavy factories when we have good credits, infrastructure, and need production capacity
+								itemID = Structure_HeavyFactory;
+								logDebug("PRIORITY Heavy Factory - active: %d  total: %d  money: %d  capacity_limit: %d", activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory), money, money / 4000);
+							}
+							// If we need more refinerys for our harvesters or we don't have a heavy factory
+							else if (((itemCount[Structure_Refinery] * 3.5_fix < harvesterLimit)
+							|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
+								&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
+								itemID = Structure_Refinery;
+								itemCount[Unit_Harvester]++;
+				
 							}
 							else if (pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 2000
-								&& (itemCount[Structure_RepairYard] <= activeRepairYardCount // is this still working?
-									|| itemCount[Structure_RepairYard] * 5000 < militaryValue)) {
-								// If we have a lot of troops get some repair facilities
+								&& itemCount[Structure_RepairYard] * 6000 < militaryValue) {
+								// If we have a lot of troops get some repair facilities (1 per 6000 military value)
 								itemID = Structure_RepairYard;
-								//logDebug("Build Repair... active: %d  total: %d", activeRepairYardCount, getHouse()->getNumItems(Structure_RepairYard));
+								logDebug("Build Repair Yard: have %d, need %d (military: %d)", itemCount[Structure_RepairYard], (militaryValue / 6000) + 1, militaryValue);
 
 							}
-							else if (pBuilder->isAvailableToBuild(Structure_HeavyFactory)
-								&& (itemCount[Structure_HeavyFactory] <= activeHeavyFactoryCount && (money > 1000 + itemCount[Structure_HeavyFactory] * 1500) || itemCount[Structure_HeavyFactory] < 3 && money > 1000 + itemCount[Structure_HeavyFactory] * 2000) || (money > 1000 + itemCount[Structure_HeavyFactory] * 3000)) {
-								// If we have a lot of money get more heavy factories
-								itemID = Structure_HeavyFactory;
-								logDebug("Build Factory... active: %d  total: %d", activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory));
-							}
-							else if (itemCount[Structure_Refinery] * 3.5_fix < itemCount[Unit_Harvester] && pBuilder->isAvailableToBuild(Structure_Refinery)) {
-								itemID = Structure_Refinery;
+							else if (money > 3000 && pBuilder->isAvailableToBuild(Structure_HighTechFactory)
+								&& itemCount[Structure_HighTechFactory] > 0 && activeHighTechFactoryCount >= itemCount[Structure_HighTechFactory]) {
+								// Build additional high tech factory if all existing ones are busy
+								itemID = Structure_HighTechFactory;
 							}
 							else if (getHouse()->getStoredCredits() + 1000 > (itemCount[Structure_Refinery] + itemCount[Structure_Silo]) * 1000 && pBuilder->isAvailableToBuild(Structure_Silo)) {
 								// We are running out of spice storage capacity
 								itemID = Structure_Silo;
 							}
-							else if (money > 8000
+							else if (money > 5000
 								&& pBuilder->isAvailableToBuild(Structure_Palace)
-								&& getGameInitSettings().getGameOptions().onlyOnePalace
-								&& itemCount[Structure_Palace] == 0) {
-								// Let's build one palace if its available
+								&& (itemCount[Structure_Palace] == 0 || !getGameInitSettings().getGameOptions().onlyOnePalace)
+								&& itemCount[Structure_HeavyFactory] > 0
+								&& itemCount[Structure_LightFactory] > 0) {
+								// Build palace after having basic military infrastructure
+								// Allow multiple palaces if game mode permits
 								itemID = Structure_Palace;
 							}
-							else if (money > 10000
-								&& pBuilder->getCurrentUpgradeLevel() < pBuilder->getMaxUpgradeLevel()) {
-								// First off we need to upgrade the construction yard
-								doUpgrade(pBuilder);
-							}
-							else if (money > 10000) {
-								// Here are our luxury items:
-								// - Rocket Turrets
-								// - Palaces
-								// Need to balance saving credits with expenditure on palaces and turrets
 
-									//logDebug("Build Luxury.. money: %d  mildecifict: %d", money, militaryValueLimit - militaryValue);
-								if (pBuilder->isAvailableToBuild(Structure_Palace)
-									&& !getGameInitSettings().getGameOptions().onlyOnePalace) {
-									itemID = Structure_Palace;
-								}
-							}
-
-							// TODO: Build concrete if we have bad building spots
 							if (pBuilder->isAvailableToBuild(itemID) && findPlaceLocation(itemID).isValid() && itemID != NONE_ID) {
 								doProduceItem(pBuilder, itemID);
 								itemCount[itemID]++;
-							}/*else if(pBuilder->isAvailableToBuild(Structure_Slab1) && findPlaceLocation(Structure_Slab1).isValid()){
+							} else {
+								// If we can't build the desired structure, try to expand buildable area with concrete slabs
+								// This helps create more valid placement locations for future buildings
+								if (pBuilder->isAvailableToBuild(Structure_Slab1)) {
+									Coord slabLocation = findPlaceLocationSimple(Structure_Slab1);
+									if (slabLocation.isValid()) {
 										doProduceItem(pBuilder, Structure_Slab1);
-							}*/
+										logDebug("Building concrete slab to expand buildable area at (%d,%d)", slabLocation.x, slabLocation.y);
+									}
+								}
+							}
 
 						}
 					}
 
 					if (pBuilder->isWaitingToPlace()) {
-						Coord location = findPlaceLocation(pBuilder->getCurrentProducedItem());
+						Uint32 itemToBePlaced = pBuilder->getCurrentProducedItem();
+						Coord location;
+						
+						// Use appropriate placement method based on item type
+						if (itemToBePlaced == Structure_Slab1) {
+							// For concrete slabs, use simple method to find any valid location
+							location = findPlaceLocationSimple(itemToBePlaced);
+						} else {
+							// For other structures, use normal method that favors adjacency
+							location = findPlaceLocation(itemToBePlaced);
+						}
 
 						if (location.isValid()) {
 							doPlaceStructure(pConstYard, location.x, location.y);
 						}
 						else {
-							doCancelItem(pConstYard, pBuilder->getCurrentProducedItem());
+							logDebug("Failed to find placement location for item %d, cancelling", itemToBePlaced);
+							doCancelItem(pConstYard, itemToBePlaced);
 						}
 					}
 				} break;
