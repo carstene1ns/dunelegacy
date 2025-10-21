@@ -692,6 +692,7 @@ private:
 
     FrameTiming frameTiming;
     Uint32 lastTimingLogMs = 0;
+    double pathfindingBudgetRemainingMs = 0.0;  // Per-frame budget tracking
 
     inline double getElapsedMs(Uint64 start, Uint64 end) const {
         const Uint64 frequency = SDL_GetPerformanceFrequency();

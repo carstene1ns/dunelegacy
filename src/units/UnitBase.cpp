@@ -476,9 +476,16 @@ void UnitBase::engageTarget() {
         Coord targetLocation = target.getObjPointer()->getClosestPoint(location);
 
         if(destination != targetLocation) {
-            // the location of the target has moved
-            // => recalculate path
-            clearPath();
+            // Only recalculate path if target moved significantly (> 1 tile)
+            // This prevents constant path recalculation for minor movement
+            FixPoint movementDistance = blockDistance(destination, targetLocation);
+            if(movementDistance > 1) {
+                // Target moved significantly, recalculate path
+                clearPath();
+            } else {
+                // Minor movement, just update destination without clearing path
+                destination = targetLocation;
+            }
         }
 
         targetDistance = blockDistance(location, targetLocation);

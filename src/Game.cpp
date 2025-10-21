@@ -337,10 +337,17 @@ void Game::processPathRequests() {
     if(pathRequestQueue.empty()) {
         return;
     }
+    
+    // Check if we have any budget remaining for this frame
+    if(pathfindingBudgetRemainingMs <= 0.0) {
+        frameTiming.pathsProcessedThisCycle = 0;
+        frameTiming.pathfindingMsThisCycle = 0.0;
+        return;  // Budget exhausted, skip pathfinding for remaining cycles this frame
+    }
 
     const Uint64 start = SDL_GetPerformanceCounter();
     const Uint64 frequency = SDL_GetPerformanceFrequency();
-    const double budgetSeconds = PathBudgetMs / 1000.0;
+    const double budgetSeconds = pathfindingBudgetRemainingMs / 1000.0;
 
     frameTiming.pathsProcessedThisCycle = 0;
     frameTiming.pathfindingMsThisCycle = 0.0;
@@ -350,7 +357,7 @@ void Game::processPathRequests() {
         const Uint64 now = SDL_GetPerformanceCounter();
         const double elapsed = static_cast<double>(now - start) / static_cast<double>(frequency);
         if(processedAny && elapsed >= budgetSeconds) {
-            break;
+            break;  // Used up remaining budget for this frame
         }
 
         PathRequest request = pathRequestQueue.front();
@@ -370,6 +377,9 @@ void Game::processPathRequests() {
     
     const Uint64 end = SDL_GetPerformanceCounter();
     frameTiming.pathfindingMsThisCycle = getElapsedMs(start, end);
+    
+    // Subtract used time from frame budget
+    pathfindingBudgetRemainingMs -= frameTiming.pathfindingMsThisCycle;
     
     // Track max per-cycle values
     if(frameTiming.pathfindingMsThisCycle > frameTiming.maxPathfindingMsPerCycle) {
@@ -1063,6 +1073,9 @@ void Game::runMainLoop() {
         frameTiming.structuresMsThisFrame = 0.0;
         frameTiming.pathfindingMsThisFrame = 0.0;
         frameTiming.renderingMsThisFrame = 0.0;
+        
+        // Reset pathfinding budget for this frame
+        pathfindingBudgetRemainingMs = PathBudgetMs;
         
         renderFrame();
 
