@@ -259,7 +259,9 @@ void Game::processObjects()
     Uint64 pathStart = SDL_GetPerformanceCounter();
     processPathRequests();
     Uint64 pathEnd = SDL_GetPerformanceCounter();
-    frameTiming.pathfindingMs += getElapsedMs(pathStart, pathEnd);
+    const double pathMs = getElapsedMs(pathStart, pathEnd);
+    frameTiming.pathfindingMs += pathMs;
+    if(pathMs > frameTiming.maxPathfindingMs) frameTiming.maxPathfindingMs = pathMs;
 
     // update all tiles
     for(int y = 0; y < currentGameMap->getSizeY(); y++) {
@@ -274,7 +276,9 @@ void Game::processObjects()
         pStructure->update();
     }
     Uint64 structEnd = SDL_GetPerformanceCounter();
-    frameTiming.structuresMs += getElapsedMs(structStart, structEnd);
+    const double structMs = getElapsedMs(structStart, structEnd);
+    frameTiming.structuresMs += structMs;
+    if(structMs > frameTiming.maxStructuresMs) frameTiming.maxStructuresMs = structMs;
 
     if ((currentCursorMode == CursorMode_Placing) && selectedList.empty()) {
         setCursorMode(CursorMode_Normal);
@@ -286,7 +290,9 @@ void Game::processObjects()
         pUnit->update();
     }
     Uint64 unitEnd = SDL_GetPerformanceCounter();
-    frameTiming.unitsMs += getElapsedMs(unitStart, unitEnd);
+    const double unitMs = getElapsedMs(unitStart, unitEnd);
+    frameTiming.unitsMs += unitMs;
+    if(unitMs > frameTiming.maxUnitsMs) frameTiming.maxUnitsMs = unitMs;
 
     for(Bullet* pBullet : bulletList) {
         pBullet->update();
@@ -1029,15 +1035,17 @@ void Game::runMainLoop() {
     int frameTime = 0;
 
     do {
+        // Start timing this rendered frame
+        const Uint64 frameStartPerf = SDL_GetPerformanceCounter();
+        frameTiming.gameCyclesThisFrame = 0;
+        
         renderFrame();
 
         const int frameEnd = SDL_GetTicks();
         frameTime += frameEnd - frameStart;
         frameStart = frameEnd;
 
-        if(settings.video.frameLimit == true && frameTime < 16) {
-            SDL_Delay(16 - frameTime);
-        }
+        // FPS limiter REMOVED per user request
 
         if(bShowFPS) {
             averageFrameTime = 0.99f * averageFrameTime + 0.01f * frameTime;
@@ -1075,6 +1083,7 @@ void Game::runMainLoop() {
 
             if(!bWaitForNetwork && !bPause) {
                 updateGameState();
+                frameTiming.gameCyclesThisFrame++;
             }
 
             if(gameCycleCount <= skipToGameCycle) {
@@ -1085,6 +1094,26 @@ void Game::runMainLoop() {
         }
 
         musicPlayer->musicCheck();
+
+        // End timing this rendered frame
+        const Uint64 frameEndPerf = SDL_GetPerformanceCounter();
+        const double thisFrameMs = getElapsedMs(frameStartPerf, frameEndPerf);
+        frameTiming.totalMs += thisFrameMs;
+        frameTiming.totalGameCycles += frameTiming.gameCyclesThisFrame;
+        frameTiming.frameCount++;
+        
+        // Track max values
+        if(thisFrameMs > frameTiming.maxTotalMs) frameTiming.maxTotalMs = thisFrameMs;
+        if(frameTiming.gameCyclesThisFrame > frameTiming.maxGameCyclesPerFrame) {
+            frameTiming.maxGameCyclesPerFrame = frameTiming.gameCyclesThisFrame;
+        }
+        
+        // Log every 30 seconds
+        const Uint32 now = SDL_GetTicks();
+        if(now - lastTimingLogMs >= 30000) {
+            logFrameTiming();
+            lastTimingLogMs = now;
+        }
 
     } while (!bQuitGame && !finishedLevel);
 }
@@ -1142,7 +1171,9 @@ void Game::renderFrame() {
     SDL_RenderPresent(renderer);
     
     const Uint64 renderEnd = SDL_GetPerformanceCounter();
-    frameTiming.renderingMs += getElapsedMs(renderStart, renderEnd);
+    const double renderMs = getElapsedMs(renderStart, renderEnd);
+    frameTiming.renderingMs += renderMs;
+    if(renderMs > frameTiming.maxRenderingMs) frameTiming.maxRenderingMs = renderMs;
 }
 
 void Game::processInput() {
@@ -1183,17 +1214,20 @@ void Game::updateGameState() {
         return;
     }
 
-    const Uint64 frameStart = SDL_GetPerformanceCounter();
-
     pInterface->getRadarView().update();
     cmdManager.executeCommands(gameCycleCount);
 
-    // Update all houses
+    // Time AI/house updates (this is where QuantBot and other AI runs)
+    Uint64 aiStart = SDL_GetPerformanceCounter();
     for(int i = 0; i < NUM_HOUSES; i++) {
         if(house[i] != nullptr) {
             house[i]->update();
         }
     }
+    Uint64 aiEnd = SDL_GetPerformanceCounter();
+    const double aiMs = getElapsedMs(aiStart, aiEnd);
+    frameTiming.aiMs += aiMs;
+    if(aiMs > frameTiming.maxAiMs) frameTiming.maxAiMs = aiMs;
 
     screenborder->update();
     triggerManager.trigger(gameCycleCount);
@@ -1217,18 +1251,6 @@ void Game::updateGameState() {
     }
     
     musicPlayer->musicCheck();
-
-    // Record total frame time
-    const Uint64 frameEnd = SDL_GetPerformanceCounter();
-    frameTiming.totalMs += getElapsedMs(frameStart, frameEnd);
-    frameTiming.frameCount++;
-
-    // Log timing stats every 2 seconds
-    const Uint32 now = SDL_GetTicks();
-    if(now - lastTimingLogMs >= 2000) {
-        logFrameTiming();
-        lastTimingLogMs = now;
-    }
 }
 
 void Game::initializeReplay() {
@@ -1287,22 +1309,41 @@ void Game::logFrameTiming() {
         return;
     }
 
+    const double avgAi = frameTiming.aiMs / frameTiming.frameCount;
     const double avgUnits = frameTiming.unitsMs / frameTiming.frameCount;
     const double avgStructures = frameTiming.structuresMs / frameTiming.frameCount;
     const double avgPathfinding = frameTiming.pathfindingMs / frameTiming.frameCount;
     const double avgRendering = frameTiming.renderingMs / frameTiming.frameCount;
     const double avgTotal = frameTiming.totalMs / frameTiming.frameCount;
+    const double avgFps = avgTotal > 0.0 ? 1000.0 / avgTotal : 0.0;
+    const double maxFps = frameTiming.maxTotalMs > 0.0 ? 1000.0 / frameTiming.maxTotalMs : 0.0;
+    const double avgGameCycles = static_cast<double>(frameTiming.totalGameCycles) / frameTiming.frameCount;
 
-    SDL_Log("[Performance] Avg frame: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms | Frames: %d",
-        avgTotal, avgUnits, avgStructures, avgPathfinding, avgRendering, frameTiming.frameCount);
+    SDL_Log("[Performance] === AVERAGES over %d frames ===", frameTiming.frameCount);
+    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | GameCycles/Frame: %.1f | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms",
+        avgFps, avgTotal, avgGameCycles, avgAi, avgUnits, avgStructures, avgPathfinding, avgRendering);
+    SDL_Log("[Performance] === PEAKS (worst case) ===");
+    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | GameCycles/Frame: %d | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | Rendering: %.2fms",
+        maxFps, frameTiming.maxTotalMs, frameTiming.maxGameCyclesPerFrame, 
+        frameTiming.maxAiMs, frameTiming.maxUnitsMs, frameTiming.maxStructuresMs, 
+        frameTiming.maxPathfindingMs, frameTiming.maxRenderingMs);
 
     // Reset counters
+    frameTiming.aiMs = 0.0;
     frameTiming.unitsMs = 0.0;
     frameTiming.structuresMs = 0.0;
     frameTiming.pathfindingMs = 0.0;
     frameTiming.renderingMs = 0.0;
     frameTiming.totalMs = 0.0;
+    frameTiming.totalGameCycles = 0;
     frameTiming.frameCount = 0;
+    frameTiming.maxAiMs = 0.0;
+    frameTiming.maxUnitsMs = 0.0;
+    frameTiming.maxStructuresMs = 0.0;
+    frameTiming.maxPathfindingMs = 0.0;
+    frameTiming.maxRenderingMs = 0.0;
+    frameTiming.maxTotalMs = 0.0;
+    frameTiming.maxGameCyclesPerFrame = 0;
 }
 
 void Game::onOptions()

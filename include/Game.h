@@ -646,12 +646,24 @@ private:
 
     // Performance timing system
     struct FrameTiming {
+        double aiMs = 0.0;
         double unitsMs = 0.0;
         double structuresMs = 0.0;
         double pathfindingMs = 0.0;
         double renderingMs = 0.0;
         double totalMs = 0.0;
+        int gameCyclesThisFrame = 0;
+        int totalGameCycles = 0;
         int frameCount = 0;
+        
+        // Max values
+        double maxAiMs = 0.0;
+        double maxUnitsMs = 0.0;
+        double maxStructuresMs = 0.0;
+        double maxPathfindingMs = 0.0;
+        double maxRenderingMs = 0.0;
+        double maxTotalMs = 0.0;
+        int maxGameCyclesPerFrame = 0;
     };
 
     FrameTiming frameTiming;

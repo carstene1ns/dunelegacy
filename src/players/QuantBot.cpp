@@ -191,8 +191,8 @@ QuantBot::QuantBot(InputStream& stream, House* associatedHouse) : Player(stream,
 		Sint32 x = stream.readSint32();
 		Sint32 y = stream.readSint32();
 
-		placeLocations.emplace_back(x, y);
-	}
+        placeLocations.emplace_back(x, y);
+    }
 }
 
 
@@ -228,11 +228,11 @@ void QuantBot::save(OutputStream& stream) const {
 	for (const Coord& placeLocation : placeLocations) {
 		stream.writeSint32(placeLocation.x);
 		stream.writeSint32(placeLocation.y);
-	}
-
 }
 
+	}
 
+	
 void QuantBot::update() {
 	if (getGameCycleCount() == 0) {
 		// The game just started and we gather some
@@ -361,7 +361,7 @@ void QuantBot::update() {
 			else {
 				ratio = 1;
 			}
-
+			
 			switch (difficulty) {
 			case Difficulty::Brutal: {
 				harvesterLimit = 60 * ratio;
@@ -392,17 +392,17 @@ void QuantBot::update() {
 				harvesterLimit = 20 * ratio;
 				militaryValueLimit = 20000 * ratio;
 				logDebug("BUILD DEFEND SKIRM. harvesterLimit: 20 * ratio: %d = %d", ratio, harvesterLimit);
-			} break;
-			}
+	} break;
+	}
 
-			// what is this useful for? Reseting limits or something
-			/*
-			if ((currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480) < harvesterLimit && difficulty != Difficulty::Brutal) {
-				harvesterLimit = currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480;
-				logDebug("Reset harvesterLimit: %d = mapX: %d * mapY: %d / 480", harvesterLimit, currentGameMap->getSizeX(), currentGameMap->getSizeY());
-			}*/
+	// what is this useful for? Reseting limits or something
+	/*
+	if ((currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480) < harvesterLimit && difficulty != Difficulty::Brutal) {
+		harvesterLimit = currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480;
+		logDebug("Reset harvesterLimit: %d = mapX: %d * mapY: %d / 480", harvesterLimit, currentGameMap->getSizeX(), currentGameMap->getSizeY());
+	}*/
 
-		} break;
+	} break;
 
 		}
 	}
@@ -420,7 +420,7 @@ void QuantBot::update() {
 			&& i != Unit_Harvester
 			&& i != Unit_MCV
 			&& i != Unit_Sandworm) {
-			militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+				militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
 		}
 	}
 	//logDebug("Military Value %d  Initial Military Value %d", militaryValue, initialMilitaryValue);
@@ -457,7 +457,7 @@ void QuantBot::onDecrementUnits(int itemID) {
 	if (itemID != Unit_Trooper && itemID != Unit_Infantry) {
 		//attackTimer += MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 30 / (static_cast<Uint8>(difficulty) + 1));
 		//logDebug("loss ");
-		retreatTimer -= MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 20);
+			retreatTimer -= MILLI2CYCLES(currentGame->objectData.data[itemID][getHouse()->getHouseID()].price * 20);
 	}
 }
 
@@ -759,11 +759,11 @@ Coord QuantBot::findPlaceLocation(Uint32 itemID) {
 	if (bestLocationScore != -10000) {
 		bestLocation = Coord(bestLocationX, bestLocationY);
 	}
-
+	
 	return bestLocation;
 }
 
-
+	
 void QuantBot::build(int militaryValue) {
 	int houseID = getHouse()->getHouseID();
 	auto& data = currentGame->objectData.data;
@@ -822,9 +822,9 @@ void QuantBot::build(int militaryValue) {
 	int money = getHouse()->getCredits();
 
 	if (militaryValue > 0 || getHouse()->getNumStructures() > 0) {
-		logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
-			attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
-			getHouse()->getKillValue(), getHouse()->getLossValue(), getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
+			logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
+				attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
+				getHouse()->getKillValue(), getHouse()->getLossValue(), getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
 	}
 
 
@@ -1088,7 +1088,7 @@ void QuantBot::build(int militaryValue) {
 
 				case Structure_HighTechFactory: {
 					int ornithopterValue = data[Unit_Ornithopter][houseID].price * itemCount[Unit_Ornithopter];
-
+					
 					if (pBuilder->isAvailableToBuild(Unit_Carryall)
 						&& itemCount[Unit_Carryall] < (militaryValue + itemCount[Unit_Harvester] * 500) / 3000
 						&& (pBuilder->getProductionQueueSize() < 1)
@@ -1439,7 +1439,7 @@ void QuantBot::build(int militaryValue) {
 							// If we need more refinerys for our harvesters or we don't have a heavy factory
 							else if (((money > 2000 && itemCount[Structure_Refinery] * 3.5_fix < harvesterLimit)
 								|| (currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit && money > 1000))
-								&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
+									&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
 								itemCount[Structure_Refinery]++;
@@ -1502,7 +1502,7 @@ void QuantBot::build(int militaryValue) {
 								doProduceItem(pBuilder, itemID);
 								itemCount[itemID]++;
 							}/*else if(pBuilder->isAvailableToBuild(Structure_Slab1) && findPlaceLocation(Structure_Slab1).isValid()){
-								doProduceItem(pBuilder, Structure_Slab1);
+										doProduceItem(pBuilder, Structure_Slab1);
 							}*/
 
 						}
@@ -1839,74 +1839,74 @@ void QuantBot::retreatAllUnits() {
 	battle field these units should always have other supporting units to work with
 
 */
-void QuantBot::checkAllUnits() {
-	Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
+    void QuantBot::checkAllUnits() {
+        Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
 
-	for (const UnitBase* pUnit : getUnitList()) {
+        for (const UnitBase* pUnit : getUnitList()) {
 		if (pUnit->getOwner() == getHouse()) {
-			switch (pUnit->getItemID()) {
-			case Unit_MCV: {
-				const MCV* pMCV = static_cast<const MCV*>(pUnit);
-				if (pMCV != nullptr) {
-					//logDebug("MCV: forced: %d  moving: %d  canDeploy: %d",
-					//pMCV->wasForced(), pMCV->isMoving(), pMCV->canDeploy());
+                switch (pUnit->getItemID()) {
+                case Unit_MCV: {
+                    const MCV* pMCV = static_cast<const MCV*>(pUnit);
+                    if (pMCV != nullptr) {
+                        //logDebug("MCV: forced: %d  moving: %d  canDeploy: %d",
+                        //pMCV->wasForced(), pMCV->isMoving(), pMCV->canDeploy());
 
-					if (pMCV->canDeploy() && !pMCV->wasForced() && !pMCV->isMoving()) {
-						//logDebug("MCV: Deployed");
-						doDeploy(pMCV);
-					}
-					else if (!pMCV->isMoving() && !pMCV->wasForced()) {
-						Coord pos = findMcvPlaceLocation(pMCV);
-						doMove2Pos(pMCV, pos.x, pos.y, true);
-						/*
-						if(getHouse()->getNumItems(Unit_Carryall) > 0){
-							doRequestCarryallDrop(pMCV);
-						}*/
-					}
-				}
-			} break;
+                        if (pMCV->canDeploy() && !pMCV->wasForced() && !pMCV->isMoving()) {
+                            //logDebug("MCV: Deployed");
+                            doDeploy(pMCV);
+                        }
+                        else if (!pMCV->isMoving() && !pMCV->wasForced()) {
+                            Coord pos = findMcvPlaceLocation(pMCV);
+                                doMove2Pos(pMCV, pos.x, pos.y, true);
+                            /*
+                            if(getHouse()->getNumItems(Unit_Carryall) > 0){
+                                doRequestCarryallDrop(pMCV);
+                            }*/
+                        }
+                    }
+                } break;
 
-			case Unit_Harvester: {
-				const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
-				if(pHarvester != nullptr && pHarvester->isActive()) {
-					// Existing check for early return with half spice
-					if(getHouse()->getCredits() < 1000 && pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE/2 
-						&& getHouse()->getNumItems(Structure_HeavyFactory) == 0) {
-						doReturn(pHarvester);
-					}
-					
-					/* this needs to be fixed to make better, currently if they are trying to move somewhere it will trigger
-					// Check for idle harvesters
-					if(!pHarvester->isMoving() && !pHarvester->isHarvesting()) {
-						doSetAttackMode(pHarvester, GUARD);
-					}*/
-				}
-			} break;
+                case Unit_Harvester: {
+                    const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
+                    if(pHarvester != nullptr && pHarvester->isActive()) {
+                        // Existing check for early return with half spice
+                        if(getHouse()->getCredits() < 1000 && pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE/2 
+                            && getHouse()->getNumItems(Structure_HeavyFactory) == 0) {
+                            doReturn(pHarvester);
+                        }
+                        
+                        /* this needs to be fixed to make better, currently if they are trying to move somewhere it will trigger
+                        // Check for idle harvesters
+                        if(!pHarvester->isMoving() && !pHarvester->isHarvesting()) {
+                            doSetAttackMode(pHarvester, GUARD);
+                        }*/
+                    }
+                } break;
 
-			case Unit_Carryall: {
-			} break;
+                case Unit_Carryall: {
+                } break;
 
-			case Unit_Frigate: {
-			} break;
+                case Unit_Frigate: {
+                } break;
 
-			case Unit_Sandworm: {
-			} break;
+                case Unit_Sandworm: {
+                } break;
 
-			case Unit_Ornithopter: {
-				const UnitBase* pOrnithopter = pUnit;
+                case Unit_Ornithopter: {
+                    const UnitBase* pOrnithopter = pUnit;
 				if (getHouse()->getNumItems(Unit_Ornithopter) > 2) {
 					// If we have more than 2 ornithopters, they should attack enemy structures
 					if (!pOrnithopter->hasATarget() || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID())) {
-						// Find closest enemy structure to squad rally point
-						Coord squadRallyPoint = findSquadRallyLocation();
+                        // Find closest enemy structure to squad rally point
+                        Coord squadRallyPoint = findSquadRallyLocation();
 						const StructureBase* closestEnemyStructure = nullptr;
-						FixPoint closestDistance = FixPt_MAX;
+                        FixPoint closestDistance = FixPt_MAX;
 
-						for (const StructureBase* pStructure : getStructureList()) {
-							if (pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
-								FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
-								if (distance < closestDistance) {
-									closestDistance = distance;
+                        for (const StructureBase* pStructure : getStructureList()) {
+                            if (pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
+                                FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
+                                if (distance < closestDistance) {
+                                    closestDistance = distance;
 									closestEnemyStructure = pStructure;
 								}
 							}
@@ -1914,98 +1914,98 @@ void QuantBot::checkAllUnits() {
 
 						if (closestEnemyStructure != nullptr) {
 							doAttackObject(pOrnithopter, closestEnemyStructure, true);
-						} else {
+                            } else {
 							// No enemy structures found, return to rally point
 							doMove2Pos(const_cast<UnitBase*>(pOrnithopter), squadRallyPoint.x, squadRallyPoint.y, true);
-						}
-					}
-				} else {
+                                }
+                            }
+                        } else {
 					// If we have 2 or fewer ornithopters, they should return to rally point
 					Coord squadRallyPoint = findSquadRallyLocation();
 					doMove2Pos(const_cast<UnitBase*>(pOrnithopter), squadRallyPoint.x, squadRallyPoint.y, false);
 				}
 			} break;
 
-			default: {
+                default: {
 
-				int squadRadius = lround(FixPoint::sqrt(getHouse()->getNumUnits()
-					- getHouse()->getNumItems(Unit_Harvester)
-					- getHouse()->getNumItems(Unit_Carryall)
-					- getHouse()->getNumItems(Unit_Ornithopter)
-					- getHouse()->getNumItems(Unit_Sandworm)
-					- getHouse()->getNumItems(Unit_MCV))) + 1;
+                    int squadRadius = lround(FixPoint::sqrt(getHouse()->getNumUnits()
+                        - getHouse()->getNumItems(Unit_Harvester)
+                        - getHouse()->getNumItems(Unit_Carryall)
+                        - getHouse()->getNumItems(Unit_Ornithopter)
+                        - getHouse()->getNumItems(Unit_Sandworm)
+                        - getHouse()->getNumItems(Unit_MCV))) + 1;
 
-				if (pUnit->getOwner()->getHouseID() != pUnit->getOriginalHouseID()) {
-					// If its a devastator and its not ours, blow it up!!
-					if (pUnit->getItemID() == Unit_Devastator) {
-						const Devastator* pDevastator = static_cast<const Devastator*>(pUnit);
-						doStartDevastate(pDevastator);
-						doSetAttackMode(pDevastator, HUNT);
-					}
-					/*
-					else if (pUnit->getItemID() == Unit_Ornithopter) {
-						if (pUnit->getAttackMode() != HUNT) {
-							doSetAttackMode(pUnit, HUNT);
-						}
-					}*/
-					else if (pUnit->getItemID() == Unit_Harvester) {
-						const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
-						if (pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE / 5) {
-							doReturn(pHarvester);
-						}
-						else {
-							doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
-						}
-					}
-					else {
-						// Send deviated unit to squad centre
-						if (pUnit->getAttackMode() != AREAGUARD) {
-							doSetAttackMode(pUnit, AREAGUARD);
-						}
+                    if (pUnit->getOwner()->getHouseID() != pUnit->getOriginalHouseID()) {
+                        // If its a devastator and its not ours, blow it up!!
+                        if (pUnit->getItemID() == Unit_Devastator) {
+                            const Devastator* pDevastator = static_cast<const Devastator*>(pUnit);
+                            doStartDevastate(pDevastator);
+                            doSetAttackMode(pDevastator, HUNT);
+                        }
+                        /*
+                        else if (pUnit->getItemID() == Unit_Ornithopter) {
+                            if (pUnit->getAttackMode() != HUNT) {
+                                doSetAttackMode(pUnit, HUNT);
+                            }
+                        }*/
+                        else if (pUnit->getItemID() == Unit_Harvester) {
+                            const Harvester* pHarvester = static_cast<const Harvester*>(pUnit);
+                            if (pHarvester->getAmountOfSpice() >= HARVESTERMAXSPICE / 5) {
+                                doReturn(pHarvester);
+                            }
+                            else {
+                                    doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
+                            }
+                        }
+                        else {
+                            // Send deviated unit to squad centre
+                            if (pUnit->getAttackMode() != AREAGUARD) {
+                                doSetAttackMode(pUnit, AREAGUARD);
+                            }
 
-						if (blockDistance(pUnit->getLocation(), squadCenterLocation) > squadRadius - 1) {
-							doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
-						}
-					}
-				}
-				else if ((pUnit->getItemID() == Unit_Launcher || pUnit->getItemID() == Unit_Deviator)
-					&& pUnit->hasATarget() && (difficulty != Difficulty::Easy)) {
+                            if (blockDistance(pUnit->getLocation(), squadCenterLocation) > squadRadius - 1) {
+                                    doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
+                            }
+                        }
+                    }
+					else if ((pUnit->getItemID() == Unit_Launcher || pUnit->getItemID() == Unit_Deviator)
+                        && pUnit->hasATarget() && (difficulty != Difficulty::Easy)) {
 					// Special logic to keep launchers away from harm
 					if (pUnit->getTarget() != nullptr) {
 						if (blockDistance(pUnit->getLocation(), pUnit->getTarget()->getLocation()) <= 6 && pUnit->getTarget()->getItemID() != Unit_Ornithopter) {
 							doSetAttackMode(pUnit, AREAGUARD); // Change mode to stop launchers freezing
-							doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
-						}
-					}
-				}
-				else if (pUnit->getItemID() != Unit_Ornithopter && pUnit->getAttackMode() != HUNT && !pUnit->hasATarget() && !pUnit->wasForced()) {
-					if (pUnit->getAttackMode() == AREAGUARD && squadCenterLocation.isValid() && (gameMode != GameMode::Campaign)) {
-						if (blockDistance(pUnit->getLocation(), squadCenterLocation) > squadRadius) {
+                                doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
+                            }
+                        }
+                    }
+                    else if (pUnit->getItemID() != Unit_Ornithopter && pUnit->getAttackMode() != HUNT && !pUnit->hasATarget() && !pUnit->wasForced()) {
+                        if (pUnit->getAttackMode() == AREAGUARD && squadCenterLocation.isValid() && (gameMode != GameMode::Campaign)) {
+                            if (blockDistance(pUnit->getLocation(), squadCenterLocation) > squadRadius) {
 							if (!pUnit->hasATarget()) {
-								doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, false);
-							}
-						}
-					}
-					else if (pUnit->getAttackMode() == RETREAT) {
+                                    doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, false);
+                                }
+                            }
+                        }
+                        else if (pUnit->getAttackMode() == RETREAT) {
 						if (blockDistance(pUnit->getLocation(), squadRetreatLocation) > squadRadius + 2 && !pUnit->wasForced()) {
-							if (pUnit->getHealth() < pUnit->getMaxHealth()) {
-								doRepair(pUnit);
-							}
-							doMove2Pos(pUnit, squadRetreatLocation.x, squadRetreatLocation.y, true);
-						}
-						else {
-							// We have finished retreating back to the rally point
-							doSetAttackMode(pUnit, AREAGUARD);
-						}
-					}
-					else if (pUnit->getAttackMode() == GUARD
-						&& ((pUnit->getDestination() != squadRallyLocation) || (blockDistance(pUnit->getLocation(), squadRallyLocation) <= squadRadius))) {
-						// A newly deployed unit has reached the rally point, or has been diverted => Change it to area guard
-						doSetAttackMode(pUnit, AREAGUARD);
-					}
-				}
-			} break;
-			}
-		}
-	}
+                                if (pUnit->getHealth() < pUnit->getMaxHealth()) {
+                                    doRepair(pUnit);
+                                }
+                                doMove2Pos(pUnit, squadRetreatLocation.x, squadRetreatLocation.y, true);
+                            }
+                            else {
+                                // We have finished retreating back to the rally point
+                                doSetAttackMode(pUnit, AREAGUARD);
+                            }
+                        }
+                        else if (pUnit->getAttackMode() == GUARD
+                            && ((pUnit->getDestination() != squadRallyLocation) || (blockDistance(pUnit->getLocation(), squadRallyLocation) <= squadRadius))) {
+                            // A newly deployed unit has reached the rally point, or has been diverted => Change it to area guard
+                            doSetAttackMode(pUnit, AREAGUARD);
+                        }
+                    }
+                } break;
+            }
+        }
+    }
 }
