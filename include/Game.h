@@ -663,6 +663,12 @@ private:
         double pathfindingMsThisCycle = 0.0;
         double pathfindingMsThisFrame = 0.0;
         
+        // Per-frame accumulators for min/max tracking
+        double aiMsThisFrame = 0.0;
+        double unitsMsThisFrame = 0.0;
+        double structuresMsThisFrame = 0.0;
+        double renderingMsThisFrame = 0.0;
+        
         // Max values
         double maxAiMs = 0.0;
         double maxUnitsMs = 0.0;
@@ -677,7 +683,11 @@ private:
         
         // Min values
         int minGameCyclesPerFrame = 999999;
+        double minAiMs = 999999.0;
+        double minUnitsMs = 999999.0;
+        double minStructuresMs = 999999.0;
         double minPathfindingMs = 999999.0;
+        double minRenderingMs = 999999.0;
     };
 
     FrameTiming frameTiming;
