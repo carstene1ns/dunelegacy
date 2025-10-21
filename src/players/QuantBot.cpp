@@ -859,6 +859,82 @@ Coord QuantBot::findPlaceLocation(Uint32 itemID) {
 	return bestLocation;
 }
 
+Coord QuantBot::findTurretPlaceLocation(Uint32 itemID) {
+	int newSizeX = getStructureSize(itemID).x;
+	int newSizeY = getStructureSize(itemID).y;
+	
+	squadRallyLocation = findSquadRallyLocation();
+	Coord baseCenter = findBaseCentre(getHouse()->getHouseID());
+	
+	// Find closest enemy structure to determine threat direction
+	Coord enemyDirection = Coord::Invalid();
+	FixPoint closestEnemyDistance = FixPt_MAX;
+	for (const StructureBase* pStructure : getStructureList()) {
+		if (pStructure && pStructure->getOwner() && pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
+			FixPoint distance = blockDistance(baseCenter, pStructure->getLocation());
+			if (distance < closestEnemyDistance) {
+				closestEnemyDistance = distance;
+				enemyDirection = pStructure->getLocation();
+			}
+		}
+	}
+	
+	FixPoint bestScore = -FixPt_MAX;
+	Coord bestLocation = Coord::Invalid();
+	
+	// Check every tile on the map for valid placement
+	for (int x = 0; x <= getMap().getSizeX() - newSizeX; x++) {
+		for (int y = 0; y <= getMap().getSizeY() - newSizeY; y++) {
+			// First check if this location is valid for building
+			if (getMap().okayToPlaceStructure(x, y, newSizeX, newSizeY, false, 
+				(itemID == Structure_ConstructionYard) ? nullptr : getHouse())) {
+				
+				FixPoint score = 0;
+				
+				// CRITICAL: Favor being AWAY from base center (push to perimeter)
+				FixPoint distanceFromBase = blockDistance(Coord(x, y), baseCenter);
+				score += distanceFromBase * 3; // Strong bonus for being away from center
+				
+				// Favor being TOWARDS enemy direction (if known)
+				if (enemyDirection.isValid()) {
+					FixPoint distanceToEnemy = blockDistance(Coord(x, y), enemyDirection);
+					score -= distanceToEnemy * 2; // Penalty for being far from enemy
+				}
+				
+				// Favor map edges for defensive positioning
+				int distanceToEdge = std::min({x, y, getMap().getSizeX() - 1 - x, getMap().getSizeY() - 1 - y});
+				score += (15 - distanceToEdge) * 4; // Strong bonus for being close to edges
+				
+				// Check terrain quality around the turret
+				int sandTiles = 0;
+				int rockTiles = 0;
+				for (int dx = 0; dx < newSizeX; dx++) {
+					for (int dy = 0; dy < newSizeY; dy++) {
+						if (getMap().tileExists(x + dx, y + dy)) {
+							const Tile* pTile = getMap().getTile(x + dx, y + dy);
+							if (!pTile->isRock()) {
+								sandTiles++;
+							} else {
+								rockTiles++;
+							}
+						}
+					}
+				}
+				score += sandTiles * 10; // Strong bonus for sand
+				score -= rockTiles * 5;  // Penalty for rock
+				
+				// Check if this is the best location so far
+				if (score > bestScore) {
+					bestScore = score;
+					bestLocation = Coord(x, y);
+				}
+			}
+		}
+	}
+	
+	return bestLocation;
+}
+
 Coord QuantBot::findPlaceLocationSimple(Uint32 itemID) {
 	int newSizeX = getStructureSize(itemID).x;
 	int newSizeY = getStructureSize(itemID).y;
@@ -1565,7 +1641,7 @@ void QuantBot::build(int militaryValue) {
 							}
 							else if (money > 3000
 								&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
-								&& findPlaceLocation(Structure_RocketTurret).isValid()
+								&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
 								&& pBuilder->getProductionQueueSize() == 0
 								&& (itemCount[Structure_RocketTurret] <
 									(itemCount[Structure_Silo] + itemCount[Structure_Refinery]) * 2)) {
@@ -1594,7 +1670,30 @@ void QuantBot::build(int militaryValue) {
 								}
 							}
 
-							if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+							// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
+							if (enemyOrnithopterCount > itemCount[Structure_RocketTurret] && enemyOrnithopterCount > 0) {
+								if (pBuilder->getCurrentUpgradeLevel() < 2) {
+									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+										// Repair construction yard first if damaged
+										doRepair(pBuilder);
+										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
+									}
+									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
+										// Upgrade construction yard to unlock rocket turrets
+										doUpgrade(pBuilder);
+										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
+									}
+								}
+							else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
+								&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+								&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+								// Build rocket turret to counter ornithopters
+								itemID = Structure_RocketTurret;
+								logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d", enemyOrnithopterCount, itemCount[Structure_RocketTurret]);
+							}
+							}
+							// Essential infrastructure
+							else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
 								itemID = Structure_WindTrap;
 							}
 							else if ((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
@@ -1608,31 +1707,8 @@ void QuantBot::build(int militaryValue) {
 							else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
 								itemID = Structure_StarPort;
 							}
-							// Build essential infrastructure with reasonable credit requirements
 							else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
-								itemID = Structure_Radar; // Outpost for unit coordination
-							}
-							// Counter enemy ornithopters with rocket turrets or upgrades
-							else if (enemyOrnithopterCount > itemCount[Structure_RocketTurret]) {
-								if (pBuilder->getCurrentUpgradeLevel() < 2) {
-									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
-										// Repair construction yard first if damaged
-										doRepair(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
-									}
-									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
-										// Upgrade construction yard to unlock rocket turrets
-										doUpgrade(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
-									}
-								}
-								else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
-									&& findPlaceLocation(Structure_RocketTurret).isValid()
-									&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-									// Build rocket turret to counter ornithopters
-									itemID = Structure_RocketTurret;
-									logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d", enemyOrnithopterCount, itemCount[Structure_RocketTurret]);
-								}
+								itemID = Structure_Radar;
 							}
 							else if (pBuilder->isAvailableToBuild(Structure_LightFactory)
 								&& itemCount[Structure_LightFactory] == 0 && money > 500) {
@@ -1652,30 +1728,7 @@ void QuantBot::build(int militaryValue) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
 														}
-							// Upgrade Construction Yard to unlock rocket turrets and advanced units
-							else if (pBuilder->getCurrentUpgradeLevel() < 2 
-								&& !pBuilder->isUpgrading() 
-								&& pBuilder->getHealth() >= pBuilder->getMaxHealth()
-								&& money > 1000) {
-									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
-										// Repair construction yard first if damaged
-										doRepair(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
-									}
-									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
-										// Upgrade construction yard to unlock rocket turrets
-										doUpgrade(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
-									}
-							}
-							// Progressive rocket turret building after starport (if they don't need power or we have power)
-							else if (itemCount[Structure_RocketTurret] < 2
-										&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
-										&& findPlaceLocation(Structure_RocketTurret).isValid()
-										&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())
-										&& money > 1000) {
-								itemID = Structure_RocketTurret;
-							}
+							// Note: CY upgrade and rocket turret building are now handled by ornithopter counter above
 							else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
 								if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
 									itemID = Structure_HighTechFactory;
@@ -1782,6 +1835,9 @@ void QuantBot::build(int militaryValue) {
 						if (itemToBePlaced == Structure_Slab1) {
 							// For concrete slabs, use simple method to find any valid location
 							location = findPlaceLocationSimple(itemToBePlaced);
+						} else if (itemToBePlaced == Structure_RocketTurret || itemToBePlaced == Structure_GunTurret) {
+							// For turrets, use specialized placement that favors perimeter and enemy direction
+							location = findTurretPlaceLocation(itemToBePlaced);
 						} else {
 							// For other structures, use normal method that favors adjacency
 							location = findPlaceLocation(itemToBePlaced);
