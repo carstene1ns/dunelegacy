@@ -238,6 +238,11 @@ void QuantBot::save(OutputStream& stream) const {
 
 	
 void QuantBot::update() {
+	// Safety check: if our house is null (e.g., during game cleanup), don't update
+	if (getHouse() == nullptr) {
+		return;
+	}
+	
 	if (getGameCycleCount() == 0) {
 		// The game just started and we gather some
 		// Count the items once initially
@@ -248,7 +253,7 @@ void QuantBot::update() {
 			logDebug("Initial: Item: %d  Count: %d", i, initialItemCount[i]);
 		}
 
-		if ((initialItemCount[Structure_RepairYard] == 0) && gameMode == GameMode::Campaign && currentGame->techLevel > 4) {
+		if ((initialItemCount[Structure_RepairYard] == 0) && gameMode == GameMode::Campaign && currentGame && currentGame->techLevel > 4) {
 			initialItemCount[Structure_RepairYard] = 1;
 			if (initialItemCount[Structure_Radar] == 0) {
 				initialItemCount[Structure_Radar] = 1;
@@ -263,13 +268,15 @@ void QuantBot::update() {
 
 		// Calculate the total military value of the player
 		initialMilitaryValue = 0;
-		for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
-			if (i != Unit_Carryall
-				&& i != Unit_Harvester
-				&& i != Unit_MCV
-				&& i != Unit_Sandworm) {
-				// Used for campaign mode.
-				initialMilitaryValue += initialItemCount[i] * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+		if (currentGame) {
+			for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
+				if (i != Unit_Carryall
+					&& i != Unit_Harvester
+					&& i != Unit_MCV
+					&& i != Unit_Sandworm) {
+					// Used for campaign mode.
+					initialMilitaryValue += initialItemCount[i] * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+				}
 			}
 		}
 
@@ -281,7 +288,7 @@ void QuantBot::update() {
 			switch (difficulty) {
 			case Difficulty::Easy: {
 				harvesterLimit = initialItemCount[Structure_Refinery];
-				if (currentGame->getGameInitSettings().getMission() >= 21
+				if (currentGame && currentGame->getGameInitSettings().getMission() >= 21
 					&& initialMilitaryValue < 2000) {
 					militaryValueLimit = 2000;
 				}
@@ -295,7 +302,7 @@ void QuantBot::update() {
 			case Difficulty::Medium: {
 				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
 				militaryValueLimit = lround(initialMilitaryValue * 1.5_fix);
-				if (militaryValueLimit < 4000 && currentGame->getGameInitSettings().getMission() >= 21) {
+				if (militaryValueLimit < 4000 && currentGame && currentGame->getGameInitSettings().getMission() >= 21) {
 					militaryValueLimit = 4000;
 				}
 
@@ -303,7 +310,7 @@ void QuantBot::update() {
 			} break;
 
 			case Difficulty::Hard: {
-				if (currentGame->getGameInitSettings().getMission() >= 21) {
+				if (currentGame && currentGame->getGameInitSettings().getMission() >= 21) {
 					initialItemCount[Structure_Refinery] = 2;
 					militaryValueLimit = 10000;
 				}
@@ -502,12 +509,14 @@ void QuantBot::update() {
 
 	// Calculate the total military value of the player
 	int militaryValue = 0;
-	for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
-		if (i != Unit_Carryall
-			&& i != Unit_Harvester
-			&& i != Unit_MCV
-			&& i != Unit_Sandworm) {
-				militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+	if (currentGame) {
+		for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
+			if (i != Unit_Carryall
+				&& i != Unit_Harvester
+				&& i != Unit_MCV
+				&& i != Unit_Sandworm) {
+					militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+			}
 		}
 	}
 	//logDebug("Military Value %d  Initial Military Value %d", militaryValue, initialMilitaryValue);
