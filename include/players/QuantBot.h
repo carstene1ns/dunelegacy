@@ -65,6 +65,7 @@ private:
     int initialMilitaryValue = 0;
     int militaryValueLimit = 0;
     int harvesterLimit = 4;
+    int lastCalculatedSpice = 0;
     bool campaignAIAttackFlag = false;
     Coord squadRallyLocation = Coord::Invalid();
     Coord squadRetreatLocation = Coord::Invalid();

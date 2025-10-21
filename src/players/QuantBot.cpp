@@ -32,10 +32,12 @@
 #include <structures/Palace.h>
 #include <units/UnitBase.h>
 #include <units/GroundUnit.h>
+#include <units/AirUnit.h>
 #include <units/MCV.h>
 #include <units/Harvester.h>
 #include <units/Saboteur.h>
 #include <units/Devastator.h>
+#include <units/Carryall.h>
 
 #include <algorithm>
 
@@ -177,6 +179,7 @@ QuantBot::QuantBot(InputStream& stream, House* associatedHouse) : Player(stream,
 	initialMilitaryValue = stream.readSint32();
 	militaryValueLimit = stream.readSint32();
 	harvesterLimit = stream.readSint32();
+	lastCalculatedSpice = stream.readSint32();
 	campaignAIAttackFlag = stream.readBool();
 
 	squadRallyLocation.x = stream.readSint32();
@@ -217,6 +220,7 @@ void QuantBot::save(OutputStream& stream) const {
 	stream.writeSint32(initialMilitaryValue);
 	stream.writeSint32(militaryValueLimit);
 	stream.writeSint32(harvesterLimit);
+	stream.writeSint32(lastCalculatedSpice);
 	stream.writeBool(campaignAIAttackFlag);
 
 	stream.writeSint32(squadRallyLocation.x);
@@ -332,81 +336,160 @@ void QuantBot::update() {
 
 		} break;
 
-		case GameMode::Custom: {
-			// set initial unit position
-			findSquadRallyLocation();
-			retreatAllUnits();
+	case GameMode::Custom: {
+		// set initial unit position
+		findSquadRallyLocation();
+		retreatAllUnits();
 
-			// add a unit ratio based on map size          
-			double ratio = 0.0;
-			int mapsize = currentGameMap->getSizeX() * currentGameMap->getSizeY();
+		// Set harvester limits based on map size and difficulty
+		int mapsize = 4096; // Default fallback size
+		if (currentGameMap) {
+			mapsize = currentGameMap->getSizeX() * currentGameMap->getSizeY();
+		}
+		
+		switch (difficulty) {
+		case Difficulty::Easy: {
 			if (mapsize <= 1024) {
-				ratio = 0.20;
+				harvesterLimit = 2;  // 32x32
+				militaryValueLimit = 3000;  // 32x32
+			} else if (mapsize <= 4096) {
+				harvesterLimit = 2;  // 62x62, 64x64
+				militaryValueLimit = 8000;  // 64x64
+			} else if (mapsize <= 16384) {
+				harvesterLimit = 8;  // 128x128
+				militaryValueLimit = 20000;  // 128x128
+			} else {
+				harvesterLimit = 8 * (mapsize / 16384.0);  // Scale for larger maps
+				militaryValueLimit = 20000 * (mapsize / 16384.0);
 			}
-			else if (mapsize <= 2048) {
-				ratio = 0.35;
-			}
-			else if (mapsize <= 4096) {
-				ratio = 0.5;
-			}
-			else if (mapsize <= 6114) {
-				ratio = 0.65;
-			}
-			else if (mapsize <= 8192) {
-				ratio = 0.8;
-			}
-			else if (mapsize <= 12288) {
-				ratio = 0.9;
-			}
-			else {
-				ratio = 1;
-			}
-			
-			switch (difficulty) {
-			case Difficulty::Brutal: {
-				harvesterLimit = 60 * ratio;
-				militaryValueLimit = 75000 * ratio;
-				logDebug("BUILD BRUTAL SKIRM. harvesterLimit: 50 * ratio: %d = %d", ratio, harvesterLimit);
-			} break;
+			logDebug("BUILD EASY CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
+		} break;
 
-			case Difficulty::Easy: {
-				harvesterLimit = 10 * ratio;
+		case Difficulty::Medium: {
+			if (mapsize <= 1024) {
+				harvesterLimit = 3;  // 32x32
+				militaryValueLimit = 5000;  // 32x32
+			} else if (mapsize <= 4096) {
+				harvesterLimit = 4;  // 62x62, 64x64
+				militaryValueLimit = 12000;  // 64x64
+			} else if (mapsize <= 16384) {
+				harvesterLimit = 15;  // 128x128
+				militaryValueLimit = 35000;  // 128x128
+			} else {
+				harvesterLimit = 15 * (mapsize / 16384.0);  // Scale for larger maps
+				militaryValueLimit = 35000 * (mapsize / 16384.0);
+			}
+			logDebug("BUILD MEDIUM CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
+		} break;
 
-				militaryValueLimit = 15000 * ratio;
-				logDebug("BUILD EASY SKIRM. harvesterLimit: 10 * ratio: %d = %d", ratio, harvesterLimit);
-			} break;
+		case Difficulty::Hard: {
+			if (mapsize <= 1024) {
+				harvesterLimit = 4;  // 32x32
+				militaryValueLimit = 8000;  // 32x32
+			} else if (mapsize <= 4096) {
+				harvesterLimit = 7;  // 62x62, 64x64
+				militaryValueLimit = 20000;  // 64x64
+			} else if (mapsize <= 16384) {
+				harvesterLimit = 40;  // 128x128
+				militaryValueLimit = 50000;  // 128x128
+			} else {
+				harvesterLimit = 40 * (mapsize / 16384.0);  // Scale for larger maps
+				militaryValueLimit = 50000 * (mapsize / 16384.0);
+			}
+			logDebug("BUILD HARD CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
+		} break;
 
-			case Difficulty::Medium: {
-				harvesterLimit = 20 * ratio;
-				militaryValueLimit = 25000 * ratio;
-				logDebug("BUILD MEDIUM SKIRM. harvesterLimit: 20 * ratio: %d = %d", ratio, harvesterLimit);
-			} break;
+		case Difficulty::Brutal: {
+			if (mapsize <= 1024) {
+				harvesterLimit = 10;  // 32x32 - increased from 5
+				militaryValueLimit = 20000;  // 32x32 - increased from 12000
+			} else if (mapsize <= 4096) {
+				harvesterLimit = 20;  // 62x62, 64x64 - increased from 10
+				militaryValueLimit = 40000;  // 64x64 - increased from 30000
+			} else if (mapsize <= 16384) {
+				harvesterLimit = 100;  // 128x128 - increased from 70 to 100
+				militaryValueLimit = 80000;  // 128x128 - increased from 75000 to 80000
+			} else {
+				harvesterLimit = 100 * (mapsize / 16384.0);  // Scale for larger maps - base increased to 100
+				militaryValueLimit = 80000 * (mapsize / 16384.0);  // Scale for larger maps - base increased to 80000
+			}
+			logDebug("BUILD BRUTAL CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
+		} break;
 
-			case Difficulty::Hard: {
-				harvesterLimit = 40 * ratio;
-				militaryValueLimit = 50000 * ratio;
-				logDebug("BUILD HARD SKIRM. harvesterLimit: 40 * ratio: %d = %d", ratio, harvesterLimit);
-			} break;
+		case Difficulty::Defend: {
+			if (mapsize <= 1024) {
+				harvesterLimit = 3;  // 32x32
+				militaryValueLimit = 4000;  // 32x32
+			} else if (mapsize <= 4096) {
+				harvesterLimit = 4;  // 62x62, 64x64
+				militaryValueLimit = 10000;  // 64x64
+			} else if (mapsize <= 16384) {
+				harvesterLimit = 15;  // 128x128
+				militaryValueLimit = 25000;  // 128x128
+			} else {
+				harvesterLimit = 15 * (mapsize / 16384.0);  // Scale for larger maps
+				militaryValueLimit = 25000 * (mapsize / 16384.0);
+			}
+			logDebug("BUILD DEFEND CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
+		} break;
+		}
 
-			case Difficulty::Defend: {
-				harvesterLimit = 20 * ratio;
-				militaryValueLimit = 20000 * ratio;
-				logDebug("BUILD DEFEND SKIRM. harvesterLimit: 20 * ratio: %d = %d", ratio, harvesterLimit);
-	} break;
-	}
-
-	// what is this useful for? Reseting limits or something
-	/*
-	if ((currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480) < harvesterLimit && difficulty != Difficulty::Brutal) {
-		harvesterLimit = currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480;
-		logDebug("Reset harvesterLimit: %d = mapX: %d * mapY: %d / 480", harvesterLimit, currentGameMap->getSizeX(), currentGameMap->getSizeY());
-	}*/
+		// what is this useful for? Reseting limits or something
+		/*
+		if ((currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480) < harvesterLimit && difficulty != Difficulty::Brutal) {
+			harvesterLimit = currentGameMap->getSizeX() * currentGameMap->getSizeY() / 480;
+			logDebug("Reset harvesterLimit: %d = mapX: %d * mapY: %d / 480", harvesterLimit, currentGameMap->getSizeX(), currentGameMap->getSizeY());
+		}*/
 
 	} break;
 
 		}
+		
+		// Calculate total spice remaining on map and adjust harvester limit for both modes
+		lastCalculatedSpice = 0;
+		if (currentGameMap) {
+			const int mapSizeX = currentGameMap->getSizeX();
+			const int mapSizeY = currentGameMap->getSizeY();
+			
+			for (int x = 0; x < mapSizeX; x++) {
+				for (int y = 0; y < mapSizeY; y++) {
+					Tile* pTile = currentGameMap->getTile(x, y);
+					if (pTile && pTile->hasSpice()) {
+						lastCalculatedSpice += pTile->getSpice().lround();
+					}
+				}
+			}
+		}
+		
+		// Apply spice-based harvester limit only for Custom mode
+		if (gameMode == GameMode::Custom) {
+			// Don't build more harvesters if total spice < 2000 * harvester count
+			int maxHarvestersForSpice = lastCalculatedSpice / 2000;
+			if (maxHarvestersForSpice < harvesterLimit) {
+				harvesterLimit = std::max(1, maxHarvestersForSpice); // Always allow at least 1 harvester
+				logDebug("Harvester limit reduced due to low spice: %d (spice: %d)", harvesterLimit, lastCalculatedSpice);
+			}
+		}
+		
+		logDebug("Initial spice calculation: %d spice remaining on map", lastCalculatedSpice);
 	}
 
+	// Recalculate spice every AI update cycle for both Campaign and Custom modes
+	// Do this BEFORE the AI update interval check so it always happens
+	lastCalculatedSpice = 0;
+	if (currentGameMap) {
+		const int mapSizeX = currentGameMap->getSizeX();
+		const int mapSizeY = currentGameMap->getSizeY();
+		
+		for (int x = 0; x < mapSizeX; x++) {
+			for (int y = 0; y < mapSizeY; y++) {
+				Tile* pTile = currentGameMap->getTile(x, y);
+				if (pTile && pTile->hasSpice()) {
+					lastCalculatedSpice += pTile->getSpice().lround();
+				}
+			}
+		}
+	}
 
 	if ((getGameCycleCount() + getHouse()->getHouseID()) % AIUPDATEINTERVAL != 0) {
 		// we are not updating this AI player this cycle
@@ -822,9 +905,15 @@ void QuantBot::build(int militaryValue) {
 	int money = getHouse()->getCredits();
 
 	if (militaryValue > 0 || getHouse()->getNumStructures() > 0) {
+		if (gameMode == GameMode::Custom) {
+			logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d remaining spice: %d hvstr: %d/%d",
+				attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
+				getHouse()->getKillValue(), getHouse()->getLossValue(), lastCalculatedSpice, getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
+		} else {
 			logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
 				attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
 				getHouse()->getKillValue(), getHouse()->getLossValue(), getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
+		}
 	}
 
 
@@ -1894,12 +1983,22 @@ void QuantBot::retreatAllUnits() {
 
                 case Unit_Ornithopter: {
                     const UnitBase* pOrnithopter = pUnit;
-				if (getHouse()->getNumItems(Unit_Ornithopter) > 2) {
-					// If we have more than 2 ornithopters, they should attack enemy structures
-					if (!pOrnithopter->hasATarget() || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID())) {
+                    
+                    // Calculate current military value for ornithopter attack decisions
+                    int militaryValue = 0;
+                    if (currentGame) {
+                        for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
+                            if (i != Unit_Carryall && i != Unit_Harvester && i != Unit_MCV && i != Unit_Sandworm) {
+                                militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+                            }
+                        }
+                    }
+                    
+                    // We have enough ornithopters, they should attack enemy structures
+                    if (!pOrnithopter->hasATarget() || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID())) {
                         // Find closest enemy structure to squad rally point
                         Coord squadRallyPoint = findSquadRallyLocation();
-						const StructureBase* closestEnemyStructure = nullptr;
+                        const StructureBase* primaryTarget = nullptr;
                         FixPoint closestDistance = FixPt_MAX;
 
                         for (const StructureBase* pStructure : getStructureList()) {
@@ -1907,23 +2006,95 @@ void QuantBot::retreatAllUnits() {
                                 FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
                                 if (distance < closestDistance) {
                                     closestDistance = distance;
-									closestEnemyStructure = pStructure;
-								}
-							}
-						}
+                                    primaryTarget = pStructure;
+                                }
+                            }
+                        }
 
-						if (closestEnemyStructure != nullptr) {
-							doAttackObject(pOrnithopter, closestEnemyStructure, true);
+                        if (primaryTarget != nullptr) {
+                            // Count rocket turrets belonging to the same player as our target
+                            int targetPlayerRocketTurrets = 0;
+                            for (const StructureBase* pStructure : getStructureList()) {
+                                if (pStructure->getOwner()->getHouseID() == primaryTarget->getOwner()->getHouseID()
+                                    && pStructure->getItemID() == Structure_RocketTurret) {
+                                    targetPlayerRocketTurrets++;
+                                }
+                            }
+                            
+                            // Only attack if we have enough ornithopters for this specific player's defenses
+                            int requiredOrnithopters = std::max(1, targetPlayerRocketTurrets);
+                            
+                            // Calculate current ornithopter percentage of total military units
+                            int totalMilitaryUnits = 0;
+                            int ornithopterCount = getHouse()->getNumItems(Unit_Ornithopter);
+                            
+                            // Count all military units (excluding harvesters, MCVs, carryalls)
+                            for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
+                                if (i != Unit_Carryall && i != Unit_Harvester && i != Unit_MCV && i != Unit_Sandworm) {
+                                    totalMilitaryUnits += getHouse()->getNumItems(i);
+                                }
+                            }
+                            
+                            // Calculate ornithopter percentage
+                            FixPoint ornithopterPercentage = 0;
+                            if (totalMilitaryUnits > 0) {
+                                ornithopterPercentage = FixPoint(ornithopterCount) / FixPoint(totalMilitaryUnits);
+                            }
+                            
+                            // New condition: attack if ornithopters > 20% of troops AND military value >= 40% of limit
+                            bool hasEnoughOrnithoptersVsTurrets = (ornithopterCount >= requiredOrnithopters);
+                            bool hasHighOrnithopterRatio = (ornithopterPercentage > 0.20_fix) && (militaryValue >= militaryValueLimit * 0.40_fix);
+                            
+                            if (hasEnoughOrnithoptersVsTurrets) {
+                                logDebug("Ornithopter attack: sufficient vs turrets - ornis: %d >= required: %d", ornithopterCount, requiredOrnithopters);
+                            } else if (hasHighOrnithopterRatio) {
+                                logDebug("Ornithopter attack: high ratio condition - orni%%: %.1f%% (>20%%), mval: %d/%d (%.1f%% >= 40%%)", 
+                                    ornithopterPercentage.toFloat() * 100.0f, militaryValue, militaryValueLimit, 
+                                    (FixPoint(militaryValue) / FixPoint(militaryValueLimit)).toFloat() * 100.0f);
+                            }
+                            
+                            if (hasEnoughOrnithoptersVsTurrets || hasHighOrnithopterRatio) {
+                                // Check if any rocket turrets are in range of the nearest enemy building
+                                const StructureBase* rocketTurretTarget = nullptr;
+                                int rocketTurretRange = 0;
+                                if (currentGame) {
+                                    rocketTurretRange = currentGame->objectData.data[Structure_RocketTurret][getHouse()->getHouseID()].weaponrange;
+                                }
+                                
+                                for (const StructureBase* pTurret : getStructureList()) {
+                                    if (pTurret->getOwner()->getTeamID() != getHouse()->getTeamID() 
+                                        && pTurret->getItemID() == Structure_RocketTurret) {
+                                        FixPoint distanceToNearestBuilding = blockDistance(pTurret->getLocation(), primaryTarget->getLocation());
+                                        if (distanceToNearestBuilding <= rocketTurretRange) {
+                                            rocketTurretTarget = pTurret;
+                                            break; // Prioritize first rocket turret found in range
+                                        }
+                                    }
+                                }
+
+                                // Choose target: prioritize rocket turrets in range, otherwise use nearest building
+                                const StructureBase* finalTarget = rocketTurretTarget ? rocketTurretTarget : primaryTarget;
+                                doAttackObject(pOrnithopter, finalTarget, true);
                             } else {
-							// No enemy structures found, return to rally point
-							doMove2Pos(const_cast<UnitBase*>(pOrnithopter), squadRallyPoint.x, squadRallyPoint.y, true);
+                                // Not enough ornithopters to attack this specific player - patrol defensively
+                                if (!pOrnithopter->hasATarget() && !pOrnithopter->wasForced()) {
+                                    Coord ownBaseCentre = findBaseCentre(getHouse()->getHouseID());
+                                    if (ownBaseCentre.isValid() && ownBaseCentre != pOrnithopter->getGuardPoint()) {
+                                        const_cast<UnitBase*>(pOrnithopter)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
+                                    }
                                 }
                             }
                         } else {
-					// If we have 2 or fewer ornithopters, they should return to rally point
-					Coord squadRallyPoint = findSquadRallyLocation();
-					doMove2Pos(const_cast<UnitBase*>(pOrnithopter), squadRallyPoint.x, squadRallyPoint.y, false);
-				}
+                            // No enemy structures found at all - patrol defensively
+                            if (!pOrnithopter->hasATarget() && !pOrnithopter->wasForced()) {
+                                Coord ownBaseCentre = findBaseCentre(getHouse()->getHouseID());
+                                if (ownBaseCentre.isValid() && ownBaseCentre != pOrnithopter->getGuardPoint()) {
+                                    const_cast<UnitBase*>(pOrnithopter)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
+                                }
+                            }
+						}
+					}
+				// Note: Defensive behavior (patrolling own base) is handled above in the various else clauses
 			} break;
 
                 default: {
