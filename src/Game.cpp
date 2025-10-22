@@ -1155,7 +1155,10 @@ void Game::runMainLoop() {
                     frameTiming.networkWaitMsThisFrame += networkWaitMs;
                     if(networkWaitMs > frameTiming.maxNetworkWaitMs) frameTiming.maxNetworkWaitMs = networkWaitMs;
                 }
-                
+                else if (bPause){
+                    // Pause in single player shouldn't jump after resuming
+                    frameTime = 0;
+                }
                 // Break out of loop to avoid spinning - we'll try again next frame
                 // Also add a small delay to avoid burning CPU
                 SDL_Delay(1);
