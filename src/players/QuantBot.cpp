@@ -2203,6 +2203,11 @@ void QuantBot::retreatAllUnits() {
         Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
 
         for (const UnitBase* pUnit : getUnitList()) {
+            // Safety check: skip null units (can happen during unit destruction)
+            if (pUnit == nullptr) {
+                continue;
+            }
+            
 		if (pUnit->getOwner() == getHouse()) {
                 switch (pUnit->getItemID()) {
                 case Unit_MCV: {
