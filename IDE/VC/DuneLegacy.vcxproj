@@ -219,6 +219,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClInclude Include="..\..\include\Command.h" />
     <ClInclude Include="..\..\include\CommandManager.h" />
     <ClInclude Include="..\..\include\config.h" />
+    <ClInclude Include="..\..\include\CrashHandler.h" />
     <ClInclude Include="..\..\include\CutScenes\CrossBlendVideoEvent.h" />
     <ClInclude Include="..\..\include\CutScenes\CutScene.h" />
     <ClInclude Include="..\..\include\CutScenes\CutSceneMusicTrigger.h" />
@@ -435,6 +436,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClInclude Include="..\..\include\sand.h" />
     <ClInclude Include="..\..\include\ScreenBorder.h" />
     <ClInclude Include="..\..\include\SoundPlayer.h" />
+    <ClInclude Include="..\..\include\SpatialGrid.h" />
     <ClInclude Include="..\..\include\structures\Barracks.h" />
     <ClInclude Include="..\..\include\structures\BuilderBase.h" />
     <ClInclude Include="..\..\include\structures\ConstructionYard.h" />
@@ -493,6 +495,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClCompile Include="..\..\src\Choam.cpp" />
     <ClCompile Include="..\..\src\Command.cpp" />
     <ClCompile Include="..\..\src\CommandManager.cpp" />
+    <ClCompile Include="..\..\src\CrashHandler.cpp" />
     <ClCompile Include="..\..\src\CutScenes\CrossBlendVideoEvent.cpp" />
     <ClCompile Include="..\..\src\CutScenes\CutScene.cpp" />
     <ClCompile Include="..\..\src\CutScenes\CutSceneTrigger.cpp" />
@@ -907,6 +910,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClCompile Include="..\..\src\sand.cpp" />
     <ClCompile Include="..\..\src\ScreenBorder.cpp" />
     <ClCompile Include="..\..\src\SoundPlayer.cpp" />
+    <ClCompile Include="..\..\src\SpatialGrid.cpp" />
     <ClCompile Include="..\..\src\structures\Barracks.cpp" />
     <ClCompile Include="..\..\src\structures\BuilderBase.cpp" />
     <ClCompile Include="..\..\src\structures\ConstructionYard.cpp" />
