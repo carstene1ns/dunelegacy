@@ -2310,7 +2310,17 @@ void QuantBot::retreatAllUnits() {
                             }
                             
                             // Only attack if we have enough ornithopters for this specific player's defenses
-                            int requiredOrnithopters = std::max(1, targetPlayerRocketTurrets);
+                            // Minimum ornithopters based on difficulty, plus extra for enemy rocket turrets
+                            int minOrnithopters = 1; // Easy
+                            if (difficulty == Difficulty::Medium) {
+                                minOrnithopters = 2;
+                            } else if (difficulty == Difficulty::Hard) {
+                                minOrnithopters = 3;
+                            } else if (difficulty == Difficulty::Brutal) {
+                                minOrnithopters = 4;
+                            }
+                            
+                            int requiredOrnithopters = std::max(minOrnithopters, targetPlayerRocketTurrets + 1);
                             
                             // Calculate current ornithopter percentage of total military units
                             int totalMilitaryUnits = 0;
