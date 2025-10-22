@@ -60,6 +60,7 @@ target_sources(dunelegacy
         Choam.cpp
         Command.cpp
         CommandManager.cpp
+        CrashHandler.cpp
         Explosion.cpp
         Game.cpp
         GameInitSettings.cpp

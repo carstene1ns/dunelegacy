@@ -46,6 +46,7 @@
 #include <misc/format.h>
 #include <misc/SDL2pp.h>
 
+#include <CrashHandler.h>
 #include <SoundPlayer.h>
 
 #include <mmath.h>
@@ -507,6 +508,10 @@ int main(int argc, char *argv[]) {
 
             #endif
         }
+
+        // Install crash handlers early, after logging is set up
+        std::string crashLogPath = getLogFilepath();
+        installCrashHandlers(crashLogPath.c_str());
 
         SDL_Log("Starting Dune Legacy %s on %s", VERSION, SDL_GetPlatform());
 
