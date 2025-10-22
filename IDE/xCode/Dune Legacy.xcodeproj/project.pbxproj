@@ -94,7 +94,6 @@
 		1358FE7313D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDB613D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp */; };
 		1358FE7413D3B72F00FAD5B7 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDB713D3B72F00FAD5B7 /* main.cpp */; };
 		1358FE7613D3B72F00FAD5B7 /* Map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDB913D3B72F00FAD5B7 /* Map.cpp */; };
-		7E147A1A2C677F8200A82F0B /* SpatialGrid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E147A192C677F8200A82F0B /* SpatialGrid.cpp */; };
 		1358FE7913D3B72F00FAD5B7 /* MapSeed.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDBC13D3B72F00FAD5B7 /* MapSeed.cpp */; };
 		1358FE7A13D3B72F00FAD5B7 /* AboutMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDBE13D3B72F00FAD5B7 /* AboutMenu.cpp */; };
 		1358FE7B13D3B72F00FAD5B7 /* BriefingMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1358FDBF13D3B72F00FAD5B7 /* BriefingMenu.cpp */; };
@@ -211,6 +210,7 @@
 		13E564D1169B55BE00D282B9 /* OPENSD2.PAK in Resources */ = {isa = PBXBuildFile; fileRef = 13E564D0169B55BE00D282B9 /* OPENSD2.PAK */; };
 		13E929C010AF72BF00169991 /* Dune2-Versions.txt in Resources */ = {isa = PBXBuildFile; fileRef = 13E929BF10AF72BF00169991 /* Dune2-Versions.txt */; };
 		174241721DDE0953001FB159 /* format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 174241711DDE0953001FB159 /* format.cpp */; };
+		7E147A1A2C677F8200A82F0B /* SpatialGrid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E147A192C677F8200A82F0B /* SpatialGrid.cpp */; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		CE6BA2011E10043D000640F9 /* 4P - 64x64 - 3 vs 1.ini in Copy Singleplayer Maps */ = {isa = PBXBuildFile; fileRef = CE6BA1FB1E100409000640F9 /* 4P - 64x64 - 3 vs 1.ini */; };
 		CE6BA2021E10043D000640F9 /* 5P - 128x128 - Sardaukar Base Easy.ini in Copy Singleplayer Maps */ = {isa = PBXBuildFile; fileRef = CE6BA1FD1E10041D000640F9 /* 5P - 128x128 - Sardaukar Base Easy.ini */; };
@@ -293,6 +293,7 @@
 		E375D33D2DB00C5E00F459C8 /* ATRE.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32B2DB00C5D00F459C8 /* ATRE.PAK */; };
 		E375D33E2DB00C5E00F459C8 /* SOUND.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32C2DB00C5D00F459C8 /* SOUND.PAK */; };
 		E375D33F2DB00C5E00F459C8 /* VOC.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32D2DB00C5D00F459C8 /* VOC.PAK */; };
+		E398899A2EA8A80A00188668 /* CrashHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E39889992EA8A80A00188668 /* CrashHandler.cpp */; };
 		E3D11F8F2DAFFD0600C4A670 /* SDL2_ttf.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */; };
 		E3D11F902DAFFD2D00C4A670 /* SDL2_ttf.framework in Copy Frameworks into .app bundle */ = {isa = PBXBuildFile; fileRef = E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -726,7 +727,6 @@
 		1358FDB613D3B72F00FAD5B7 /* INIMapPreviewCreator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = INIMapPreviewCreator.cpp; sourceTree = "<group>"; };
 		1358FDB713D3B72F00FAD5B7 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		1358FDB913D3B72F00FAD5B7 /* Map.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Map.cpp; sourceTree = "<group>"; };
-		7E147A192C677F8200A82F0B /* SpatialGrid.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpatialGrid.cpp; sourceTree = "<group>"; };
 		1358FDBC13D3B72F00FAD5B7 /* MapSeed.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MapSeed.cpp; sourceTree = "<group>"; };
 		1358FDBE13D3B72F00FAD5B7 /* AboutMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AboutMenu.cpp; sourceTree = "<group>"; };
 		1358FDBF13D3B72F00FAD5B7 /* BriefingMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BriefingMenu.cpp; sourceTree = "<group>"; };
@@ -879,6 +879,7 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* Dune Legacy_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Dune Legacy_Prefix.pch"; sourceTree = "<group>"; };
+		7E147A192C677F8200A82F0B /* SpatialGrid.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpatialGrid.cpp; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CE6BA1FB1E100409000640F9 /* 4P - 64x64 - 3 vs 1.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "4P - 64x64 - 3 vs 1.ini"; sourceTree = "<group>"; };
 		CE6BA1FD1E10041D000640F9 /* 5P - 128x128 - Sardaukar Base Easy.ini */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "5P - 128x128 - Sardaukar Base Easy.ini"; sourceTree = "<group>"; };
@@ -986,6 +987,11 @@
 		E375D32C2DB00C5D00F459C8 /* SOUND.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = SOUND.PAK; path = ../../data/SOUND.PAK; sourceTree = "<group>"; };
 		E375D32D2DB00C5D00F459C8 /* VOC.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = VOC.PAK; path = ../../data/VOC.PAK; sourceTree = "<group>"; };
 		E375D32E2DB00C5D00F459C8 /* GFXHD.PAK */ = {isa = PBXFileReference; lastKnownFileType = file; name = GFXHD.PAK; path = ../../data/GFXHD.PAK; sourceTree = "<group>"; };
+		E39889992EA8A80A00188668 /* CrashHandler.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CrashHandler.cpp; sourceTree = "<group>"; };
+		E398899B2EA8A83100188668 /* AITeamInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AITeamInfo.h; sourceTree = "<group>"; };
+		E398899C2EA8A83100188668 /* CrashHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CrashHandler.h; sourceTree = "<group>"; };
+		E398899D2EA8A83100188668 /* SpatialGrid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SpatialGrid.h; sourceTree = "<group>"; };
+		E398899E2EA8A83100188668 /* SpatialGridHandle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SpatialGridHandle.h; sourceTree = "<group>"; };
 		E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_ttf.framework; path = external/frameworks/SDL2_ttf.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -1034,6 +1040,10 @@
 		1358FB6513D3B71500FAD5B7 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				E398899B2EA8A83100188668 /* AITeamInfo.h */,
+				E398899C2EA8A83100188668 /* CrashHandler.h */,
+				E398899D2EA8A83100188668 /* SpatialGrid.h */,
+				E398899E2EA8A83100188668 /* SpatialGridHandle.h */,
 				1358FB6613D3B71500FAD5B7 /* AStarSearch.h */,
 				1358FB6713D3B71500FAD5B7 /* Bullet.h */,
 				1358FB6813D3B71500FAD5B7 /* Choam.h */,
@@ -1429,6 +1439,7 @@
 		1358FD5913D3B72E00FAD5B7 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				E39889992EA8A80A00188668 /* CrashHandler.cpp */,
 				1358FD5A13D3B72E00FAD5B7 /* AStarSearch.cpp */,
 				1358FD5B13D3B72E00FAD5B7 /* Bullet.cpp */,
 				1358FD5C13D3B72E00FAD5B7 /* Choam.cpp */,
@@ -2084,6 +2095,7 @@
 				1358FE3413D3B72F00FAD5B7 /* host.c in Sources */,
 				E375D31B2DB00A6500F459C8 /* TTFFont.cpp in Sources */,
 				1358FE3613D3B72F00FAD5B7 /* list.c in Sources */,
+				E398899A2EA8A80A00188668 /* CrashHandler.cpp in Sources */,
 				1358FE3713D3B72F00FAD5B7 /* packet.c in Sources */,
 				1358FE3813D3B72F00FAD5B7 /* peer.c in Sources */,
 				1358FE3913D3B72F00FAD5B7 /* protocol.c in Sources */,
@@ -2300,12 +2312,12 @@
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_ENABLE_SSE41_EXTENSIONS = YES;
 				GCC_ENABLE_SSE42_EXTENSIONS = YES;
-			GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS = YES;
-			GCC_FEEDBACK_DIRECTED_OPTIMIZATION = OFF;
-			GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-			GCC_MODEL_TUNING = G5;
-			GCC_OPTIMIZATION_LEVEL = 1;
-			GCC_VERSION = "";
+				GCC_ENABLE_SUPPLEMENTAL_SSE3_INSTRUCTIONS = YES;
+				GCC_FEEDBACK_DIRECTED_OPTIMIZATION = OFF;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 1;
+				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					../../include,
 					../../external/frameworks/SDL2_ttf.framework/Headers,
@@ -2412,13 +2424,13 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = YES;
 				ENABLE_TESTABILITY = YES;
-			FRAMEWORK_SEARCH_PATHS = (
-				"$(PROJECT_DIR)/external/frameworks",
-				"$(FRAMEWORK_SEARCH_PATHS)",
-			);
-			GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-			GCC_OPTIMIZATION_LEVEL = 1;
-			GCC_PREPROCESSOR_DEFINITIONS = (
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/external/frameworks",
+					"$(FRAMEWORK_SEARCH_PATHS)",
+				);
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 1;
+				GCC_PREPROCESSOR_DEFINITIONS = (
 					"HAS_POLL=1",
 					"HAS_FCNTL=1",
 					"HAS_INET_PTON=1",
