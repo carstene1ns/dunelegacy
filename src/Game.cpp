@@ -1110,7 +1110,13 @@ void Game::runMainLoop() {
             skipToGameCycle = gameCycleCount + (10*1000)/GAMESPEED_DEFAULT;
         }
 
+        // DIAGNOSTIC: Track loop iterations
+        int loopIterations = 0;
+        int cyclesExecuted = 0;
+        
         while((frameTime > getGameSpeed()) || (!finished && (gameCycleCount < skipToGameCycle))) {
+            loopIterations++;
+            
             Uint64 networkWaitStart = SDL_GetPerformanceCounter();
             bool bWaitForNetwork = false;
             if(pNetworkManager != nullptr) {
@@ -1132,6 +1138,7 @@ void Game::runMainLoop() {
             if(!bWaitForNetwork && !bPause) {
                 updateGameState();
                 frameTiming.gameCyclesThisFrame++;
+                cyclesExecuted++;
             } else if(bWaitForNetwork) {
                 // Measure time spent waiting for network
                 Uint64 networkWaitEnd = SDL_GetPerformanceCounter();
@@ -1146,6 +1153,12 @@ void Game::runMainLoop() {
             } else {
                 frameTime -= getGameSpeed();
             }
+        }
+        
+        // DIAGNOSTIC: Log if unusual activity
+        if(loopIterations > 10 || cyclesExecuted > 5) {
+            SDL_Log("[DIAGNOSTIC] Frame: %d loop iterations, %d cycles executed, frameTime=%d, bPause=%d, gameCycle=%d", 
+                loopIterations, cyclesExecuted, frameTime, bPause ? 1 : 0, gameCycleCount);
         }
 
         musicPlayer->musicCheck();
