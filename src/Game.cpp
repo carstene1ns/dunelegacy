@@ -1139,19 +1139,27 @@ void Game::runMainLoop() {
                 updateGameState();
                 frameTiming.gameCyclesThisFrame++;
                 cyclesExecuted++;
-            } else if(bWaitForNetwork) {
-                // Measure time spent waiting for network
-                Uint64 networkWaitEnd = SDL_GetPerformanceCounter();
-                const double networkWaitMs = getElapsedMs(networkWaitStart, networkWaitEnd);
-                frameTiming.networkWaitMs += networkWaitMs;
-                frameTiming.networkWaitMsThisFrame += networkWaitMs;
-                if(networkWaitMs > frameTiming.maxNetworkWaitMs) frameTiming.maxNetworkWaitMs = networkWaitMs;
-            }
-
-            if(gameCycleCount <= skipToGameCycle) {
-                frameTime = 0;
-            } else {
-                frameTime -= getGameSpeed();
+                
+                // Only decrement frameTime when we actually processed a cycle
+                if(gameCycleCount <= skipToGameCycle) {
+                    frameTime = 0;
+                } else {
+                    frameTime -= getGameSpeed();
+                }
+            } else if(bWaitForNetwork || bPause) {
+                // When waiting for network or paused, measure the wait time
+                if(bWaitForNetwork) {
+                    Uint64 networkWaitEnd = SDL_GetPerformanceCounter();
+                    const double networkWaitMs = getElapsedMs(networkWaitStart, networkWaitEnd);
+                    frameTiming.networkWaitMs += networkWaitMs;
+                    frameTiming.networkWaitMsThisFrame += networkWaitMs;
+                    if(networkWaitMs > frameTiming.maxNetworkWaitMs) frameTiming.maxNetworkWaitMs = networkWaitMs;
+                }
+                
+                // Break out of loop to avoid spinning - we'll try again next frame
+                // Also add a small delay to avoid burning CPU
+                SDL_Delay(1);
+                break;
             }
         }
         
@@ -1388,10 +1396,32 @@ void Game::resumeGame()
 {
     bMenu = false;
     bPause = false;
+    
+    // Notify other players in multiplayer that we resumed
+    if(pNetworkManager != nullptr) {
+        Player* pLocalPlayer = getPlayerByName(localPlayerName);
+        if(pLocalPlayer != nullptr) {
+            cmdManager.addCommand(Command(pLocalPlayer->getPlayerID(), CMD_PLAYER_RESUME));
+            
+            // Remove ourselves from paused players set
+            pausedPlayers.erase(pLocalPlayer->getPlayerID());
+        }
+    }
 }
 
 void Game::pauseGame() {
     bPause = true;
+    
+    // Notify other players in multiplayer that we paused
+    if(pNetworkManager != nullptr) {
+        Player* pLocalPlayer = getPlayerByName(localPlayerName);
+        if(pLocalPlayer != nullptr) {
+            cmdManager.addCommand(Command(pLocalPlayer->getPlayerID(), CMD_PLAYER_PAUSE));
+            
+            // Add ourselves to paused players set
+            pausedPlayers.insert(pLocalPlayer->getPlayerID());
+        }
+    }
 }
 
 void Game::logFrameTiming() {

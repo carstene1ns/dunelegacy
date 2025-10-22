@@ -49,6 +49,8 @@ typedef enum {
     CMD_STARPORT_PLACEORDER,            ///< CMD_STARPORT_PLACEORDER(OBJECT_ID)
     CMD_STARPORT_CANCELORDER,           ///< CMD_STARPORT_CANCELORDER(OBJECT_ID)
     CMD_TURRET_ATTACKOBJECT,            ///< TURRET_ATTACKOBJECT(OBJECT_ID,TARGET_OBJECT_ID)
+    CMD_PLAYER_PAUSE,                   ///< CMD_PLAYER_PAUSE() - notify other players this player paused
+    CMD_PLAYER_RESUME,                  ///< CMD_PLAYER_RESUME() - notify other players this player resumed
     CMD_TEST_SYNC,                      ///< TEST_SYNC(SEED)
     CMD_MAX
 } CMDTYPE;

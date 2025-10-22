@@ -69,6 +69,11 @@ void WaitingForOtherPlayers::update() {
         if(pPlayer != nullptr) {
             if(pPlayer->nextExpectedCommandsCycle <= currentGame->getGameCycleCount()) {
                 text += "\n" + pPlayer->getPlayername();
+                
+                // Check if this player is paused
+                if(currentGame->pausedPlayers.count(pPlayer->getPlayerID()) > 0) {
+                    text += " (PAUSED)";
+                }
             }
         }
     }

@@ -367,6 +367,48 @@ void Command::executeCommand() const {
             }
             pTurret->doAttackObject((int) parameter[1]);
         } break;
+        
+        case CMD_PLAYER_PAUSE: {
+            if(parameter.size() != 0) {
+                THROW(std::invalid_argument, "Command::executeCommand(): CMD_PLAYER_PAUSE needs 0 Parameters!");
+            }
+            
+            // Mark this player as paused
+            currentGame->pausedPlayers.insert(playerID);
+            
+            // Get player name
+            Player* pPlayer = currentGame->getPlayerByID(playerID);
+            std::string playerName = pPlayer ? pPlayer->getPlayername() : "Player " + std::to_string((int)playerID);
+            
+            SDL_Log("Player %s (ID %d) has paused", playerName.c_str(), (int)playerID);
+            
+            // If it's a remote player, show a message
+            Player* pLocalPlayer = currentGame->getPlayerByName(currentGame->getLocalPlayerName());
+            if(pLocalPlayer && playerID != pLocalPlayer->getPlayerID()) {
+                currentGame->addToNewsTicker(playerName + " is paused");
+            }
+        } break;
+        
+        case CMD_PLAYER_RESUME: {
+            if(parameter.size() != 0) {
+                THROW(std::invalid_argument, "Command::executeCommand(): CMD_PLAYER_RESUME needs 0 Parameters!");
+            }
+            
+            // Remove this player from paused set
+            currentGame->pausedPlayers.erase(playerID);
+            
+            // Get player name
+            Player* pPlayer = currentGame->getPlayerByID(playerID);
+            std::string playerName = pPlayer ? pPlayer->getPlayername() : "Player " + std::to_string((int)playerID);
+            
+            SDL_Log("Player %s (ID %d) has resumed", playerName.c_str(), (int)playerID);
+            
+            // If it's a remote player, show a message
+            Player* pLocalPlayer = currentGame->getPlayerByName(currentGame->getLocalPlayerName());
+            if(pLocalPlayer && playerID != pLocalPlayer->getPlayerID()) {
+                currentGame->addToNewsTicker(playerName + " resumed");
+            }
+        } break;
 
         case CMD_TEST_SYNC: {
             if(parameter.size() != 1) {

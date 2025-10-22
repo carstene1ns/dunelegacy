@@ -38,6 +38,7 @@
 
 #include <stdarg.h>
 #include <string>
+#include <set>
 #include <map>
 #include <utility>
 #include <deque>
@@ -534,6 +535,8 @@ public:
     ObjectData  objectData;         ///< This contains all the unit/structure data
 
     GameState   gameState = GameState::Start;
+    
+    std::set<Uint8> pausedPlayers;  ///< Set of player IDs that are currently paused
 
 private:
     bool        chatMode = false;   ///< chat mode on?
@@ -583,7 +586,7 @@ private:
 
     TriggerManager      triggerManager;         ///< This is the manager for all the triggers the scenario has (e.g. reinforcements)
 
-    bool    bQuitGame = false;                  ///< Should the game be quited after this game tick
+    bool    bQuitGame = false;                  ///< Should the game be quited after this game quit
     bool    bPause = false;                     ///< Is the game currently halted
     bool    bMenu = false;                      ///< Is there currently a menu shown (options or mentat menu)
     bool    bReplay = false;                    ///< Is this game actually a replay

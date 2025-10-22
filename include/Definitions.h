@@ -39,7 +39,7 @@
 
 #define GAMESPEED_MAX 32
 #define GAMESPEED_MIN 8
-#define GAMESPEED_DEFAULT 16
+#define GAMESPEED_DEFAULT 32  // Changed from 16ms to 32ms for multiplayer stability (~31 FPS)
 #define MILLI2CYCLES(MILLISECONDS) ((MILLISECONDS)/GAMESPEED_DEFAULT)   // this is calculated in game milliseconds (dune 2 has about the same in game speed "fastest")
 #define VOLUME_MAX 100
 #define VOLUME_MIN 0
