@@ -8,6 +8,31 @@
     <atom:link href="http://dunelegacy.sourceforge.net/website/feed.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <title>Dune Legacy 0.98.6 Released</title>
+      <description>&lt;p&gt;I am thrilled to announce the release of Dune Legacy version 0.98.6 for Windows and macOS! This is a major update bringing significant improvements to AI, multiplayer gameplay, and performance for large-scale battles.&lt;/p&gt;
+
+&lt;h3&gt;Major Features in 0.98.6&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;QuantBot AI Overhaul:&lt;/b&gt; The AI is now significantly more challenging and strategic (difficulty-scaled ornithopter attacks, intelligent rocket turret defense, smarter targeting)&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Multiplayer LAN Fixes:&lt;/b&gt; Fixed pause/unpause freezing, added pause state notifications, optimized network synchronization&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Major Performance Improvements:&lt;/b&gt; Performance logging system, optimized pathfinding, fixed death spiral that caused frame drops&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Crash Reporting System:&lt;/b&gt; Automatic crash logs with stack traces&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Critical Bug Fixes:&lt;/b&gt; Fixed 4 null pointer crashes, tile squash crash, carryall crash, and targeting issues&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;Download&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;Windows:&lt;/b&gt; &lt;a href=&quot;https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/Dune%20Legacy%200.98.6%20Setup.exe/download&quot;&gt;Dune Legacy 0.98.6 Setup.exe&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;macOS:&lt;/b&gt; &lt;a href=&quot;https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.6-macOS.dmg/download&quot;&gt;DuneLegacy-0.98.6-macOS.dmg&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This release represents months of intensive development and testing. The QuantBot AI is now significantly more challenging - prepare for tougher battles! Thank you to all contributors and testers who helped make this release possible!&lt;/p&gt;</description>
+      <pubDate>Tue, 22 Oct 2025 00:00:00 +0000</pubDate>
+      <link>http://dunelegacy.sourceforge.net/website/news.html#2025-10-22-00-00-00</link>
+      <guid isPermaLink="true">http://dunelegacy.sourceforge.net/website/news.html#2025-10-22-00-00-00</guid>
+    </item>
+
+    <item>
       <title>Dune Legacy 0.98.4 Released</title>
       <description>&lt;p&gt;I am excited to announce the release of Dune Legacy version 0.98.4 for Windows and macOS! This update brings further performance improvements, enhanced stability, and various bug fixes.&lt;/p&gt;
 
