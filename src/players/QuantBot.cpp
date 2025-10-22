@@ -2208,6 +2208,11 @@ void QuantBot::retreatAllUnits() {
                 continue;
             }
             
+            // Safety check: skip units with invalid owner
+            if (pUnit->getOwner() == nullptr) {
+                continue;
+            }
+            
 		if (pUnit->getOwner() == getHouse()) {
                 switch (pUnit->getItemID()) {
                 case Unit_MCV: {
@@ -2271,7 +2276,12 @@ void QuantBot::retreatAllUnits() {
                     }
                     
                     // We have enough ornithopters, they should attack enemy structures
-                    if (!pOrnithopter->hasATarget() || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID())) {
+                    // Safety: Check if unit has no target, or target is null, or target is not visible
+                    bool needsNewTarget = !pOrnithopter->hasATarget() 
+                        || pOrnithopter->getTarget() == nullptr 
+                        || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID());
+                    
+                    if (needsNewTarget) {
                         // Find closest enemy structure to squad rally point
                         Coord squadRallyPoint = findSquadRallyLocation();
                         const StructureBase* primaryTarget = nullptr;
@@ -2385,7 +2395,8 @@ void QuantBot::retreatAllUnits() {
                         - getHouse()->getNumItems(Unit_Sandworm)
                         - getHouse()->getNumItems(Unit_MCV))) + 1;
 
-                    if (pUnit->getOwner()->getHouseID() != pUnit->getOriginalHouseID()) {
+                    // Safety check: ensure owner is valid before comparing
+                    if (pUnit->getOwner() != nullptr && pUnit->getOwner()->getHouseID() != pUnit->getOriginalHouseID()) {
                         // If its a devastator and its not ours, blow it up!!
                         if (pUnit->getItemID() == Unit_Devastator) {
                             const Devastator* pDevastator = static_cast<const Devastator*>(pUnit);
