@@ -1386,13 +1386,6 @@ void Game::initializeNetwork() {
 
 void Game::resumeGame()
 {
-    // Notify other players in multiplayer if we're resuming from pause
-    if(bPause && gameType == GameType::CustomMultiplayer && pNetworkManager != nullptr) {
-        const std::string message = _("Game resumed!");
-        pInterface->getChatManager().addInfoMessage(message);
-        pNetworkManager->sendChatMessage(message);
-    }
-    
     bMenu = false;
     bPause = false;
 }
@@ -1494,13 +1487,6 @@ void Game::onOptions()
         pInGameMenu = std::make_unique<InGameMenu>((gameType == GameType::CustomMultiplayer), color);
         bMenu = true;
         pauseGame();
-        
-        // Notify other players in multiplayer
-        if(gameType == GameType::CustomMultiplayer && pNetworkManager != nullptr) {
-            const std::string message = _("Game paused!");
-            pInterface->getChatManager().addInfoMessage(message);
-            pNetworkManager->sendChatMessage(message);
-        }
     }
 }
 
@@ -1510,13 +1496,6 @@ void Game::onMentat()
     pInGameMentat = std::make_unique<MentatHelp>(pLocalHouse->getHouseID(), techLevel, gameInitSettings.getMission());
     bMenu = true;
     pauseGame();
-    
-    // Notify other players in multiplayer
-    if(gameType == GameType::CustomMultiplayer && pNetworkManager != nullptr) {
-        const std::string message = _("Game paused!");
-        pInterface->getChatManager().addInfoMessage(message);
-        pNetworkManager->sendChatMessage(message);
-    }
 }
 
 
