@@ -1486,12 +1486,7 @@ void Game::onOptions()
         Uint32 color = SDL2RGB(palette[houseToPaletteIndex[pLocalHouse->getHouseID()] + 3]);
         pInGameMenu = std::make_unique<InGameMenu>((gameType == GameType::CustomMultiplayer), color);
         bMenu = true;
-        
-        // Don't pause in multiplayer - it causes network desync and catchup issues
-        // The menu will overlay the game which continues running
-        if(gameType != GameType::CustomMultiplayer) {
-            pauseGame();
-        }
+        pauseGame();
     }
 }
 
@@ -1500,12 +1495,7 @@ void Game::onMentat()
 {
     pInGameMentat = std::make_unique<MentatHelp>(pLocalHouse->getHouseID(), techLevel, gameInitSettings.getMission());
     bMenu = true;
-    
-    // Don't pause in multiplayer - it causes network desync and catchup issues
-    // The mentat will overlay the game which continues running
-    if(gameType != GameType::CustomMultiplayer) {
-        pauseGame();
-    }
+    pauseGame();
 }
 
 
@@ -2378,19 +2368,20 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
         case SDLK_SPACE: {
             bool isMultiplayer = (gameType == GameType::CustomMultiplayer);
 
-            // SPACE pause is disabled in multiplayer - it causes network desync and catchup issues
-            // because pause is local only and other players don't pause
-            if(!isMultiplayer) {
-                if(bPause) {
-                    resumeGame();
-                    pInterface->getChatManager().addInfoMessage(_("Game resumed!"));
-                } else {
-                    pauseGame();
-                    pInterface->getChatManager().addInfoMessage(_("Game paused!"));
+            if(bPause) {
+                resumeGame();
+                const std::string message = _("Game resumed!");
+                pInterface->getChatManager().addInfoMessage(message);
+                if(isMultiplayer && pNetworkManager != nullptr) {
+                    pNetworkManager->sendChatMessage(message);
                 }
             } else {
-                // In multiplayer, show a message that pause is not available
-                pInterface->getChatManager().addInfoMessage(_("Pause is not available in multiplayer"));
+                pauseGame();
+                const std::string message = _("Game paused!");
+                pInterface->getChatManager().addInfoMessage(message);
+                if(isMultiplayer && pNetworkManager != nullptr) {
+                    pNetworkManager->sendChatMessage(message);
+                }
             }
         } break;
 
