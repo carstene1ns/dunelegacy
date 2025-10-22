@@ -52,7 +52,7 @@ typedef int avoid_warning_that_ISO_C_forbids_an_empty_translation_unit;
 #endif
 
 #ifndef HAS_SOCKLEN_T
-typedef int socklen_t;
+typedef unsigned int socklen_t;
 #endif
 
 #ifndef MSG_NOSIGNAL

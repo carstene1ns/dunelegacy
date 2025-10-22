@@ -57,7 +57,7 @@ option(DUNELEGACY_STATIC_RUNTIME "Use static runtime libraries" OFF)
 
 # Check for required packages with specific versions
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2>=2.32.4)
+pkg_check_modules(SDL2 REQUIRED sdl2>=2.32.2)
 pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer>=2.8.1)
 pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf>=2.24.0)
 
@@ -175,10 +175,10 @@ if(WIN32)
 endif()
 
 # Install data files
-install(DIRECTORY data/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}
-    PATTERN "*.svn" EXCLUDE
-)
+# install(DIRECTORY data/
+#     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}
+#     PATTERN "*.svn" EXCLUDE
+# )
 
 # Install desktop file and icons on Linux
 if(UNIX AND NOT APPLE)

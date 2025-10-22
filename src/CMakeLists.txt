@@ -61,6 +61,7 @@ target_sources(dunelegacy
         Command.cpp
         CommandManager.cpp
         CrashHandler.cpp
+        CursorManager.cpp
         Explosion.cpp
         Game.cpp
         GameInitSettings.cpp
@@ -365,4 +366,5 @@ install(TARGETS dunelegacy
 target_compile_definitions(dunelegacy
     PRIVATE
         DATA_DIRECTORY="${CMAKE_INSTALL_DATADIR}/dunelegacy"
+        DUNELEGACY_DATADIR="${CMAKE_INSTALL_FULL_DATADIR}/dunelegacy"
 ) 
