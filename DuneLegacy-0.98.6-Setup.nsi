@@ -1,6 +1,6 @@
 ;NSIS Modern User Interface
-;Dune Legacy 0.98.4 Setup
-;Updated for version 0.98.4
+;Dune Legacy 0.98.6 Setup
+;Updated for version 0.98.6
 
 !include "MUI2.nsh"
 
@@ -8,7 +8,7 @@
 ;General
 
   Name "Dune Legacy"
-  OutFile "build\installer\Dune Legacy 0.98.4 Setup.exe"
+  OutFile "build\installer\Dune Legacy 0.98.6 Setup.exe"
   Unicode True
 
   ;Default installation folder
