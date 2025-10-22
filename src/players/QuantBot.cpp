@@ -1699,7 +1699,9 @@ void QuantBot::build(int militaryValue) {
 							}
 
 							// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
-							if (enemyOrnithopterCount > itemCount[Structure_RocketTurret] && enemyOrnithopterCount > 0) {
+							// Aim for 2 turrets per ornithopter for effective defense
+							int requiredTurrets = enemyOrnithopterCount * 2;
+							if (enemyOrnithopterCount > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
 								if (pBuilder->getCurrentUpgradeLevel() < 2) {
 									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
 										// Repair construction yard first if damaged
@@ -1717,7 +1719,8 @@ void QuantBot::build(int militaryValue) {
 								&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
 								// Build rocket turret to counter ornithopters
 								itemID = Structure_RocketTurret;
-								logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d", enemyOrnithopterCount, itemCount[Structure_RocketTurret]);
+								logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d, target: %d", 
+									enemyOrnithopterCount, itemCount[Structure_RocketTurret], requiredTurrets);
 							}
 							}
 							// Essential infrastructure
