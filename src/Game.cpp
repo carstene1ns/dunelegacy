@@ -209,7 +209,7 @@ void Game::initGame(const GameInitSettings& newGameInitSettings) {
             gameType = gameInitSettings.getGameType();
             randomGen.setSeed(gameInitSettings.getRandomSeed());
 
-            objectData.loadFromINIFile("ObjectData.ini");
+            objectData.loadFromINIFile("config/ObjectData.ini");
 
             if(gameInitSettings.getMission() != 0) {
                 techLevel = ((gameInitSettings.getMission() + 1)/3) + 1 ;
