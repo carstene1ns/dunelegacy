@@ -310,7 +310,8 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
         SDL_Log("Falling back to programmatic creation...");
     }
 
-    // Fallback: create programmatically
+    // Fallback: create programmatically in user directory
+    SDL_Log("Creating default config file in user directory: %s", configfilepath.c_str());
     auto file = sdl2::RWops_ptr{ SDL_RWFromFile(configfilepath.c_str(), "w") };
     if(!file) {
         THROW(sdl_error, "Opening config file failed: %s!", SDL_GetError());
