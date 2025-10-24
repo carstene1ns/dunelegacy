@@ -643,8 +643,8 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
 				}
 
 				// Rotate unit backwards if it is taking damage if it is softer
-				else if (pGroundUnit->getItemID() != pGroundUnit->getItemID() != Unit_Devastator 
-						&& pGroundUnit->getItemID() != pGroundUnit->getItemID() != Unit_SiegeTank) {
+				else if (pGroundUnit->getItemID() != Unit_Devastator 
+						&& pGroundUnit->getItemID() != Unit_SiegeTank) {
 					doSetAttackMode(pGroundUnit, AREAGUARD);
 					doMove2Pos(pGroundUnit, squadCenterLocation.x, squadCenterLocation.y, true);
 				}
