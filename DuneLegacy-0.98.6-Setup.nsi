@@ -8,7 +8,7 @@
 ;General
 
   Name "Dune Legacy"
-  OutFile "build\installer\Dune Legacy 0.98.6 Setup.exe"
+  OutFile "build\installer\Dune Legacy 0.98.6.2 Setup.exe"
   Unicode True
 
   ;Default installation folder
@@ -80,6 +80,13 @@ Section "Dune Legacy" GameFiles
   SetOutPath "$INSTDIR\locale"
   File "data\locale\*.po"
 
+  ; Config template files
+  SetOutPath "$INSTDIR\config"
+  File "config\Dune Legacy.ini"
+  File "config\ObjectData.ini"
+  File "config\QuantBot Config.ini"
+  File "config\README.md"
+
   ; Store installation folder
   WriteRegStr HKCU "Software\Dune Legacy" "" $INSTDIR
 
@@ -115,6 +122,7 @@ Section "Uninstall"
   ; Remove directories
   RMDir /r "$INSTDIR\maps"
   RMDir /r "$INSTDIR\locale"
+  RMDir /r "$INSTDIR\config"
   RMDir "$INSTDIR"
 
   ; Remove shortcuts

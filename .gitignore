@@ -25,6 +25,16 @@ xcuserdata/
 IDE/VC/*.out?
 IDE/VC/packages/
 IDE/VC/obj
+IDE/VC/x64/
+IDE/VC/Win32/
+*.dll
+*.lib
+*.pdb
+*.exp
+*.ilk
+*.tar.gz
+*.zip
+DuneLegacy-*-Setup.nsi
 /.vs/ProjectSettings.json
 /.vs
 /Dune Legacy 0.97.01 Setup.exe

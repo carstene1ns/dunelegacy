@@ -162,7 +162,7 @@ void Bullet::init()
         case Bullet_TurretRocket: {
             damageRadius = TILESIZE/2;
             speed = 20;
-            detonationTimer = -1;
+            detonationTimer = 60;  // Safety timer: 60 cycles = 2 seconds at 30 FPS (gives rockets more time to catch ornithopters)
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
         } break;
@@ -406,7 +406,7 @@ void Bullet::update()
             return;
         } else if(oldDistanceToDestination < newDistanceToDestination || newDistanceToDestination < 4)  {
 
-            if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
+            if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) {
                 if(detonationTimer == 0) {
                     destroy();
                 return;

@@ -1,7 +1,7 @@
 # Configuration Logging to Debug Log
 
 **Date**: October 24, 2024  
-**Version**: 0.98.6a  
+**Version**: 0.98.6.2  
 **Commit**: 0a318f7
 
 ## Summary

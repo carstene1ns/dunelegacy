@@ -53,8 +53,9 @@ struct QuantBotConfig {
     DifficultySettings hard;
     DifficultySettings brutal;
     
-    // === Unit composition ratios (house-specific, difficulty-specific) ===
+    // === Unit composition ratios (house-specific) ===
     // These are used when totalDamage < 3000 (early game)
+    // Same ratios across all difficulties - ornithopter spam controlled by attack flags
     struct UnitRatios {
         float tank;
         float siegeTank;
@@ -72,12 +73,8 @@ struct QuantBotConfig {
         UnitRatios mercenary;  // Default for other houses
     };
     
-    // Different ratios for each difficulty level
-    HouseRatios unitRatiosDefend;   // Very Easy
-    HouseRatios unitRatiosEasy;
-    HouseRatios unitRatiosMedium;
-    HouseRatios unitRatiosHard;
-    HouseRatios unitRatiosBrutal;
+    // Single set of ratios used across all difficulties
+    HouseRatios unitRatios;
     
     // === General AI behavior ===
     int attackTimerMs;              // Time between attack checks (milliseconds)
@@ -97,8 +94,8 @@ struct QuantBotConfig {
     const DifficultySettings& getSettings(int difficulty) const;
     DifficultySettings& getSettings(int difficulty);
     
-    // Get unit ratios by house ID and difficulty
-    const UnitRatios& getRatios(int houseID, int difficulty) const;
+    // Get unit ratios by house ID (same ratios for all difficulties)
+    const UnitRatios& getRatios(int houseID) const;
     
     // Logging and verification
     void logSettings() const;

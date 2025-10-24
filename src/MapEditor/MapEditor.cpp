@@ -199,7 +199,7 @@ void MapEditor::setMap(const MapData& mapdata, const MapInfo& newMapInfo) {
     choam[Unit_Harvester] = 4;
     choam[Unit_Launcher] = 5;
     choam[Unit_MCV] = 2;
-    choam[Unit_Ornithopter] = 5;
+    choam[Unit_Ornithopter] = 0;  // Disabled by default (can build from factory but not purchase from starport)
     choam[Unit_Quad] = 5;
     choam[Unit_SiegeTank] = 6;
     choam[Unit_Tank] = 6;

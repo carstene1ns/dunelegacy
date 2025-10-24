@@ -20,8 +20,11 @@
 #include <FileClasses/INIFile.h>
 #include <misc/fnkdat.h>
 #include <misc/FileSystem.h>
+#include <misc/exceptions.h>
 #include <data.h>
 #include <globals.h>
+
+#include <climits>
 
 // Constructor with default values
 QuantBotConfig::QuantBotConfig() {
@@ -68,7 +71,7 @@ QuantBotConfig::QuantBotConfig() {
     // === HARD DIFFICULTY ===
     hard.attackEnabled = true;
     hard.ornithopterAttackEnabled = true;
-    hard.ornithopterAttackThreshold = 4;                    // Needs 4+ ornithopters
+    hard.ornithopterAttackThreshold = 1;                    // Attack as soon as 1 ornithopter is ready
     hard.harvesterLimitPerRefineryMultiplier = 2;           // Campaign: 2 harvesters per refinery
     hard.militaryValueMultiplier = 2.0f;                    // Campaign: 2.0x initial (fixed 10000 at mission 21+)
     hard.harvesterLimitCustomSmallMap = 4;
@@ -81,7 +84,7 @@ QuantBotConfig::QuantBotConfig() {
     // === BRUTAL DIFFICULTY ===
     brutal.attackEnabled = true;
     brutal.ornithopterAttackEnabled = true;
-    brutal.ornithopterAttackThreshold = 4;
+    brutal.ornithopterAttackThreshold = 3;                  // Attack as soon as 3 ornithopters are ready
     brutal.harvesterLimitPerRefineryMultiplier = 3;         // Campaign: 3 harvesters per refinery
     brutal.militaryValueMultiplier = 3.0f;                  // Campaign: 3.0x initial military
     brutal.harvesterLimitCustomSmallMap = 10;
@@ -92,163 +95,50 @@ QuantBotConfig::QuantBotConfig() {
     brutal.militaryValueLimitCustomLargeMap = 80000;
     
     // === UNIT COMPOSITION RATIOS ===
-    // Set ratios for each difficulty level, with progressive ornithopter reduction on lower difficulties
+    // Single set of ratios used across all difficulties
+    // Ornithopter spam controlled by OrnithopterAttackEnabled flag (disabled for Defend/Easy/Medium)
     
-    // --- DEFEND DIFFICULTY (Very Easy) ---
-    // No ornithopters, focus on ground units
-    unitRatiosDefend.atreides.tank = 0.05f;
-    unitRatiosDefend.atreides.siegeTank = 0.05f;
-    unitRatiosDefend.atreides.launcher = 0.25f;
-    unitRatiosDefend.atreides.special = 0.65f;        // Sonic tank
-    unitRatiosDefend.atreides.ornithopter = 0.00f;    // None for Very Easy
+    // Atreides - Specializes in Sonic Tanks with balanced ornithopter support
+    unitRatios.atreides.tank = 0.00f;
+    unitRatios.atreides.siegeTank = 0.00f;
+    unitRatios.atreides.launcher = 0.20f;
+    unitRatios.atreides.special = 0.65f;          // Sonic tank
+    unitRatios.atreides.ornithopter = 0.15f;
     
-    unitRatiosDefend.harkonnen.tank = 0.15f;
-    unitRatiosDefend.harkonnen.siegeTank = 0.15f;
-    unitRatiosDefend.harkonnen.launcher = 0.70f;
-    unitRatiosDefend.harkonnen.special = 0.00f;       // Devastator (spread to other units)
-    unitRatiosDefend.harkonnen.ornithopter = 0.00f;   // Can't build
+    // Harkonnen - Cannot build ornithopters, focuses on heavy firepower
+    unitRatios.harkonnen.tank = 0.10f;
+    unitRatios.harkonnen.siegeTank = 0.10f;
+    unitRatios.harkonnen.launcher = 0.70f;
+    unitRatios.harkonnen.special = 0.10f;         // Devastator
+    unitRatios.harkonnen.ornithopter = 0.00f;     // Can't build
     
-    unitRatiosDefend.ordos.tank = 0.35f;
-    unitRatiosDefend.ordos.siegeTank = 0.35f;
-    unitRatiosDefend.ordos.launcher = 0.00f;          // Can't build
-    unitRatiosDefend.ordos.special = 0.30f;           // Deviator
-    unitRatiosDefend.ordos.ornithopter = 0.00f;       // None for Very Easy
+    // Ordos - Cannot build launchers, highest ornithopter ratio for air superiority
+    unitRatios.ordos.tank = 0.25f;
+    unitRatios.ordos.siegeTank = 0.25f;
+    unitRatios.ordos.launcher = 0.00f;            // Can't build
+    unitRatios.ordos.special = 0.25f;             // Deviator
+    unitRatios.ordos.ornithopter = 0.25f;
     
-    unitRatiosDefend.fremen.tank = 0.70f;
-    unitRatiosDefend.fremen.siegeTank = 0.10f;
-    unitRatiosDefend.fremen.launcher = 0.20f;
-    unitRatiosDefend.fremen.special = 0.00f;
-    unitRatiosDefend.fremen.ornithopter = 0.00f;      // None for Very Easy
+    // Fremen - Balanced with light ornithopter support
+    unitRatios.fremen.tank = 0.65f;
+    unitRatios.fremen.siegeTank = 0.05f;
+    unitRatios.fremen.launcher = 0.20f;
+    unitRatios.fremen.special = 0.00f;
+    unitRatios.fremen.ornithopter = 0.10f;
     
-    unitRatiosDefend.sardaukar.tank = 0.10f;
-    unitRatiosDefend.sardaukar.siegeTank = 0.45f;
-    unitRatiosDefend.sardaukar.launcher = 0.45f;
-    unitRatiosDefend.sardaukar.special = 0.00f;
-    unitRatiosDefend.sardaukar.ornithopter = 0.00f;   // None for Very Easy
+    // Sardaukar - Heavy firepower with light ornithopter support
+    unitRatios.sardaukar.tank = 0.05f;
+    unitRatios.sardaukar.siegeTank = 0.40f;
+    unitRatios.sardaukar.launcher = 0.45f;
+    unitRatios.sardaukar.special = 0.00f;
+    unitRatios.sardaukar.ornithopter = 0.10f;
     
-    unitRatiosDefend.mercenary.tank = 0.35f;
-    unitRatiosDefend.mercenary.siegeTank = 0.35f;
-    unitRatiosDefend.mercenary.launcher = 0.25f;
-    unitRatiosDefend.mercenary.special = 0.05f;
-    unitRatiosDefend.mercenary.ornithopter = 0.00f;   // None for Very Easy
-    
-    // --- EASY DIFFICULTY ---
-    // Minimal ornithopters (5% max)
-    unitRatiosEasy.atreides.tank = 0.05f;
-    unitRatiosEasy.atreides.siegeTank = 0.00f;
-    unitRatiosEasy.atreides.launcher = 0.25f;
-    unitRatiosEasy.atreides.special = 0.65f;          // Sonic tank
-    unitRatiosEasy.atreides.ornithopter = 0.05f;      // Minimal
-    
-    unitRatiosEasy.harkonnen.tank = 0.10f;
-    unitRatiosEasy.harkonnen.siegeTank = 0.10f;
-    unitRatiosEasy.harkonnen.launcher = 0.70f;
-    unitRatiosEasy.harkonnen.special = 0.10f;         // Devastator
-    unitRatiosEasy.harkonnen.ornithopter = 0.00f;     // Can't build
-    
-    unitRatiosEasy.ordos.tank = 0.30f;
-    unitRatiosEasy.ordos.siegeTank = 0.30f;
-    unitRatiosEasy.ordos.launcher = 0.00f;            // Can't build
-    unitRatiosEasy.ordos.special = 0.35f;             // Deviator
-    unitRatiosEasy.ordos.ornithopter = 0.05f;         // Minimal
-    
-    unitRatiosEasy.fremen.tank = 0.70f;
-    unitRatiosEasy.fremen.siegeTank = 0.05f;
-    unitRatiosEasy.fremen.launcher = 0.20f;
-    unitRatiosEasy.fremen.special = 0.00f;
-    unitRatiosEasy.fremen.ornithopter = 0.05f;        // Minimal
-    
-    unitRatiosEasy.sardaukar.tank = 0.05f;
-    unitRatiosEasy.sardaukar.siegeTank = 0.45f;
-    unitRatiosEasy.sardaukar.launcher = 0.45f;
-    unitRatiosEasy.sardaukar.special = 0.00f;
-    unitRatiosEasy.sardaukar.ornithopter = 0.05f;     // Minimal
-    
-    unitRatiosEasy.mercenary.tank = 0.35f;
-    unitRatiosEasy.mercenary.siegeTank = 0.35f;
-    unitRatiosEasy.mercenary.launcher = 0.25f;
-    unitRatiosEasy.mercenary.special = 0.00f;
-    unitRatiosEasy.mercenary.ornithopter = 0.05f;     // Minimal
-    
-    // --- MEDIUM DIFFICULTY ---
-    // Reduced ornithopters (10% max)
-    unitRatiosMedium.atreides.tank = 0.00f;
-    unitRatiosMedium.atreides.siegeTank = 0.00f;
-    unitRatiosMedium.atreides.launcher = 0.25f;
-    unitRatiosMedium.atreides.special = 0.65f;        // Sonic tank
-    unitRatiosMedium.atreides.ornithopter = 0.10f;    // Reduced
-    
-    unitRatiosMedium.harkonnen.tank = 0.10f;
-    unitRatiosMedium.harkonnen.siegeTank = 0.10f;
-    unitRatiosMedium.harkonnen.launcher = 0.70f;
-    unitRatiosMedium.harkonnen.special = 0.10f;       // Devastator
-    unitRatiosMedium.harkonnen.ornithopter = 0.00f;   // Can't build
-    
-    unitRatiosMedium.ordos.tank = 0.30f;
-    unitRatiosMedium.ordos.siegeTank = 0.30f;
-    unitRatiosMedium.ordos.launcher = 0.00f;          // Can't build
-    unitRatiosMedium.ordos.special = 0.30f;           // Deviator
-    unitRatiosMedium.ordos.ornithopter = 0.10f;       // Reduced
-    
-    unitRatiosMedium.fremen.tank = 0.65f;
-    unitRatiosMedium.fremen.siegeTank = 0.10f;
-    unitRatiosMedium.fremen.launcher = 0.15f;
-    unitRatiosMedium.fremen.special = 0.00f;
-    unitRatiosMedium.fremen.ornithopter = 0.10f;      // Reduced
-    
-    unitRatiosMedium.sardaukar.tank = 0.05f;
-    unitRatiosMedium.sardaukar.siegeTank = 0.45f;
-    unitRatiosMedium.sardaukar.launcher = 0.40f;
-    unitRatiosMedium.sardaukar.special = 0.00f;
-    unitRatiosMedium.sardaukar.ornithopter = 0.10f;   // Reduced
-    
-    unitRatiosMedium.mercenary.tank = 0.35f;
-    unitRatiosMedium.mercenary.siegeTank = 0.35f;
-    unitRatiosMedium.mercenary.launcher = 0.20f;
-    unitRatiosMedium.mercenary.special = 0.00f;
-    unitRatiosMedium.mercenary.ornithopter = 0.10f;   // Reduced
-    
-    // --- HARD DIFFICULTY ---
-    // Original balanced ratios
-    unitRatiosHard.atreides.tank = 0.00f;
-    unitRatiosHard.atreides.siegeTank = 0.00f;
-    unitRatiosHard.atreides.launcher = 0.20f;
-    unitRatiosHard.atreides.special = 0.65f;          // Sonic tank
-    unitRatiosHard.atreides.ornithopter = 0.15f;      // Original
-    
-    unitRatiosHard.harkonnen.tank = 0.10f;
-    unitRatiosHard.harkonnen.siegeTank = 0.10f;
-    unitRatiosHard.harkonnen.launcher = 0.70f;
-    unitRatiosHard.harkonnen.special = 0.10f;         // Devastator
-    unitRatiosHard.harkonnen.ornithopter = 0.00f;     // Can't build
-    
-    unitRatiosHard.ordos.tank = 0.25f;
-    unitRatiosHard.ordos.siegeTank = 0.25f;
-    unitRatiosHard.ordos.launcher = 0.00f;            // Can't build
-    unitRatiosHard.ordos.special = 0.25f;             // Deviator
-    unitRatiosHard.ordos.ornithopter = 0.25f;         // Original
-    
-    unitRatiosHard.fremen.tank = 0.65f;
-    unitRatiosHard.fremen.siegeTank = 0.05f;
-    unitRatiosHard.fremen.launcher = 0.20f;
-    unitRatiosHard.fremen.special = 0.00f;
-    unitRatiosHard.fremen.ornithopter = 0.10f;        // Original
-    
-    unitRatiosHard.sardaukar.tank = 0.05f;
-    unitRatiosHard.sardaukar.siegeTank = 0.40f;
-    unitRatiosHard.sardaukar.launcher = 0.45f;
-    unitRatiosHard.sardaukar.special = 0.00f;
-    unitRatiosHard.sardaukar.ornithopter = 0.10f;     // Original
-    
-    unitRatiosHard.mercenary.tank = 0.30f;
-    unitRatiosHard.mercenary.siegeTank = 0.30f;
-    unitRatiosHard.mercenary.launcher = 0.30f;
-    unitRatiosHard.mercenary.special = 0.05f;
-    unitRatiosHard.mercenary.ornithopter = 0.10f;     // Original
-    
-    // --- BRUTAL DIFFICULTY ---
-    // Same as Hard (original ratios)
-    unitRatiosBrutal = unitRatiosHard;
+    // Mercenary - Balanced across all unit types
+    unitRatios.mercenary.tank = 0.30f;
+    unitRatios.mercenary.siegeTank = 0.30f;
+    unitRatios.mercenary.launcher = 0.30f;
+    unitRatios.mercenary.special = 0.05f;
+    unitRatios.mercenary.ornithopter = 0.10f;
     
     // === GENERAL AI BEHAVIOR ===
     attackTimerMs = 15000;                      // 15 seconds between attacks
@@ -319,41 +209,13 @@ bool QuantBotConfig::save(const std::string& filepath) const {
         saveDifficultySettings(iniFile, "Difficulty Settings", "Hard", hard);
         saveDifficultySettings(iniFile, "Difficulty Settings", "Brutal", brutal);
         
-        // === UNIT RATIOS (per difficulty) ===
-        saveUnitRatios(iniFile, "Unit Ratios Defend", "Atreides", unitRatiosDefend.atreides);
-        saveUnitRatios(iniFile, "Unit Ratios Defend", "Harkonnen", unitRatiosDefend.harkonnen);
-        saveUnitRatios(iniFile, "Unit Ratios Defend", "Ordos", unitRatiosDefend.ordos);
-        saveUnitRatios(iniFile, "Unit Ratios Defend", "Fremen", unitRatiosDefend.fremen);
-        saveUnitRatios(iniFile, "Unit Ratios Defend", "Sardaukar", unitRatiosDefend.sardaukar);
-        saveUnitRatios(iniFile, "Unit Ratios Defend", "Mercenary", unitRatiosDefend.mercenary);
-        
-        saveUnitRatios(iniFile, "Unit Ratios Easy", "Atreides", unitRatiosEasy.atreides);
-        saveUnitRatios(iniFile, "Unit Ratios Easy", "Harkonnen", unitRatiosEasy.harkonnen);
-        saveUnitRatios(iniFile, "Unit Ratios Easy", "Ordos", unitRatiosEasy.ordos);
-        saveUnitRatios(iniFile, "Unit Ratios Easy", "Fremen", unitRatiosEasy.fremen);
-        saveUnitRatios(iniFile, "Unit Ratios Easy", "Sardaukar", unitRatiosEasy.sardaukar);
-        saveUnitRatios(iniFile, "Unit Ratios Easy", "Mercenary", unitRatiosEasy.mercenary);
-        
-        saveUnitRatios(iniFile, "Unit Ratios Medium", "Atreides", unitRatiosMedium.atreides);
-        saveUnitRatios(iniFile, "Unit Ratios Medium", "Harkonnen", unitRatiosMedium.harkonnen);
-        saveUnitRatios(iniFile, "Unit Ratios Medium", "Ordos", unitRatiosMedium.ordos);
-        saveUnitRatios(iniFile, "Unit Ratios Medium", "Fremen", unitRatiosMedium.fremen);
-        saveUnitRatios(iniFile, "Unit Ratios Medium", "Sardaukar", unitRatiosMedium.sardaukar);
-        saveUnitRatios(iniFile, "Unit Ratios Medium", "Mercenary", unitRatiosMedium.mercenary);
-        
-        saveUnitRatios(iniFile, "Unit Ratios Hard", "Atreides", unitRatiosHard.atreides);
-        saveUnitRatios(iniFile, "Unit Ratios Hard", "Harkonnen", unitRatiosHard.harkonnen);
-        saveUnitRatios(iniFile, "Unit Ratios Hard", "Ordos", unitRatiosHard.ordos);
-        saveUnitRatios(iniFile, "Unit Ratios Hard", "Fremen", unitRatiosHard.fremen);
-        saveUnitRatios(iniFile, "Unit Ratios Hard", "Sardaukar", unitRatiosHard.sardaukar);
-        saveUnitRatios(iniFile, "Unit Ratios Hard", "Mercenary", unitRatiosHard.mercenary);
-        
-        saveUnitRatios(iniFile, "Unit Ratios Brutal", "Atreides", unitRatiosBrutal.atreides);
-        saveUnitRatios(iniFile, "Unit Ratios Brutal", "Harkonnen", unitRatiosBrutal.harkonnen);
-        saveUnitRatios(iniFile, "Unit Ratios Brutal", "Ordos", unitRatiosBrutal.ordos);
-        saveUnitRatios(iniFile, "Unit Ratios Brutal", "Fremen", unitRatiosBrutal.fremen);
-        saveUnitRatios(iniFile, "Unit Ratios Brutal", "Sardaukar", unitRatiosBrutal.sardaukar);
-        saveUnitRatios(iniFile, "Unit Ratios Brutal", "Mercenary", unitRatiosBrutal.mercenary);
+        // === UNIT RATIOS (single set for all difficulties) ===
+        saveUnitRatios(iniFile, "Unit Ratios", "Atreides", unitRatios.atreides);
+        saveUnitRatios(iniFile, "Unit Ratios", "Harkonnen", unitRatios.harkonnen);
+        saveUnitRatios(iniFile, "Unit Ratios", "Ordos", unitRatios.ordos);
+        saveUnitRatios(iniFile, "Unit Ratios", "Fremen", unitRatios.fremen);
+        saveUnitRatios(iniFile, "Unit Ratios", "Sardaukar", unitRatios.sardaukar);
+        saveUnitRatios(iniFile, "Unit Ratios", "Mercenary", unitRatios.mercenary);
         
         // === GENERAL BEHAVIOR ===
         iniFile.setIntValue("General Behavior", "AttackTimerMs", attackTimerMs);
@@ -377,35 +239,11 @@ bool QuantBotConfig::save(const std::string& filepath) const {
 
 bool QuantBotConfig::load(const std::string& filepath) {
     try {
-        // Check if file exists in user directory
+        // Try to load from user directory, create defaults if not found
         if (!existsFile(filepath)) {
-            SDL_Log("QuantBot config not found in user directory: %s", filepath.c_str());
-            
-            // Try to copy template from install directory
-            try {
-                auto templateFile = pFileManager->openFile("QuantBot Config.ini");
-                if (templateFile) {
-                    SDL_Log("Copying QuantBot Config template to user directory...");
-                    
-                    // Read template file
-                    INIFile templateINI(templateFile.get());
-                    
-                    // Save to user directory
-                    if (templateINI.saveChangesTo(filepath)) {
-                        SDL_Log("QuantBot config template copied successfully");
-                    } else {
-                        SDL_Log("Warning: Failed to copy QuantBot config template, creating defaults");
-                        return save(filepath);  // Fallback: create default file programmatically
-                    }
-                } else {
-                    SDL_Log("Warning: Template file not found, creating defaults programmatically");
-                    return save(filepath);  // Fallback: create default file
-                }
-            } catch (std::exception& e) {
-                SDL_Log("Error copying QuantBot config template: %s", e.what());
-                SDL_Log("Creating default configuration programmatically");
-                return save(filepath);  // Fallback: create default file
-            }
+            SDL_Log("QuantBot config not found: %s", filepath.c_str());
+            SDL_Log("Creating default configuration");
+            return save(filepath);
         }
         
         INIFile iniFile(filepath);
@@ -417,46 +255,13 @@ bool QuantBotConfig::load(const std::string& filepath) {
         loadDifficultySettings(iniFile, "Difficulty Settings", "Hard", hard);
         loadDifficultySettings(iniFile, "Difficulty Settings", "Brutal", brutal);
         
-        // === LOAD UNIT RATIOS (per difficulty) ===
-        // Defend difficulty
-        loadUnitRatios(iniFile, "Unit Ratios Defend", "Atreides", unitRatiosDefend.atreides);
-        loadUnitRatios(iniFile, "Unit Ratios Defend", "Harkonnen", unitRatiosDefend.harkonnen);
-        loadUnitRatios(iniFile, "Unit Ratios Defend", "Ordos", unitRatiosDefend.ordos);
-        loadUnitRatios(iniFile, "Unit Ratios Defend", "Fremen", unitRatiosDefend.fremen);
-        loadUnitRatios(iniFile, "Unit Ratios Defend", "Sardaukar", unitRatiosDefend.sardaukar);
-        loadUnitRatios(iniFile, "Unit Ratios Defend", "Mercenary", unitRatiosDefend.mercenary);
-        
-        // Easy difficulty
-        loadUnitRatios(iniFile, "Unit Ratios Easy", "Atreides", unitRatiosEasy.atreides);
-        loadUnitRatios(iniFile, "Unit Ratios Easy", "Harkonnen", unitRatiosEasy.harkonnen);
-        loadUnitRatios(iniFile, "Unit Ratios Easy", "Ordos", unitRatiosEasy.ordos);
-        loadUnitRatios(iniFile, "Unit Ratios Easy", "Fremen", unitRatiosEasy.fremen);
-        loadUnitRatios(iniFile, "Unit Ratios Easy", "Sardaukar", unitRatiosEasy.sardaukar);
-        loadUnitRatios(iniFile, "Unit Ratios Easy", "Mercenary", unitRatiosEasy.mercenary);
-        
-        // Medium difficulty
-        loadUnitRatios(iniFile, "Unit Ratios Medium", "Atreides", unitRatiosMedium.atreides);
-        loadUnitRatios(iniFile, "Unit Ratios Medium", "Harkonnen", unitRatiosMedium.harkonnen);
-        loadUnitRatios(iniFile, "Unit Ratios Medium", "Ordos", unitRatiosMedium.ordos);
-        loadUnitRatios(iniFile, "Unit Ratios Medium", "Fremen", unitRatiosMedium.fremen);
-        loadUnitRatios(iniFile, "Unit Ratios Medium", "Sardaukar", unitRatiosMedium.sardaukar);
-        loadUnitRatios(iniFile, "Unit Ratios Medium", "Mercenary", unitRatiosMedium.mercenary);
-        
-        // Hard difficulty
-        loadUnitRatios(iniFile, "Unit Ratios Hard", "Atreides", unitRatiosHard.atreides);
-        loadUnitRatios(iniFile, "Unit Ratios Hard", "Harkonnen", unitRatiosHard.harkonnen);
-        loadUnitRatios(iniFile, "Unit Ratios Hard", "Ordos", unitRatiosHard.ordos);
-        loadUnitRatios(iniFile, "Unit Ratios Hard", "Fremen", unitRatiosHard.fremen);
-        loadUnitRatios(iniFile, "Unit Ratios Hard", "Sardaukar", unitRatiosHard.sardaukar);
-        loadUnitRatios(iniFile, "Unit Ratios Hard", "Mercenary", unitRatiosHard.mercenary);
-        
-        // Brutal difficulty
-        loadUnitRatios(iniFile, "Unit Ratios Brutal", "Atreides", unitRatiosBrutal.atreides);
-        loadUnitRatios(iniFile, "Unit Ratios Brutal", "Harkonnen", unitRatiosBrutal.harkonnen);
-        loadUnitRatios(iniFile, "Unit Ratios Brutal", "Ordos", unitRatiosBrutal.ordos);
-        loadUnitRatios(iniFile, "Unit Ratios Brutal", "Fremen", unitRatiosBrutal.fremen);
-        loadUnitRatios(iniFile, "Unit Ratios Brutal", "Sardaukar", unitRatiosBrutal.sardaukar);
-        loadUnitRatios(iniFile, "Unit Ratios Brutal", "Mercenary", unitRatiosBrutal.mercenary);
+        // === UNIT RATIOS (single set for all difficulties) ===
+        loadUnitRatios(iniFile, "Unit Ratios", "Atreides", unitRatios.atreides);
+        loadUnitRatios(iniFile, "Unit Ratios", "Harkonnen", unitRatios.harkonnen);
+        loadUnitRatios(iniFile, "Unit Ratios", "Ordos", unitRatios.ordos);
+        loadUnitRatios(iniFile, "Unit Ratios", "Fremen", unitRatios.fremen);
+        loadUnitRatios(iniFile, "Unit Ratios", "Sardaukar", unitRatios.sardaukar);
+        loadUnitRatios(iniFile, "Unit Ratios", "Mercenary", unitRatios.mercenary);
         
         // === LOAD GENERAL BEHAVIOR ===
         attackTimerMs = iniFile.getIntValue("General Behavior", "AttackTimerMs", attackTimerMs);
@@ -495,27 +300,16 @@ QuantBotConfig::DifficultySettings& QuantBotConfig::getSettings(int difficulty) 
     }
 }
 
-const QuantBotConfig::UnitRatios& QuantBotConfig::getRatios(int houseID, int difficulty) const {
-    // Select the appropriate difficulty set
-    const HouseRatios* ratios = nullptr;
-    switch (difficulty) {
-        case 0: ratios = &unitRatiosEasy; break;
-        case 1: ratios = &unitRatiosMedium; break;
-        case 2: ratios = &unitRatiosHard; break;
-        case 3: ratios = &unitRatiosBrutal; break;
-        case 4: ratios = &unitRatiosDefend; break;
-        default: ratios = &unitRatiosMedium; break;
-    }
-    
-    // Select the appropriate house from that difficulty set
+const QuantBotConfig::UnitRatios& QuantBotConfig::getRatios(int houseID) const {
+    // Same ratios for all difficulties - ornithopter spam controlled by attack flags
     switch (houseID) {
-        case HOUSE_ATREIDES: return ratios->atreides;
-        case HOUSE_HARKONNEN: return ratios->harkonnen;
-        case HOUSE_ORDOS: return ratios->ordos;
-        case HOUSE_FREMEN: return ratios->fremen;
-        case HOUSE_SARDAUKAR: return ratios->sardaukar;
-        case HOUSE_MERCENARY: return ratios->mercenary;
-        default: return ratios->mercenary;
+        case HOUSE_ATREIDES: return unitRatios.atreides;
+        case HOUSE_HARKONNEN: return unitRatios.harkonnen;
+        case HOUSE_ORDOS: return unitRatios.ordos;
+        case HOUSE_FREMEN: return unitRatios.fremen;
+        case HOUSE_SARDAUKAR: return unitRatios.sardaukar;
+        case HOUSE_MERCENARY: return unitRatios.mercenary;
+        default: return unitRatios.mercenary;
     }
 }
 
@@ -537,8 +331,12 @@ QuantBotConfig& getQuantBotConfig() {
 }
 
 std::string getQuantBotConfigFilepath() {
-    // Config file is in config subdirectory of game directory
-    return getDuneLegacyDataDir() + "/config/QuantBot Config.ini";
+    // User config file is stored in user directory (AppData on Windows, ~/.config on Linux, etc.)
+    char tmp[FILENAME_MAX];
+    if(fnkdat("config/QuantBot Config.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT) < 0) {
+        THROW(std::runtime_error, "fnkdat() failed for QuantBot Config.ini!");
+    }
+    return std::string(tmp);
 }
 
 void QuantBotConfig::logSettings() const {
@@ -570,16 +368,25 @@ void QuantBotConfig::logSettings() const {
     SDL_Log("MinMoneyForProduction: %d", minMoneyForProduction);
     SDL_Log("%s", "");
     
-    SDL_Log("=== UNIT RATIOS (showing Easy difficulty sample) ===");
+    SDL_Log("=== UNIT RATIOS (same for all difficulties) ===");
     SDL_Log("Atreides:  Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
-        unitRatiosEasy.atreides.tank, unitRatiosEasy.atreides.siegeTank, 
-        unitRatiosEasy.atreides.launcher, unitRatiosEasy.atreides.special, unitRatiosEasy.atreides.ornithopter);
+        unitRatios.atreides.tank, unitRatios.atreides.siegeTank, 
+        unitRatios.atreides.launcher, unitRatios.atreides.special, unitRatios.atreides.ornithopter);
     SDL_Log("Harkonnen: Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
-        unitRatiosEasy.harkonnen.tank, unitRatiosEasy.harkonnen.siegeTank,
-        unitRatiosEasy.harkonnen.launcher, unitRatiosEasy.harkonnen.special, unitRatiosEasy.harkonnen.ornithopter);
+        unitRatios.harkonnen.tank, unitRatios.harkonnen.siegeTank,
+        unitRatios.harkonnen.launcher, unitRatios.harkonnen.special, unitRatios.harkonnen.ornithopter);
     SDL_Log("Ordos:     Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
-        unitRatiosEasy.ordos.tank, unitRatiosEasy.ordos.siegeTank,
-        unitRatiosEasy.ordos.launcher, unitRatiosEasy.ordos.special, unitRatiosEasy.ordos.ornithopter);
+        unitRatios.ordos.tank, unitRatios.ordos.siegeTank,
+        unitRatios.ordos.launcher, unitRatios.ordos.special, unitRatios.ordos.ornithopter);
+    SDL_Log("Fremen:    Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
+        unitRatios.fremen.tank, unitRatios.fremen.siegeTank,
+        unitRatios.fremen.launcher, unitRatios.fremen.special, unitRatios.fremen.ornithopter);
+    SDL_Log("Sardaukar: Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
+        unitRatios.sardaukar.tank, unitRatios.sardaukar.siegeTank,
+        unitRatios.sardaukar.launcher, unitRatios.sardaukar.special, unitRatios.sardaukar.ornithopter);
+    SDL_Log("Mercenary: Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
+        unitRatios.mercenary.tank, unitRatios.mercenary.siegeTank,
+        unitRatios.mercenary.launcher, unitRatios.mercenary.special, unitRatios.mercenary.ornithopter);
     SDL_Log("===============================================================");
 }
 
@@ -609,7 +416,7 @@ std::string QuantBotConfig::getConfigHash() const {
     addDiffSettings("hard", hard);
     addDiffSettings("brutal", brutal);
     
-    // Unit ratios - add all difficulties and houses
+    // Unit ratios - add all houses (same for all difficulties)
     auto addRatios = [&](const char* name, const UnitRatios& r) {
         configStr += name;
         configStr += std::to_string(r.tank);
@@ -619,16 +426,12 @@ std::string QuantBotConfig::getConfigHash() const {
         configStr += std::to_string(r.ornithopter);
     };
     
-    addRatios("DefendAtr", unitRatiosDefend.atreides);
-    addRatios("DefendHar", unitRatiosDefend.harkonnen);
-    addRatios("DefendOrd", unitRatiosDefend.ordos);
-    addRatios("EasyAtr", unitRatiosEasy.atreides);
-    addRatios("EasyHar", unitRatiosEasy.harkonnen);
-    addRatios("EasyOrd", unitRatiosEasy.ordos);
-    addRatios("MediumAtr", unitRatiosMedium.atreides);
-    addRatios("MediumHar", unitRatiosMedium.harkonnen);
-    addRatios("MediumOrd", unitRatiosMedium.ordos);
-    // Add remaining houses and difficulties...
+    addRatios("Atr", unitRatios.atreides);
+    addRatios("Har", unitRatios.harkonnen);
+    addRatios("Ord", unitRatios.ordos);
+    addRatios("Fre", unitRatios.fremen);
+    addRatios("Sar", unitRatios.sardaukar);
+    addRatios("Mer", unitRatios.mercenary);
     
     // General behavior
     configStr += std::to_string(attackTimerMs);

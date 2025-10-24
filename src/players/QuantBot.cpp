@@ -1145,7 +1145,7 @@ void QuantBot::build(int militaryValue) {
 	// Use config values for unit ratios in early game (varies by difficulty AND house)
 	if (totalDamage < 3000) {
 		const QuantBotConfig& config = getQuantBotConfig();
-		const QuantBotConfig::UnitRatios& ratios = config.getRatios(houseID, static_cast<int>(difficulty));
+		const QuantBotConfig::UnitRatios& ratios = config.getRatios(houseID);
 		
 		tankPercent = FixPoint(static_cast<int>(ratios.tank * 100)) / 100;
 		siegePercent = FixPoint(static_cast<int>(ratios.siegeTank * 100)) / 100;
@@ -1604,47 +1604,83 @@ void QuantBot::build(int militaryValue) {
 
 							Uint32 itemID = NONE_ID;
 
-							// Count enemy ornithopters at the start
-							int enemyOrnithopterCount = 0;
-							if (currentGame) {
-								for (int i = 0; i < NUM_HOUSES; i++) {
-									const House* pHouse = currentGame->getHouse(i);
-									if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
-										enemyOrnithopterCount += pHouse->getNumItems(Unit_Ornithopter);
+						// Count enemy ornithopters - use MAXIMUM from a single enemy house, not sum
+						// (e.g., if enemy A has 5 ornis and enemy B has 3, use 5, not 8)
+						int maxEnemyOrnithopters = 0;
+						if (currentGame) {
+							for (int i = 0; i < NUM_HOUSES; i++) {
+								const House* pHouse = currentGame->getHouse(i);
+								if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
+									int houseOrnis = pHouse->getNumItems(Unit_Ornithopter);
+									if (houseOrnis > maxEnemyOrnithopters) {
+										maxEnemyOrnithopters = houseOrnis;
 									}
 								}
 							}
+						}
 
-							// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
-							// Aim for 2 turrets per ornithopter for effective defense
-							int requiredTurrets = enemyOrnithopterCount * 2;
-							if (enemyOrnithopterCount > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
-								if (pBuilder->getCurrentUpgradeLevel() < 2) {
-									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
-										// Repair construction yard first if damaged
-										doRepair(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
-									}
-									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
-										// Upgrade construction yard to unlock rocket turrets
-										doUpgrade(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
-									}
-								}
-							else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
-								&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
-								&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-								// Build rocket turret to counter ornithopters
-								itemID = Structure_RocketTurret;
-								logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d, target: %d", 
-									enemyOrnithopterCount, itemCount[Structure_RocketTurret], requiredTurrets);
+				// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
+				// Aim for 2 turrets per ornithopter from the enemy house with the most ornithopters
+				int requiredTurrets = maxEnemyOrnithopters * 2;
+				if (maxEnemyOrnithopters > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
+						// Check prerequisites for rocket turrets: Windtrap, Radar, CY level 2
+						bool hasWindtrap = itemCount[Structure_WindTrap] > 0;
+						bool hasRadar = itemCount[Structure_Radar] > 0;
+						
+						if (pBuilder->getCurrentUpgradeLevel() < 2) {
+							if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+								// Repair construction yard first if damaged
+								doRepair(pBuilder);
+								logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low (current level: %d)", pBuilder->getCurrentUpgradeLevel());
 							}
+							else if (pBuilder->isUpgrading()) {
+								// Wait for current upgrade to complete
+								logDebug("COUNTER-ORNITHOPTER: Waiting for construction yard upgrade to complete (current level: %d → %d)", 
+									pBuilder->getCurrentUpgradeLevel(), pBuilder->getCurrentUpgradeLevel() + 1);
 							}
-							// Essential infrastructure
-							else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
-								itemID = Structure_WindTrap;
+							else if (pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
+								// Upgrade construction yard (may need 2 upgrades: 0→1→2)
+								doUpgrade(pBuilder);
+								logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard (level %d → %d, target: level 2)", 
+									pBuilder->getCurrentUpgradeLevel(), pBuilder->getCurrentUpgradeLevel() + 1);
 							}
-							else if ((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
+						}
+					else if (!hasWindtrap && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+						// Build windtrap first (required for rocket turrets)
+						itemID = Structure_WindTrap;
+						logDebug("COUNTER-ORNITHOPTER: Building windtrap (prerequisite for rocket turrets) - max enemy ornis: %d", maxEnemyOrnithopters);
+					}
+					else if (!hasRadar && pBuilder->isAvailableToBuild(Structure_Radar) && getHouse()->hasPower()) {
+						// Build radar (required for rocket turrets)
+						itemID = Structure_Radar;
+						logDebug("COUNTER-ORNITHOPTER: Building radar (prerequisite for rocket turrets) - max enemy ornis: %d", maxEnemyOrnithopters);
+					}
+					else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
+						&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+						&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+						// All prerequisites met - build rocket turret to counter ornithopters
+						itemID = Structure_RocketTurret;
+						logDebug("COUNTER-ORNITHOPTER: Building rocket turret - max enemy ornis: %d, our turrets: %d, target: %d", 
+							maxEnemyOrnithopters, itemCount[Structure_RocketTurret], requiredTurrets);
+				}
+				}
+				
+			// INSURANCE: Build 4 baseline rocket turrets for ornithopter defense (proactive, not reactive)
+			// Build these after Radar is complete, even if no enemy ornithopters yet
+			else if (itemCount[Structure_Radar] > 0 
+				&& itemCount[Structure_RocketTurret] < 4
+				&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
+				&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+				&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+				itemID = Structure_RocketTurret;
+				logDebug("INSURANCE: Building baseline rocket turret (%d/4) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
+			}
+				
+				// Essential infrastructure
+				else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+						itemID = Structure_WindTrap;
+					}
+					else if ((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
 							}
@@ -1652,12 +1688,27 @@ void QuantBot::build(int militaryValue) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
 							}
-							else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
-								itemID = Structure_StarPort;
-							}
-							else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
-								itemID = Structure_Radar;
-							}
+					else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
+						itemID = Structure_StarPort;
+					}
+					// PROACTIVE: Upgrade CY to level 2 early (required for rocket turrets)
+					// Do this AFTER Starport, BEFORE Heavy Factory for earlier ornithopter defense
+					else if (pBuilder->getCurrentUpgradeLevel() < 2 
+						&& itemCount[Structure_StarPort] > 0
+						&& money > 1000) {
+						if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+							doRepair(pBuilder);
+							logDebug("PROACTIVE: Repairing CY before upgrade (level %d, need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel());
+						}
+						else if (!pBuilder->isUpgrading() && pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
+							doUpgrade(pBuilder);
+							logDebug("PROACTIVE: Upgrading CY to level %d (need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel() + 1);
+						}
+						// else: already upgrading, just wait
+					}
+					else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
+						itemID = Structure_Radar;
+					}
 							else if (pBuilder->isAvailableToBuild(Structure_LightFactory)
 								&& itemCount[Structure_LightFactory] == 0 && money > 500) {
 								itemID = Structure_LightFactory; // Essential for basic units
@@ -1674,10 +1725,11 @@ void QuantBot::build(int militaryValue) {
 								&& money < 4000
 								&& itemCount[Unit_Harvester] < harvesterLimit) {
 								itemID = Structure_Refinery;
-								itemCount[Unit_Harvester]++;
-														}
-							// Note: CY upgrade and rocket turret building are now handled by ornithopter counter above
-							else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
+							itemCount[Unit_Harvester]++;
+													}
+					// Note: CY upgrade is done proactively (after Starport, before Heavy Factory) and reactively (ornithopter counter)
+					// Rocket turrets: 2 insurance turrets built after CY level 2, then scaled up reactively if needed
+						else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
 								if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
 									itemID = Structure_HighTechFactory;
 								}
