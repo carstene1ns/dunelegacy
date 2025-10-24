@@ -294,7 +294,7 @@ void QuantBot::update() {
 
 	// Log which config this QuantBot is using
 	SDL_Log("=== QuantBot [%s - %s] Initialization ===", 
-		getHouse()->getHouseName().c_str(),
+		getHouseNameByNumber(static_cast<HOUSETYPE>(getHouse()->getHouseID())),
 		gameMode == GameMode::Campaign ? "Campaign" : "Custom");
 
 	switch (gameMode) {
