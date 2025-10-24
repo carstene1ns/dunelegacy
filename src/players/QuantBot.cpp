@@ -1662,10 +1662,22 @@ void QuantBot::build(int militaryValue) {
 						itemID = Structure_RocketTurret;
 						logDebug("COUNTER-ORNITHOPTER: Building rocket turret - max enemy ornis: %d, our turrets: %d, target: %d", 
 							maxEnemyOrnithopters, itemCount[Structure_RocketTurret], requiredTurrets);
-					}
-					}
-					// Essential infrastructure
-					else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+				}
+				}
+				
+				// INSURANCE: Build 2 baseline rocket turrets for ornithopter defense (proactive, not reactive)
+				// Build these after Radar is complete, even if no enemy ornithopters yet
+				else if (itemCount[Structure_Radar] > 0 
+					&& itemCount[Structure_RocketTurret] < 2
+					&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
+					&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+					&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+					itemID = Structure_RocketTurret;
+					logDebug("INSURANCE: Building baseline rocket turret (%d/2) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
+				}
+				
+				// Essential infrastructure
+				else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
 						itemID = Structure_WindTrap;
 					}
 					else if ((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
@@ -1676,12 +1688,27 @@ void QuantBot::build(int militaryValue) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
 							}
-							else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
-								itemID = Structure_StarPort;
+						else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
+							itemID = Structure_StarPort;
+						}
+						// PROACTIVE: Upgrade CY to level 2 early (required for Radar → insurance turrets)
+						else if (pBuilder->getCurrentUpgradeLevel() < 2 
+							&& itemCount[Structure_HeavyFactory] > 0
+							&& money > 1000) {
+							if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+								doRepair(pBuilder);
+								logDebug("PROACTIVE: Repairing CY before upgrade (level %d, need level 2)", pBuilder->getCurrentUpgradeLevel());
 							}
-							else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
-								itemID = Structure_Radar;
+							else if (!pBuilder->isUpgrading() && pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
+								doUpgrade(pBuilder);
+								logDebug("PROACTIVE: Upgrading CY to level %d (need level 2 for Radar)", pBuilder->getCurrentUpgradeLevel() + 1);
 							}
+							// else: already upgrading, just wait
+						}
+						else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
+							itemID = Structure_Radar;
+							logDebug("PROACTIVE: Building Radar (enables insurance rocket turrets)");
+						}
 							else if (pBuilder->isAvailableToBuild(Structure_LightFactory)
 								&& itemCount[Structure_LightFactory] == 0 && money > 500) {
 								itemID = Structure_LightFactory; // Essential for basic units
@@ -1698,10 +1725,11 @@ void QuantBot::build(int militaryValue) {
 								&& money < 4000
 								&& itemCount[Unit_Harvester] < harvesterLimit) {
 								itemID = Structure_Refinery;
-								itemCount[Unit_Harvester]++;
-														}
-							// Note: CY upgrade and rocket turret building are now handled by ornithopter counter above
-							else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
+							itemCount[Unit_Harvester]++;
+													}
+						// Note: CY upgrade is done proactively (after Heavy Factory) and reactively (ornithopter counter)
+						// Rocket turrets: 2 insurance turrets built after Radar, then scaled up reactively if needed
+						else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
 								if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
 									itemID = Structure_HighTechFactory;
 								}
