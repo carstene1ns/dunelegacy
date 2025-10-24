@@ -265,6 +265,22 @@ std::string getLogFilepath()
     return std::string(tmp);
 }
 
+std::string getObjectDataConfigFilepath()
+{
+    // User ObjectData.ini is stored in user directory (AppData on Windows, ~/.config on Linux, etc.)
+    char tmp[FILENAME_MAX];
+    if(fnkdat("config/ObjectData.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT) < 0) {
+        THROW(std::runtime_error, "fnkdat() failed for ObjectData.ini!");
+    }
+    return std::string(tmp);
+}
+
+std::string getObjectDataTemplateFilepath()
+{
+    // Template ObjectData.ini is in config subdirectory of game directory
+    return getDuneLegacyDataDir() + "/config/ObjectData.ini";
+}
+
 std::string getDefaultPlayerName() {
     char playername[MAX_PLAYERNAMELENGHT+1] = "Player";
 
@@ -735,6 +751,51 @@ int main(int argc, char *argv[]) {
             }
 
             pFileManager = std::make_unique<FileManager>();
+
+            // Create user config files if they don't exist
+            // Check and copy ObjectData.ini
+            {
+                std::string userObjectDataPath = getObjectDataConfigFilepath();
+                if (!existsFile(userObjectDataPath)) {
+                    SDL_Log("ObjectData.ini not found in user directory, copying template...");
+                    try {
+                        auto templateFile = pFileManager->openFile("config/ObjectData.ini");
+                        if (templateFile) {
+                            INIFile templateINI(templateFile.get());
+                            if (templateINI.saveChangesTo(userObjectDataPath)) {
+                                SDL_Log("ObjectData.ini created successfully at: %s", userObjectDataPath.c_str());
+                            } else {
+                                SDL_Log("Warning: Failed to create ObjectData.ini");
+                            }
+                        }
+                    } catch (std::exception& e) {
+                        SDL_Log("Warning: Could not copy ObjectData.ini template: %s", e.what());
+                    }
+                }
+            }
+
+            // Check and copy QuantBot Config.ini  
+            {
+                char tmp[FILENAME_MAX];
+                fnkdat("config/QuantBot Config.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT);
+                std::string userQuantBotPath(tmp);
+                if (!existsFile(userQuantBotPath)) {
+                    SDL_Log("QuantBot Config.ini not found in user directory, copying template...");
+                    try {
+                        auto templateFile = pFileManager->openFile("config/QuantBot Config.ini");
+                        if (templateFile) {
+                            INIFile templateINI(templateFile.get());
+                            if (templateINI.saveChangesTo(userQuantBotPath)) {
+                                SDL_Log("QuantBot Config.ini created successfully at: %s", userQuantBotPath.c_str());
+                            } else {
+                                SDL_Log("Warning: Failed to create QuantBot Config.ini");
+                            }
+                        }
+                    } catch (std::exception& e) {
+                        SDL_Log("Warning: Could not copy QuantBot Config.ini template: %s", e.what());
+                    }
+                }
+            }
 
             // now we can finish loading texts
             pTextManager->loadData();

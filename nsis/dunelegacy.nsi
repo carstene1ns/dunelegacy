@@ -64,6 +64,12 @@ Section ""
   SetOutPath $INSTDIR\locale
   File "../data\locale\*.po"
 
+  SetOutPath $INSTDIR\config
+  File "../config\Dune Legacy.ini"
+  File "../config\ObjectData.ini"
+  File "../config\QuantBot Config.ini"
+  File "../config\README.md"
+
   SetOutPath $INSTDIR
   ${If} ${RunningX64}
     File "../bin\Release-x64\DuneLegacy.exe"

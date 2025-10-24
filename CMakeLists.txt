@@ -180,6 +180,7 @@ install(FILES
     config/ObjectData.ini
     "config/QuantBot Config.ini"
     "config/Dune Legacy.ini"
+    config/README.md
     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/config
 )
 

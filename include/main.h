@@ -54,6 +54,18 @@ std::string getConfigFilepath();
 std::string getLogFilepath();
 
 /**
+    This function returns the user ObjectData.ini config file path
+    \return the full path to the ObjectData.ini in user directory
+*/
+std::string getObjectDataConfigFilepath();
+
+/**
+    This function returns the ObjectData.ini template file path
+    \return the full path to the ObjectData.ini template in install directory
+*/
+std::string getObjectDataTemplateFilepath();
+
+/**
     This function creates a new default config file.
     \param configfilepath the path to the config file
     \param language the language to use as default (e.g. en, de, fr)

@@ -20,8 +20,11 @@
 #include <FileClasses/INIFile.h>
 #include <misc/fnkdat.h>
 #include <misc/FileSystem.h>
+#include <misc/exceptions.h>
 #include <data.h>
 #include <globals.h>
+
+#include <climits>
 
 // Constructor with default values
 QuantBotConfig::QuantBotConfig() {
@@ -236,35 +239,11 @@ bool QuantBotConfig::save(const std::string& filepath) const {
 
 bool QuantBotConfig::load(const std::string& filepath) {
     try {
-        // Check if file exists in user directory
+        // Try to load from user directory, create defaults if not found
         if (!existsFile(filepath)) {
-            SDL_Log("QuantBot config not found in user directory: %s", filepath.c_str());
-            
-            // Try to copy template from install directory
-            try {
-                auto templateFile = pFileManager->openFile("QuantBot Config.ini");
-                if (templateFile) {
-                    SDL_Log("Copying QuantBot Config template to user directory...");
-                    
-                    // Read template file
-                    INIFile templateINI(templateFile.get());
-                    
-                    // Save to user directory
-                    if (templateINI.saveChangesTo(filepath)) {
-                        SDL_Log("QuantBot config template copied successfully");
-                    } else {
-                        SDL_Log("Warning: Failed to copy QuantBot config template, creating defaults");
-                        return save(filepath);  // Fallback: create default file programmatically
-                    }
-                } else {
-                    SDL_Log("Warning: Template file not found, creating defaults programmatically");
-                    return save(filepath);  // Fallback: create default file
-                }
-            } catch (std::exception& e) {
-                SDL_Log("Error copying QuantBot config template: %s", e.what());
-                SDL_Log("Creating default configuration programmatically");
-                return save(filepath);  // Fallback: create default file
-            }
+            SDL_Log("QuantBot config not found: %s", filepath.c_str());
+            SDL_Log("Creating default configuration");
+            return save(filepath);
         }
         
         INIFile iniFile(filepath);
@@ -352,8 +331,12 @@ QuantBotConfig& getQuantBotConfig() {
 }
 
 std::string getQuantBotConfigFilepath() {
-    // Config file is in config subdirectory of game directory
-    return getDuneLegacyDataDir() + "/config/QuantBot Config.ini";
+    // User config file is stored in user directory (AppData on Windows, ~/.config on Linux, etc.)
+    char tmp[FILENAME_MAX];
+    if(fnkdat("config/QuantBot Config.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT) < 0) {
+        THROW(std::runtime_error, "fnkdat() failed for QuantBot Config.ini!");
+    }
+    return std::string(tmp);
 }
 
 void QuantBotConfig::logSettings() const {
