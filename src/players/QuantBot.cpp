@@ -1604,21 +1604,25 @@ void QuantBot::build(int militaryValue) {
 
 							Uint32 itemID = NONE_ID;
 
-							// Count enemy ornithopters at the start
-							int enemyOrnithopterCount = 0;
-							if (currentGame) {
-								for (int i = 0; i < NUM_HOUSES; i++) {
-									const House* pHouse = currentGame->getHouse(i);
-									if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
-										enemyOrnithopterCount += pHouse->getNumItems(Unit_Ornithopter);
+						// Count enemy ornithopters - use MAXIMUM from a single enemy house, not sum
+						// (e.g., if enemy A has 5 ornis and enemy B has 3, use 5, not 8)
+						int maxEnemyOrnithopters = 0;
+						if (currentGame) {
+							for (int i = 0; i < NUM_HOUSES; i++) {
+								const House* pHouse = currentGame->getHouse(i);
+								if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
+									int houseOrnis = pHouse->getNumItems(Unit_Ornithopter);
+									if (houseOrnis > maxEnemyOrnithopters) {
+										maxEnemyOrnithopters = houseOrnis;
 									}
 								}
 							}
+						}
 
-						// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
-						// Aim for 2 turrets per ornithopter for effective defense
-						int requiredTurrets = enemyOrnithopterCount * 2;
-					if (enemyOrnithopterCount > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
+				// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
+				// Aim for 2 turrets per ornithopter from the enemy house with the most ornithopters
+				int requiredTurrets = maxEnemyOrnithopters * 2;
+				if (maxEnemyOrnithopters > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
 						// Check prerequisites for rocket turrets: Windtrap, Radar, CY level 2
 						bool hasWindtrap = itemCount[Structure_WindTrap] > 0;
 						bool hasRadar = itemCount[Structure_Radar] > 0;
@@ -1641,24 +1645,24 @@ void QuantBot::build(int militaryValue) {
 									pBuilder->getCurrentUpgradeLevel(), pBuilder->getCurrentUpgradeLevel() + 1);
 							}
 						}
-						else if (!hasWindtrap && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
-							// Build windtrap first (required for rocket turrets)
-							itemID = Structure_WindTrap;
-							logDebug("COUNTER-ORNITHOPTER: Building windtrap (prerequisite for rocket turrets) - enemy ornis: %d", enemyOrnithopterCount);
-						}
-						else if (!hasRadar && pBuilder->isAvailableToBuild(Structure_Radar) && getHouse()->hasPower()) {
-							// Build radar (required for rocket turrets)
-							itemID = Structure_Radar;
-							logDebug("COUNTER-ORNITHOPTER: Building radar (prerequisite for rocket turrets) - enemy ornis: %d", enemyOrnithopterCount);
-						}
-						else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
-							&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
-							&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-							// All prerequisites met - build rocket turret to counter ornithopters
-							itemID = Structure_RocketTurret;
-							logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d, target: %d", 
-								enemyOrnithopterCount, itemCount[Structure_RocketTurret], requiredTurrets);
-						}
+					else if (!hasWindtrap && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+						// Build windtrap first (required for rocket turrets)
+						itemID = Structure_WindTrap;
+						logDebug("COUNTER-ORNITHOPTER: Building windtrap (prerequisite for rocket turrets) - max enemy ornis: %d", maxEnemyOrnithopters);
+					}
+					else if (!hasRadar && pBuilder->isAvailableToBuild(Structure_Radar) && getHouse()->hasPower()) {
+						// Build radar (required for rocket turrets)
+						itemID = Structure_Radar;
+						logDebug("COUNTER-ORNITHOPTER: Building radar (prerequisite for rocket turrets) - max enemy ornis: %d", maxEnemyOrnithopters);
+					}
+					else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
+						&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+						&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+						// All prerequisites met - build rocket turret to counter ornithopters
+						itemID = Structure_RocketTurret;
+						logDebug("COUNTER-ORNITHOPTER: Building rocket turret - max enemy ornis: %d, our turrets: %d, target: %d", 
+							maxEnemyOrnithopters, itemCount[Structure_RocketTurret], requiredTurrets);
+					}
 					}
 					// Essential infrastructure
 					else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
