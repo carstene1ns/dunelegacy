@@ -858,7 +858,7 @@ void OPLChipClass::adlib_getsample(Bit16s* sndptr, Bits numsamples) {
 
     // vibrato/tremolo lookup tables (global to possibly be used by all cells)
     Bit32s vib_lut[FIFOSIZE];
-    fltype trem_lut[FIFOSIZE];
+    static fltype trem_lut[FIFOSIZE]; // Must be static so that tremval1-4 are not dangling references
 
     Bits _snarek = 0;
 

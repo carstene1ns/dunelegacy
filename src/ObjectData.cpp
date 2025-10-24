@@ -56,7 +56,7 @@ ObjectData::~ObjectData() = default;
 void ObjectData::logSettings() const {
     SDL_Log("==================== OBJECTDATA CONFIGURATION ====================");
     SDL_Log("Loaded from: config/ObjectData.ini");
-    SDL_Log("");
+    SDL_Log("%s", "");
     
     // Log a sample of key units/structures for each house to keep output manageable
     // Format: ItemName [House]: HP=X Price=X Damage=X Range=X BuildTime=X
@@ -85,12 +85,12 @@ void ObjectData::logSettings() const {
         if(!obj.enabled) continue;
         
         SDL_Log("%s: HP=%d Price=%d Dmg=%d Rng=%d Build=%d ViewRng=%d",
-            resolveItemName(itemID),
+            resolveItemName(itemID).c_str(),
             obj.hitpoints, obj.price, obj.weapondamage, 
             obj.weaponrange, obj.buildtime, obj.viewrange);
     }
     
-    SDL_Log("");
+    SDL_Log("%s", "");
     SDL_Log("=== HOUSE-SPECIFIC DIFFERENCES ===");
     // Show where houses differ from Atreides
     for(int i = 0; i < 32; i++) {
@@ -108,11 +108,11 @@ void ObjectData::logSettings() const {
                house.weapondamage != atreides.weapondamage ||
                house.buildtime != atreides.buildtime) {
                 if(!hasDifference) {
-                    SDL_Log("%s differences:", resolveItemName(itemID));
+                    SDL_Log("%s differences:", resolveItemName(itemID).c_str());
                     hasDifference = true;
                 }
                 SDL_Log("  %s: HP=%d Price=%d Dmg=%d Build=%d",
-                    getHouseNameByNumber(static_cast<HOUSETYPE>(h)),
+                    getHouseNameByNumber(static_cast<HOUSETYPE>(h)).c_str(),
                     house.hitpoints, house.price, house.weapondamage, house.buildtime);
             }
         }

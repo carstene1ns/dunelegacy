@@ -544,7 +544,7 @@ std::string getQuantBotConfigFilepath() {
 void QuantBotConfig::logSettings() const {
     SDL_Log("==================== QUANTBOT CONFIGURATION ====================");
     SDL_Log("Config file: %s", getQuantBotConfigFilepath().c_str());
-    SDL_Log("");
+    SDL_Log("%s", "");
     
     SDL_Log("=== DIFFICULTY SETTINGS ===");
     SDL_Log("DEFEND:  Attack=%d OrnAttack=%d OrnThresh=%d MilMult=%.2f HarvMult=%d",
@@ -562,13 +562,13 @@ void QuantBotConfig::logSettings() const {
     SDL_Log("BRUTAL:  Attack=%d OrnAttack=%d OrnThresh=%d MilMult=%.2f HarvMult=%d",
         brutal.attackEnabled, brutal.ornithopterAttackEnabled, brutal.ornithopterAttackThreshold,
         brutal.militaryValueMultiplier, brutal.harvesterLimitPerRefineryMultiplier);
-    SDL_Log("");
+    SDL_Log("%s", "");
     
     SDL_Log("=== GENERAL BEHAVIOR ===");
     SDL_Log("AttackTimerMs: %d", attackTimerMs);
     SDL_Log("AttackThresholdPercent: %.2f", attackThresholdPercent);
     SDL_Log("MinMoneyForProduction: %d", minMoneyForProduction);
-    SDL_Log("");
+    SDL_Log("%s", "");
     
     SDL_Log("=== UNIT RATIOS (showing Easy difficulty sample) ===");
     SDL_Log("Atreides:  Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",

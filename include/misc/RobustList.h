@@ -43,7 +43,7 @@ public:
     /**
         Default constructor. Does not register at the list.
     */
-    RobustListIterator<T>() {
+    RobustListIterator() {
         current = nullptr;
         pList = nullptr;
         AdvancingAllowed = true;
@@ -52,7 +52,7 @@ public:
     /**
         Copy constructor.
     */
-    RobustListIterator<T>(const RobustListIterator<T>& x) {
+    RobustListIterator(const RobustListIterator<T>& x) {
         current = nullptr;
         pList = nullptr;
         AdvancingAllowed = true;
@@ -64,7 +64,7 @@ public:
         \param  start   Start element to point at.
         \param  List    this is the list of start element
     */
-    RobustListIterator<T>(RobustListNode<T>* start, const RobustList<T>* List) {
+    RobustListIterator(RobustListNode<T>* start, const RobustList<T>* List) {
         current = start;
         pList = List;
         AdvancingAllowed = true;
@@ -74,7 +74,7 @@ public:
     /**
         destructor
     */
-    ~RobustListIterator<T>() {
+    ~RobustListIterator() {
         unregisterFromList();
     }
 
@@ -244,7 +244,7 @@ public:
     /**
         Default constructor. Does not register at the list.
     */
-    RobustListConstIterator<T>() {
+    RobustListConstIterator() {
         current = nullptr;
         pList = nullptr;
         AdvancingAllowed = true;
@@ -253,7 +253,7 @@ public:
     /**
         Copy constructor.
     */
-    RobustListConstIterator<T>(const RobustListConstIterator<T>& x) {
+    RobustListConstIterator(const RobustListConstIterator<T>& x) {
         current = nullptr;
         pList = nullptr;
         AdvancingAllowed = true;
@@ -263,7 +263,7 @@ public:
     /**
         Copy constructor.
     */
-    RobustListConstIterator<T>(const RobustListIterator<T>& x) {
+    RobustListConstIterator(const RobustListIterator<T>& x) {
         current = x.current;
         pList = x.pList;
         AdvancingAllowed = x.AdvancingAllowed;
@@ -275,7 +275,7 @@ public:
         \param  start   Start element to point at.
         \param  List    this is the list of start element
     */
-    RobustListConstIterator<T>(const RobustListNode<T>* start, const RobustList<T>* List) {
+    RobustListConstIterator(const RobustListNode<T>* start, const RobustList<T>* List) {
         current = start;
         pList = List;
         AdvancingAllowed = true;
@@ -285,7 +285,7 @@ public:
     /**
         destructor
     */
-    ~RobustListConstIterator<T>() {
+    ~RobustListConstIterator() {
         unregisterFromList();
     }
 

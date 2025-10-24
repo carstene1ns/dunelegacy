@@ -213,12 +213,15 @@ void LANGameFinderAndAnnouncer::announceGame() {
     NetworkPacket_AnnounceGame announcePacket;
     memset(&announcePacket, 0, sizeof(NetworkPacket_AnnounceGame));
 
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wstringop-truncation"  // Non null-terminated char* to std::string is handled below in receivePackets.
     announcePacket.magicNumber = SDL_SwapLE32(LANGAME_ANNOUNCER_MAGICNUMBER);
     announcePacket.type = NETWORKPACKET_ANNOUNCEGAME;
     strncpy(announcePacket.serverName, serverName.c_str(), LANGAME_ANNOUNCER_MAXGAMENAMESIZE);
     strncpy(announcePacket.serverVersion, VERSIONSTRING, LANGAME_ANNOUNCER_MAXGAMEVERSIONSIZE);
     announcePacket.serverPort = SDL_SwapLE16(serverPort);
     strncpy(announcePacket.mapName, mapName.c_str(), LANGAME_ANNOUNCER_MAXMAPNAMESIZE);
+    #pragma GCC diagnostic pop
     announcePacket.numPlayers = numPlayers;
     announcePacket.maxPlayers = maxPlayers;
 

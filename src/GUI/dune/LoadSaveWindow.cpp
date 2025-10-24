@@ -124,7 +124,7 @@ void LoadSaveWindow::updateEntries() {
     fileList.clearAllEntries();
 
     int preselectedFileIndex = -1;
-    for(const std::string fileName : getFileNamesList(directories[currentDirectoryIndex],extension, true, FileListOrder_ModifyDate_Dsc)) {
+    for(const std::string& fileName : getFileNamesList(directories[currentDirectoryIndex],extension, true, FileListOrder_ModifyDate_Dsc)) {
         std::string entryName = fileName.substr(0, fileName.length() - extension.length() - 1);
         fileList.addEntry(entryName);
 

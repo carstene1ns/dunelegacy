@@ -157,7 +157,7 @@ std::unique_ptr<MapEditorOperation> MapEditorRemoveStructureOperation::perform(M
 
             structures.erase(iter);
 
-            return std::move(redoOperation);
+            return redoOperation;
         }
     }
 
