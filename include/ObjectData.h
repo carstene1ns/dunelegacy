@@ -88,6 +88,11 @@ public:
     */
     void load(InputStream& stream);
 
+    /**
+        Logs all loaded object data to SDL log for debugging.
+    */
+    void logSettings() const;
+
     struct ObjectDataStruct {
         bool     enabled;                                             ///< is this unit/structure available?
         Sint32   hitpoints;                                           ///< what is the maximum health of this unit/structure?

@@ -53,6 +53,74 @@ ObjectData::ObjectData()
 
 ObjectData::~ObjectData() = default;
 
+void ObjectData::logSettings() const {
+    SDL_Log("==================== OBJECTDATA CONFIGURATION ====================");
+    SDL_Log("Loaded from: config/ObjectData.ini");
+    SDL_Log("");
+    
+    // Log a sample of key units/structures for each house to keep output manageable
+    // Format: ItemName [House]: HP=X Price=X Damage=X Range=X BuildTime=X
+    
+    const int keyItems[32] = {
+        // Units
+        Unit_Soldier, Unit_Trooper, Unit_Harvester, Unit_MCV,
+        Unit_Trike, Unit_RaiderTrike, Unit_Quad,
+        Unit_Tank, Unit_SiegeTank, Unit_Launcher,
+        Unit_Devastator, Unit_SonicTank, Unit_Deviator,
+        Unit_Ornithopter, Unit_Carryall,
+        // Structures  
+        Structure_Slab1, Structure_Wall, Structure_ConstructionYard,
+        Structure_WindTrap, Structure_Refinery, Structure_Barracks,
+        Structure_WOR, Structure_LightFactory, Structure_HeavyFactory,
+        Structure_HighTechFactory, Structure_IX, Structure_Palace,
+        Structure_RepairYard, Structure_StarPort, Structure_Silo,
+        Structure_GunTurret, Structure_RocketTurret
+    };
+    
+    SDL_Log("=== KEY UNITS AND STRUCTURES (Atreides) ===");
+    for(int i = 0; i < 32; i++) {
+        int itemID = keyItems[i];
+        if(itemID >= Num_ItemID) continue;
+        const ObjectDataStruct& obj = data[itemID][HOUSE_ATREIDES];
+        if(!obj.enabled) continue;
+        
+        SDL_Log("%s: HP=%d Price=%d Dmg=%d Rng=%d Build=%d ViewRng=%d",
+            resolveItemName(itemID),
+            obj.hitpoints, obj.price, obj.weapondamage, 
+            obj.weaponrange, obj.buildtime, obj.viewrange);
+    }
+    
+    SDL_Log("");
+    SDL_Log("=== HOUSE-SPECIFIC DIFFERENCES ===");
+    // Show where houses differ from Atreides
+    for(int i = 0; i < 32; i++) {
+        int itemID = keyItems[i];
+        if(itemID >= Num_ItemID) continue;
+        const ObjectDataStruct& atreides = data[itemID][HOUSE_ATREIDES];
+        if(!atreides.enabled) continue;
+        
+        bool hasDifference = false;
+        for(int h = 1; h < NUM_HOUSES; h++) {
+            const ObjectDataStruct& house = data[itemID][h];
+            if(house.enabled != atreides.enabled ||
+               house.hitpoints != atreides.hitpoints ||
+               house.price != atreides.price ||
+               house.weapondamage != atreides.weapondamage ||
+               house.buildtime != atreides.buildtime) {
+                if(!hasDifference) {
+                    SDL_Log("%s differences:", resolveItemName(itemID));
+                    hasDifference = true;
+                }
+                SDL_Log("  %s: HP=%d Price=%d Dmg=%d Build=%d",
+                    getHouseNameByNumber(static_cast<HOUSETYPE>(h)),
+                    house.hitpoints, house.price, house.weapondamage, house.buildtime);
+            }
+        }
+    }
+    
+    SDL_Log("===============================================================");
+}
+
 void ObjectData::loadFromINIFile(const std::string& filename)
 {
     INIFile objectDataFile(pFileManager->openFile(filename).get());
