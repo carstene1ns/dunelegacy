@@ -292,24 +292,44 @@ void QuantBot::update() {
 	const QuantBotConfig& config = getQuantBotConfig();
 	const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
 
+	// Log which config this QuantBot is using
+	SDL_Log("=== QuantBot [%s - %s] Initialization ===", 
+		getHouse()->getHouseName().c_str(),
+		gameMode == GameMode::Campaign ? "Campaign" : "Custom");
+
 	switch (gameMode) {
 	case GameMode::Campaign: {
 		// Use config values for campaign mode
 		harvesterLimit = diffSettings.harvesterLimitPerRefineryMultiplier * initialItemCount[Structure_Refinery];
 		militaryValueLimit = lround(initialMilitaryValue * diffSettings.militaryValueMultiplier);
 		
+		SDL_Log("  Difficulty: %s", 
+			difficulty == Difficulty::Defend ? "Defend" :
+			difficulty == Difficulty::Easy ? "Easy" :
+			difficulty == Difficulty::Medium ? "Medium" :
+			difficulty == Difficulty::Hard ? "Hard" : "Brutal");
+		SDL_Log("  Mission: %d", currentGame ? currentGame->getGameInitSettings().getMission() : 0);
+		SDL_Log("  Initial Military Value: %d", initialMilitaryValue);
+		SDL_Log("  Initial Refineries: %d", initialItemCount[Structure_Refinery]);
+		SDL_Log("  Config: HarvesterMult=%d, MilitaryMult=%.1fx",
+			diffSettings.harvesterLimitPerRefineryMultiplier,
+			diffSettings.militaryValueMultiplier);
+		
 		// Special case for late missions (mission 21+)
 		if (currentGame && currentGame->getGameInitSettings().getMission() >= 21) {
 			if (difficulty == Difficulty::Easy && militaryValueLimit < 2000) {
 				militaryValueLimit = 2000;
+				SDL_Log("  Mission 21+ override: MilitaryValueLimit = 2000");
 			}
 			else if (difficulty == Difficulty::Medium && militaryValueLimit < 4000) {
 				militaryValueLimit = 4000;
+				SDL_Log("  Mission 21+ override: MilitaryValueLimit = 4000");
 			}
 			else if (difficulty == Difficulty::Hard) {
 				initialItemCount[Structure_Refinery] = 2;
 				militaryValueLimit = 10000;
 				harvesterLimit = diffSettings.harvesterLimitPerRefineryMultiplier * initialItemCount[Structure_Refinery];
+				SDL_Log("  Mission 21+ override: Refineries=2, MilitaryValueLimit=10000");
 			}
 		}
 		
@@ -317,10 +337,11 @@ void QuantBot::update() {
 		if (difficulty == Difficulty::Brutal && initialItemCount[Structure_Refinery] < 2) {
 			initialItemCount[Structure_Refinery] = 2;
 			harvesterLimit = diffSettings.harvesterLimitPerRefineryMultiplier * initialItemCount[Structure_Refinery];
+			SDL_Log("  Brutal override: Minimum 2 refineries");
 		}
 		
-		logDebug("Campaign Mode - Difficulty: %d, HarvesterLimit: %d, MilitaryValueLimit: %d", 
-			static_cast<int>(difficulty), harvesterLimit, militaryValueLimit);
+		SDL_Log("  FINAL: HarvesterLimit=%d, MilitaryValueLimit=%d", 
+			harvesterLimit, militaryValueLimit);
 
 	} break;
 
@@ -335,27 +356,46 @@ void QuantBot::update() {
 			mapsize = currentGameMap->getSizeX() * currentGameMap->getSizeY();
 		}
 		
+		SDL_Log("  Difficulty: %s", 
+			difficulty == Difficulty::Defend ? "Defend" :
+			difficulty == Difficulty::Easy ? "Easy" :
+			difficulty == Difficulty::Medium ? "Medium" :
+			difficulty == Difficulty::Hard ? "Hard" : "Brutal");
+		SDL_Log("  Map Size: %dx%d = %d tiles",
+			currentGameMap ? currentGameMap->getSizeX() : 64,
+			currentGameMap ? currentGameMap->getSizeY() : 64,
+			mapsize);
+		
 		// Use config values based on map size
 		if (mapsize <= 1024) {
 			// Small map (32x32)
 			harvesterLimit = diffSettings.harvesterLimitCustomSmallMap;
 			militaryValueLimit = diffSettings.militaryValueLimitCustomSmallMap;
+			SDL_Log("  Map Category: Small (32x32)");
 		} else if (mapsize <= 4096) {
 			// Medium map (62x62, 64x64)
 			harvesterLimit = diffSettings.harvesterLimitCustomMediumMap;
 			militaryValueLimit = diffSettings.militaryValueLimitCustomMediumMap;
+			SDL_Log("  Map Category: Medium (64x64)");
 		} else if (mapsize <= 16384) {
 			// Large map (128x128)
 			harvesterLimit = diffSettings.harvesterLimitCustomLargeMap;
 			militaryValueLimit = diffSettings.militaryValueLimitCustomLargeMap;
+			SDL_Log("  Map Category: Large (128x128)");
 		} else {
 			// Huge maps - scale from large map values
 			harvesterLimit = diffSettings.harvesterLimitCustomLargeMap * (mapsize / 16384.0);
 			militaryValueLimit = diffSettings.militaryValueLimitCustomLargeMap * (mapsize / 16384.0);
+			SDL_Log("  Map Category: Huge (scaled from Large)");
+			SDL_Log("  Scale Factor: %.2fx", mapsize / 16384.0);
 		}
 		
-		logDebug("Custom Mode - Difficulty: %d, Mapsize: %d, HarvesterLimit: %d, MilitaryValueLimit: %d", 
-			static_cast<int>(difficulty), mapsize, harvesterLimit, militaryValueLimit);
+		SDL_Log("  Config Values - Small(H:%d,M:%d) Med(H:%d,M:%d) Large(H:%d,M:%d)",
+			diffSettings.harvesterLimitCustomSmallMap, diffSettings.militaryValueLimitCustomSmallMap,
+			diffSettings.harvesterLimitCustomMediumMap, diffSettings.militaryValueLimitCustomMediumMap,
+			diffSettings.harvesterLimitCustomLargeMap, diffSettings.militaryValueLimitCustomLargeMap);
+		SDL_Log("  FINAL: HarvesterLimit=%d, MilitaryValueLimit=%d", 
+			harvesterLimit, militaryValueLimit);
 
 		// what is this useful for? Reseting limits or something
 		/*
