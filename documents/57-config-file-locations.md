@@ -1,7 +1,7 @@
 # Configuration File Locations - Dune Legacy.ini
 
 **Date**: October 24, 2024  
-**Version**: 0.98.6a  
+**Version**: 0.98.6.2  
 **Commit**: c644103
 
 ## Summary

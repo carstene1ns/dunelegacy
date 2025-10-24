@@ -43,6 +43,9 @@ void RocketTurret::init() {
     owner->incrementStructures(itemID);
 
     attackSound = Sound_Rocket;
+    // Use Bullet_TurretRocket with speed 20
+    // Ornithopters slowed to 18.0, so turret rockets (speed 20) can catch them
+    // Added safety detonation timer to Bullet_TurretRocket as backup
     bulletType = Bullet_TurretRocket;
 
     graphicID = ObjPic_RocketTurret;
@@ -78,20 +81,31 @@ void RocketTurret::attack() {
         Coord targetCenterPoint = pObject->getClosestCenterPoint(location);
 
         if(distanceFrom(centerPoint, targetCenterPoint) < 3 * TILESIZE) {
-            // we are just shooting a bullet as a gun turret would do
-            // for air units do nothing
+            // Close range: shoot bullets at ground units, rockets at air units
             if(!pObject->isAFlyingUnit()) {
+                // Shoot bullet at ground units
                 bulletList.push_back( new Bullet( objectID, &centerPoint, &targetCenterPoint, Bullet_ShellTurret,
                                                        currentGame->objectData.data[Structure_GunTurret][originalHouseID].weapondamage,
-                                                       pObject->isAFlyingUnit(),
+                                                       false,
                                                        pObject ) );
 
                 currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
                 soundPlayer->playSoundAt(Sound_ExplosionSmall, location);
                 weaponTimer = currentGame->objectData.data[Structure_GunTurret][originalHouseID].weaponreloadtime;
+            } else {
+                // CRITICAL FIX: Always shoot rockets at air units, even at close range
+                // This prevents ornithopters from raiding bases without taking damage
+                bulletList.push_back( new Bullet( objectID, &centerPoint, &targetCenterPoint, bulletType,
+                                                       currentGame->objectData.data[itemID][originalHouseID].weapondamage,
+                                                       true,
+                                                       pObject ) );
+
+                currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
+                soundPlayer->playSoundAt(attackSound, location);
+                weaponTimer = getWeaponReloadTime();
             }
         } else {
-            // we are in normal shooting mode
+            // Normal shooting mode (long range)
             bulletList.push_back( new Bullet( objectID, &centerPoint, &targetCenterPoint, bulletType,
                                                    currentGame->objectData.data[itemID][originalHouseID].weapondamage,
                                                    pObject->isAFlyingUnit(),

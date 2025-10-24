@@ -538,6 +538,72 @@ public:
     
     std::set<Uint8> pausedPlayers;  ///< Set of player IDs that are currently paused
 
+    // Performance timing system (public for access from objects like turrets)
+    struct FrameTiming {
+        double aiMs = 0.0;
+        double unitsMs = 0.0;
+        double structuresMs = 0.0;
+        double pathfindingMs = 0.0;
+        double renderingMs = 0.0;
+        double networkWaitMs = 0.0;
+        double totalMs = 0.0;
+        int gameCyclesThisFrame = 0;
+        int totalGameCycles = 0;
+        int frameCount = 0;
+        
+        // Pathfinding detailed stats
+        int pathsProcessedThisCycle = 0;
+        int totalPathsProcessedThisFrame = 0;
+        int totalPathsProcessed = 0;
+        double pathfindingMsThisCycle = 0.0;
+        double pathfindingMsThisFrame = 0.0;
+        
+        // Turret target scan detailed stats
+        int turretScansThisFrame = 0;
+        int totalTurretScans = 0;
+        double turretScanMs = 0.0;
+        double turretScanMsThisFrame = 0.0;
+        double maxTurretScanMs = 0.0;
+        double minTurretScanMs = 999999.0;
+        int maxTurretScansPerFrame = 0;
+        
+        // Per-frame accumulators for min/max tracking
+        double aiMsThisFrame = 0.0;
+        double unitsMsThisFrame = 0.0;
+        double structuresMsThisFrame = 0.0;
+        double renderingMsThisFrame = 0.0;
+        double networkWaitMsThisFrame = 0.0;
+        
+        // Max values
+        double maxAiMs = 0.0;
+        double maxUnitsMs = 0.0;
+        double maxStructuresMs = 0.0;
+        double maxPathfindingMs = 0.0;
+        double maxPathfindingMsPerCycle = 0.0;
+        double maxRenderingMs = 0.0;
+        double maxNetworkWaitMs = 0.0;
+        double maxTotalMs = 0.0;
+        int maxGameCyclesPerFrame = 0;
+        int maxPathsPerCycle = 0;
+        int maxPathsPerFrame = 0;
+        
+        // Min values
+        int minGameCyclesPerFrame = 999999;
+        double minAiMs = 999999.0;
+        double minUnitsMs = 999999.0;
+        double minStructuresMs = 999999.0;
+        double minPathfindingMs = 999999.0;
+        double minRenderingMs = 999999.0;
+        double minNetworkWaitMs = 999999.0;
+    };
+
+    FrameTiming frameTiming;
+    
+    inline double getElapsedMs(Uint64 start, Uint64 end) const {
+        const Uint64 frequency = SDL_GetPerformanceFrequency();
+        return (static_cast<double>(end - start) / static_cast<double>(frequency)) * 1000.0;
+    }
+
 private:
     bool        chatMode = false;   ///< chat mode on?
     std::string typingChatMessage;  ///< currently typed chat message
@@ -647,64 +713,8 @@ private:
     void processTargetRequests();
     void processPathRequests();
 
-    // Performance timing system
-    struct FrameTiming {
-        double aiMs = 0.0;
-        double unitsMs = 0.0;
-        double structuresMs = 0.0;
-        double pathfindingMs = 0.0;
-        double renderingMs = 0.0;
-        double networkWaitMs = 0.0;
-        double totalMs = 0.0;
-        int gameCyclesThisFrame = 0;
-        int totalGameCycles = 0;
-        int frameCount = 0;
-        
-        // Pathfinding detailed stats
-        int pathsProcessedThisCycle = 0;
-        int totalPathsProcessedThisFrame = 0;
-        int totalPathsProcessed = 0;
-        double pathfindingMsThisCycle = 0.0;
-        double pathfindingMsThisFrame = 0.0;
-        
-        // Per-frame accumulators for min/max tracking
-        double aiMsThisFrame = 0.0;
-        double unitsMsThisFrame = 0.0;
-        double structuresMsThisFrame = 0.0;
-        double renderingMsThisFrame = 0.0;
-        double networkWaitMsThisFrame = 0.0;
-        
-        // Max values
-        double maxAiMs = 0.0;
-        double maxUnitsMs = 0.0;
-        double maxStructuresMs = 0.0;
-        double maxPathfindingMs = 0.0;
-        double maxPathfindingMsPerCycle = 0.0;
-        double maxRenderingMs = 0.0;
-        double maxNetworkWaitMs = 0.0;
-        double maxTotalMs = 0.0;
-        int maxGameCyclesPerFrame = 0;
-        int maxPathsPerCycle = 0;
-        int maxPathsPerFrame = 0;
-        
-        // Min values
-        int minGameCyclesPerFrame = 999999;
-        double minAiMs = 999999.0;
-        double minUnitsMs = 999999.0;
-        double minStructuresMs = 999999.0;
-        double minPathfindingMs = 999999.0;
-        double minRenderingMs = 999999.0;
-        double minNetworkWaitMs = 999999.0;
-    };
-
-    FrameTiming frameTiming;
     Uint32 lastTimingLogMs = 0;
     double pathfindingBudgetRemainingMs = 0.0;  // Per-frame budget tracking
-
-    inline double getElapsedMs(Uint64 start, Uint64 end) const {
-        const Uint64 frequency = SDL_GetPerformanceFrequency();
-        return (static_cast<double>(end - start) / static_cast<double>(frequency)) * 1000.0;
-    }
 
     void logFrameTiming();
 };

@@ -102,8 +102,24 @@ void TurretBase::updateStructureSpecificStuff() {
             setTarget(nullptr);
         }
     } else if((attackMode != STOP) && (findTargetTimer == 0)) {
+        // Measure turret target scan performance
+        const Uint64 scanStart = SDL_GetPerformanceCounter();
         setTarget(findTarget());
-        findTargetTimer = 100;
+        const Uint64 scanEnd = SDL_GetPerformanceCounter();
+        
+        // Record timing to Game's performance tracking system
+        const double scanMs = currentGame->getElapsedMs(scanStart, scanEnd);
+        currentGame->frameTiming.turretScanMsThisFrame += scanMs;
+        currentGame->frameTiming.turretScansThisFrame++;
+        
+        // 5-10 frame scan interval
+        // At 30 FPS: 5 frames = 160ms, 10 frames = 320ms
+        // Average: 7.5 frames = ~4 scans/second per turret
+        // With 240 turrets (typical 4-AI game), this is ~32 scans/frame (~1.5ms)
+        // This provides good responsiveness while avoiding the performance death spiral
+        int baseDelay = 5;  // 5 frames base
+        int randomDelay = currentGame->randomGen.rand(0, 5);  // +0-5 frames random
+        findTargetTimer = baseDelay + randomDelay;  // 5-10 frames total
     }
 
     if(findTargetTimer > 0) {
@@ -136,6 +152,17 @@ void TurretBase::doAttackObject(const ObjectBase* pObject) {
     setDestination(INVALID_POS,INVALID_POS);
     setTarget(pObject);
     setForced(true);
+}
+
+void TurretBase::handleDamage(int damage, Uint32 damagerID, House* damagerOwner) {
+    // Call base class damage handling
+    ObjectBase::handleDamage(damage, damagerID, damagerOwner);
+    
+    // If turret doesn't have a target, immediately scan for one
+    // This allows turrets to retaliate when attacked (especially by ornithopters)
+    if(!target) {
+        findTargetTimer = 0;
+    }
 }
 
 void TurretBase::turnLeft() {

@@ -1075,6 +1075,8 @@ void Game::runMainLoop() {
         frameTiming.pathfindingMsThisFrame = 0.0;
         frameTiming.renderingMsThisFrame = 0.0;
         frameTiming.networkWaitMsThisFrame = 0.0;
+        frameTiming.turretScanMsThisFrame = 0.0;
+        frameTiming.turretScansThisFrame = 0;
         
         // Reset pathfinding budget for this frame
         pathfindingBudgetRemainingMs = PathBudgetMs;
@@ -1180,6 +1182,8 @@ void Game::runMainLoop() {
         const double thisFrameMs = getElapsedMs(frameStartPerf, frameEndPerf);
         frameTiming.totalMs += thisFrameMs;
         frameTiming.totalGameCycles += frameTiming.gameCyclesThisFrame;
+        frameTiming.totalTurretScans += frameTiming.turretScansThisFrame;
+        frameTiming.turretScanMs += frameTiming.turretScanMsThisFrame;
         frameTiming.frameCount++;
         
         // Track max values
@@ -1209,6 +1213,9 @@ void Game::runMainLoop() {
         if(frameTiming.pathfindingMsThisFrame > frameTiming.maxPathfindingMs) frameTiming.maxPathfindingMs = frameTiming.pathfindingMsThisFrame;
         if(frameTiming.renderingMsThisFrame > frameTiming.maxRenderingMs) frameTiming.maxRenderingMs = frameTiming.renderingMsThisFrame;
         if(frameTiming.networkWaitMsThisFrame > frameTiming.maxNetworkWaitMs) frameTiming.maxNetworkWaitMs = frameTiming.networkWaitMsThisFrame;
+        if(frameTiming.turretScanMsThisFrame > frameTiming.maxTurretScanMs) frameTiming.maxTurretScanMs = frameTiming.turretScanMsThisFrame;
+        if(frameTiming.turretScanMsThisFrame < frameTiming.minTurretScanMs && frameTiming.turretScansThisFrame > 0) frameTiming.minTurretScanMs = frameTiming.turretScanMsThisFrame;
+        if(frameTiming.turretScansThisFrame > frameTiming.maxTurretScansPerFrame) frameTiming.maxTurretScansPerFrame = frameTiming.turretScansThisFrame;
         
         // Log every 30 seconds
         const Uint32 now = SDL_GetTicks();
@@ -1472,6 +1479,17 @@ void Game::logFrameTiming() {
         frameTiming.minRenderingMs, avgRendering, frameTiming.maxRenderingMs);
     SDL_Log("[Performance] Pathfinding Detail: %.1f paths/frame | %.2f paths/cycle | %.2fms/cycle | %.2fms/path",
         avgPathsPerFrame, avgPathsPerCycle, avgPathfindingPerCycle, avgMsPerPath);
+    
+    // Turret scan detailed stats
+    const double avgTurretScans = static_cast<double>(frameTiming.totalTurretScans) / frameTiming.frameCount;
+    const double avgTurretScanMs = frameTiming.turretScanMs / frameTiming.frameCount;
+    const double avgMsPerTurretScan = frameTiming.totalTurretScans > 0 ? 
+        frameTiming.turretScanMs / frameTiming.totalTurretScans : 0.0;
+    SDL_Log("[Performance] Turret Scans: %.1f scans/frame | %.2fms total/frame | %.4fms/scan",
+        avgTurretScans, avgTurretScanMs, avgMsPerTurretScan);
+    SDL_Log("[Performance] Turret Scan Range: min=%.2fms max=%.2fms | Peak: %d scans/frame",
+        frameTiming.minTurretScanMs, frameTiming.maxTurretScanMs, frameTiming.maxTurretScansPerFrame);
+    
     SDL_Log("[Performance] === PEAKS (worst case) ===");
     SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | NetworkWait: %.2fms | Rendering: %.2fms",
         maxFps, frameTiming.maxTotalMs,
@@ -1490,6 +1508,8 @@ void Game::logFrameTiming() {
     frameTiming.totalMs = 0.0;
     frameTiming.totalGameCycles = 0;
     frameTiming.totalPathsProcessed = 0;
+    frameTiming.totalTurretScans = 0;
+    frameTiming.turretScanMs = 0.0;
     frameTiming.frameCount = 0;
     frameTiming.maxAiMs = 0.0;
     frameTiming.maxUnitsMs = 0.0;
@@ -1499,6 +1519,9 @@ void Game::logFrameTiming() {
     frameTiming.maxNetworkWaitMs = 0.0;
     frameTiming.maxRenderingMs = 0.0;
     frameTiming.maxTotalMs = 0.0;
+    frameTiming.maxTurretScanMs = 0.0;
+    frameTiming.maxTurretScansPerFrame = 0;
+    frameTiming.minTurretScanMs = 999999.0;
     frameTiming.maxGameCyclesPerFrame = 0;
     frameTiming.maxPathsPerCycle = 0;
     frameTiming.maxPathsPerFrame = 0;

@@ -51,6 +51,14 @@ public:
     */
     virtual void doAttackObject(const ObjectBase* pObject);
 
+    /**
+        Handle damage dealt to this turret. Immediately scans for targets when attacked.
+        \param damage       the damage taken
+        \param damagerID    the shooter who caused the damage
+        \param damagerOwner the house of the shooter
+    */
+    void handleDamage(int damage, Uint32 damagerID, House* damagerOwner) override;
+
     void turnLeft();
     void turnRight();
     virtual void attack();
