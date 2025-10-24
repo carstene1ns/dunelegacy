@@ -1615,31 +1615,45 @@ void QuantBot::build(int militaryValue) {
 								}
 							}
 
-							// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
-							// Aim for 2 turrets per ornithopter for effective defense
-							int requiredTurrets = enemyOrnithopterCount * 2;
-							if (enemyOrnithopterCount > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
-								if (pBuilder->getCurrentUpgradeLevel() < 2) {
-									if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
-										// Repair construction yard first if damaged
-										doRepair(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
-									}
-									else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
-										// Upgrade construction yard to unlock rocket turrets
-										doUpgrade(pBuilder);
-										logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
-									}
+						// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
+						// Aim for 2 turrets per ornithopter for effective defense
+						int requiredTurrets = enemyOrnithopterCount * 2;
+						if (enemyOrnithopterCount > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
+							// Check prerequisites for rocket turrets: Windtrap, Radar, CY level 2
+							bool hasWindtrap = itemCount[Structure_WindTrap] > 0;
+							bool hasRadar = itemCount[Structure_Radar] > 0;
+							
+							if (pBuilder->getCurrentUpgradeLevel() < 2) {
+								if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+									// Repair construction yard first if damaged
+									doRepair(pBuilder);
+									logDebug("COUNTER-ORNITHOPTER: Repairing construction yard - health low");
 								}
+								else if (pBuilder->getHealth() >= pBuilder->getMaxHealth() && !pBuilder->isUpgrading()) {
+									// Upgrade construction yard to unlock rocket turrets
+									doUpgrade(pBuilder);
+									logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard to level 2");
+								}
+							}
+							else if (!hasWindtrap && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+								// Build windtrap first (required for rocket turrets)
+								itemID = Structure_WindTrap;
+								logDebug("COUNTER-ORNITHOPTER: Building windtrap (prerequisite for rocket turrets) - enemy ornis: %d", enemyOrnithopterCount);
+							}
+							else if (!hasRadar && pBuilder->isAvailableToBuild(Structure_Radar) && getHouse()->hasPower()) {
+								// Build radar (required for rocket turrets)
+								itemID = Structure_Radar;
+								logDebug("COUNTER-ORNITHOPTER: Building radar (prerequisite for rocket turrets) - enemy ornis: %d", enemyOrnithopterCount);
+							}
 							else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
 								&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
 								&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-								// Build rocket turret to counter ornithopters
+								// All prerequisites met - build rocket turret to counter ornithopters
 								itemID = Structure_RocketTurret;
 								logDebug("COUNTER-ORNITHOPTER: Building rocket turret - enemy ornis: %d, our turrets: %d, target: %d", 
 									enemyOrnithopterCount, itemCount[Structure_RocketTurret], requiredTurrets);
 							}
-							}
+						}
 							// Essential infrastructure
 							else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
 								itemID = Structure_WindTrap;
