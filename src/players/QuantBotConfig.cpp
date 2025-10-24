@@ -16,6 +16,7 @@
  */
 
 #include <players/QuantBotConfig.h>
+#include <FileClasses/FileManager.h>
 #include <FileClasses/INIFile.h>
 #include <misc/fnkdat.h>
 #include <misc/FileSystem.h>
