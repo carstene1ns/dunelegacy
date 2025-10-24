@@ -171,3 +171,25 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
 - Any C++17 compatible compiler for Linux
 - NSIS for Windows installer creation
 - hdiutil for macOS DMG creation
+
+## Communication Guidelines
+
+### DO NOT Make Up Statistics or Claims
+- **NEVER** invent specific percentages, numbers, or ROI calculations without actual data
+- **NEVER** claim problems are "finally solved" or "balance achieved" without testing
+- **NEVER** state definitive outcomes like "this will work" - use "this should" or "expected to"
+- **NEVER** calculate fake metrics like "ROI: 556%" or "88% improvement" without measurement
+
+### Be Honest About Uncertainty
+- ✅ Use: "Expected to", "Should", "Likely", "May", "Estimated"
+- ❌ Avoid: "Finally solved", "Balance achieved", "Proven", "Definitely"
+- ✅ Say: "This change should improve performance" 
+- ❌ Don't say: "This change improves performance by 67%"
+- ✅ Say: "These 4 turrets may provide better defense"
+- ❌ Don't say: "These 4 turrets achieve 80% coverage (tested)"
+
+### When Presenting Changes
+- State what was changed (facts)
+- Explain the reasoning (logic)
+- Describe expected outcomes (predictions, clearly marked as such)
+- **Don't** invent test results or claim things are verified without evidence
