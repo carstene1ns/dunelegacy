@@ -177,9 +177,53 @@ New log messages help track the counter's progression:
 - `config/ObjectData.ini` - Rocket turret prerequisites definition
 - `documents/32-ornithopter-counter-priority-fix.md` - Original counter implementation
 
+## Update: Construction Yard Double Upgrade Fix
+
+**Issue:** Construction Yard needs to upgrade TWICE (level 0 → 1 → 2) but the waiting period between upgrades wasn't being logged, making it appear "stuck".
+
+**Additional Fix:**
+- Added explicit `isUpgrading()` check with logging
+- Shows current upgrade progress: "level X → X+1"
+- Makes it clear when waiting for upgrade to complete
+
+**New Logic:**
+```cpp
+if (pBuilder->getCurrentUpgradeLevel() < 2) {
+    if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+        // Repair first
+        doRepair(pBuilder);
+    }
+    else if (pBuilder->isUpgrading()) {
+        // NEW: Explicit waiting state with logging
+        logDebug("COUNTER-ORNITHOPTER: Waiting for construction yard upgrade to complete (current level: %d → %d)", 
+            pBuilder->getCurrentUpgradeLevel(), pBuilder->getCurrentUpgradeLevel() + 1);
+    }
+    else if (pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
+        // Start upgrade (will be called twice: 0→1, then 1→2)
+        doUpgrade(pBuilder);
+        logDebug("COUNTER-ORNITHOPTER: Upgrading construction yard (level %d → %d, target: level 2)", 
+            pBuilder->getCurrentUpgradeLevel(), pBuilder->getCurrentUpgradeLevel() + 1);
+    }
+}
+```
+
+**Expected Log Sequence:**
+```
+[DEBUG] COUNTER-ORNITHOPTER: Upgrading construction yard (level 0 → 1, target: level 2)
+[DEBUG] COUNTER-ORNITHOPTER: Waiting for construction yard upgrade to complete (current level: 0 → 1)
+[DEBUG] COUNTER-ORNITHOPTER: Waiting for construction yard upgrade to complete (current level: 0 → 1)
+...
+[DEBUG] COUNTER-ORNITHOPTER: Upgrading construction yard (level 1 → 2, target: level 2)
+[DEBUG] COUNTER-ORNITHOPTER: Waiting for construction yard upgrade to complete (current level: 1 → 2)
+[DEBUG] COUNTER-ORNITHOPTER: Waiting for construction yard upgrade to complete (current level: 1 → 2)
+...
+[DEBUG] COUNTER-ORNITHOPTER: Building windtrap (prerequisite for rocket turrets) - enemy ornis: 2
+```
+
 ## Status
 
 ✅ **Fixed** - Prerequisite checks added  
+✅ **Fixed** - Double upgrade logging added  
 ✅ **Compiled** - No errors  
 ⏳ **Testing** - Needs gameplay verification  
 
@@ -187,6 +231,7 @@ New log messages help track the counter's progression:
 
 - ✅ AI will now **reliably** build rocket turrets when threatened
 - ✅ AI builds prerequisites **proactively** when ornithopters detected
+- ✅ Clear visibility into upgrade progress (no more appearing "stuck")
 - ✅ No more silent failures or ignored threats
 - ✅ Better defensive gameplay for AI players
 
