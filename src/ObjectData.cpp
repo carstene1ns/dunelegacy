@@ -87,7 +87,7 @@ void ObjectData::logSettings() const {
         if(!obj.enabled) continue;
         
         SDL_Log("%s: HP=%d Price=%d Dmg=%d Rng=%d Build=%d ViewRng=%d",
-            resolveItemName(itemID),
+            resolveItemName(itemID).c_str(),
             obj.hitpoints, obj.price, obj.weapondamage, 
             obj.weaponrange, obj.buildtime, obj.viewrange);
     }
@@ -110,11 +110,11 @@ void ObjectData::logSettings() const {
                house.weapondamage != atreides.weapondamage ||
                house.buildtime != atreides.buildtime) {
                 if(!hasDifference) {
-                    SDL_Log("%s differences:", resolveItemName(itemID));
+                    SDL_Log("%s differences:", resolveItemName(itemID).c_str());
                     hasDifference = true;
                 }
                 SDL_Log("  %s: HP=%d Price=%d Dmg=%d Build=%d",
-                    getHouseNameByNumber(static_cast<HOUSETYPE>(h)),
+                    getHouseNameByNumber(static_cast<HOUSETYPE>(h)).c_str(),
                     house.hitpoints, house.price, house.weapondamage, house.buildtime);
             }
         }
