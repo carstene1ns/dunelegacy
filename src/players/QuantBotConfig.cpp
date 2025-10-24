@@ -68,7 +68,7 @@ QuantBotConfig::QuantBotConfig() {
     // === HARD DIFFICULTY ===
     hard.attackEnabled = true;
     hard.ornithopterAttackEnabled = true;
-    hard.ornithopterAttackThreshold = 4;                    // Needs 4+ ornithopters
+    hard.ornithopterAttackThreshold = 1;                    // Attack as soon as 1 ornithopter is ready
     hard.harvesterLimitPerRefineryMultiplier = 2;           // Campaign: 2 harvesters per refinery
     hard.militaryValueMultiplier = 2.0f;                    // Campaign: 2.0x initial (fixed 10000 at mission 21+)
     hard.harvesterLimitCustomSmallMap = 4;
@@ -81,7 +81,7 @@ QuantBotConfig::QuantBotConfig() {
     // === BRUTAL DIFFICULTY ===
     brutal.attackEnabled = true;
     brutal.ornithopterAttackEnabled = true;
-    brutal.ornithopterAttackThreshold = 4;
+    brutal.ornithopterAttackThreshold = 3;                  // Attack as soon as 3 ornithopters are ready
     brutal.harvesterLimitPerRefineryMultiplier = 3;         // Campaign: 3 harvesters per refinery
     brutal.militaryValueMultiplier = 3.0f;                  // Campaign: 3.0x initial military
     brutal.harvesterLimitCustomSmallMap = 10;
