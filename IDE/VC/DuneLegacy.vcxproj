@@ -105,6 +105,7 @@
     </Link>
     <PostBuildEvent>
       <Command>robocopy "..\..\data\." "$(OutDir)." /E /NP /NJH /NJS
+robocopy "..\..\config\." "$(OutDir)config\." /E /NP /NJH /NJS
 IF %ERRORLEVEL% LSS 8 exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -134,6 +135,7 @@ copy "x64\Debug\SDL2main.dll" "$(OutDir)" 2&gt;nul || echo SDL2main.dll not foun
 copy "x64\Debug\SDL2_mixer.dll" "$(OutDir)" 2&gt;nul || echo SDL2_mixer.dll not found
 copy "x64\Debug\SDL2_ttf.dll" "$(OutDir)" 2&gt;nul || echo SDL2_ttf.dll not found
 robocopy "..\..\data\." "$(OutDir)." /E /NP /NJH /NJS
+robocopy "..\..\config\." "$(OutDir)config\." /E /NP /NJH /NJS
 IF %ERRORLEVEL% LSS 8 exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -169,6 +171,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     </Link>
     <PostBuildEvent>
       <Command>robocopy "..\..\data\." "$(OutDir)." /E /NP /NJH /NJS
+robocopy "..\..\config\." "$(OutDir)config\." /E /NP /NJH /NJS
 IF %ERRORLEVEL% LSS 8 exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -208,6 +211,7 @@ copy "x64\Release\SDL2main.dll" "$(OutDir)" 2&gt;nul || echo SDL2main.dll not fo
 copy "x64\Release\SDL2_mixer.dll" "$(OutDir)" 2&gt;nul || echo SDL2_mixer.dll not found
 copy "x64\Release\SDL2_ttf.dll" "$(OutDir)" 2&gt;nul || echo SDL2_ttf.dll not found
 robocopy "..\..\data\." "$(OutDir)." /E /NP /NJH /NJS
+robocopy "..\..\config\." "$(OutDir)config\." /E /NP /NJH /NJS
 IF %ERRORLEVEL% LSS 8 exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -430,6 +434,7 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClInclude Include="..\..\include\players\Player.h" />
     <ClInclude Include="..\..\include\players\PlayerFactory.h" />
     <ClInclude Include="..\..\include\players\QuantBot.h" />
+    <ClInclude Include="..\..\include\players\QuantBotConfig.h" />
     <ClInclude Include="..\..\include\players\SmartBot.h" />
     <ClInclude Include="..\..\include\RadarView.h" />
     <ClInclude Include="..\..\include\RadarViewBase.h" />
@@ -905,6 +910,12 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
     <ClCompile Include="..\..\src\players\Player.cpp" />
     <ClCompile Include="..\..\src\players\PlayerFactory.cpp" />
     <ClCompile Include="..\..\src\players\QuantBot.cpp" />
+    <ClCompile Include="..\..\src\players\QuantBotConfig.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\src\players\SmartBot.cpp" />
     <ClCompile Include="..\..\src\RadarView.cpp" />
     <ClCompile Include="..\..\src\sand.cpp" />
@@ -976,6 +987,17 @@ IF %ERRORLEVEL% LSS 8 exit 0</Command>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\config\Dune Legacy.ini">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\..\config\ObjectData.ini">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\..\config\QuantBot Config.ini">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

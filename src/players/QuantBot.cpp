@@ -17,6 +17,7 @@
 
 
 #include <players/QuantBot.h>
+#include <players/QuantBotConfig.h>
 
 #include <Game.h>
 #include <GameInitSettings.h>
@@ -200,6 +201,11 @@ QuantBot::QuantBot(InputStream& stream, House* associatedHouse) : Player(stream,
 
 
 void QuantBot::init() {
+	// Load QuantBot configuration from file on first init
+	// This will create the config file with defaults if it doesn't exist
+	getQuantBotConfig();
+	
+	SDL_Log("QuantBot initialized with external configuration");
 }
 
 
@@ -282,164 +288,74 @@ void QuantBot::update() {
 
 
 
-		switch (gameMode) {
-		case GameMode::Campaign: {
+	// Get config for this difficulty
+	const QuantBotConfig& config = getQuantBotConfig();
+	const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
 
-			switch (difficulty) {
-			case Difficulty::Easy: {
-				harvesterLimit = initialItemCount[Structure_Refinery];
-				if (currentGame && currentGame->getGameInitSettings().getMission() >= 21
-					&& initialMilitaryValue < 2000) {
-					militaryValueLimit = 2000;
-				}
-				else {
-					militaryValueLimit = initialMilitaryValue;
-				}
-
-				logDebug("Easy Campaign  ");
-			} break;
-
-			case Difficulty::Medium: {
-				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
-				militaryValueLimit = lround(initialMilitaryValue * 1.5_fix);
-				if (militaryValueLimit < 4000 && currentGame && currentGame->getGameInitSettings().getMission() >= 21) {
-					militaryValueLimit = 4000;
-				}
-
-				logDebug("Medium Campaign  ");
-			} break;
-
-			case Difficulty::Hard: {
-				if (currentGame && currentGame->getGameInitSettings().getMission() >= 21) {
-					initialItemCount[Structure_Refinery] = 2;
-					militaryValueLimit = 10000;
-				}
-				else {
-					
-					militaryValueLimit = lround(initialMilitaryValue * 2_fix);
-				}
-				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
-
-				logDebug("Hard Campaign  harvesterlimit = %d", harvesterLimit);
-			} break;
-
-			case Difficulty::Brutal: {
-				//harvesterLimit = (currentGameMap->getSizeX() * currentGameMap->getSizeY() / 512);
-				if (initialItemCount[Structure_Refinery] < 2) {
-					initialItemCount[Structure_Refinery] = 2;
-				}
-				militaryValueLimit = lround(initialMilitaryValue * 3_fix);
-				harvesterLimit = 3 * initialItemCount[Structure_Refinery];
-				logDebug("Brutal Campaign  ");
-			} break;
-
-			case Difficulty::Defend: {
-				harvesterLimit = 2 * initialItemCount[Structure_Refinery];
-				militaryValueLimit = lround(initialMilitaryValue * 1.8_fix);
-
-				logDebug("Defensive Campaign  ");
-			} break;
+	switch (gameMode) {
+	case GameMode::Campaign: {
+		// Use config values for campaign mode
+		harvesterLimit = diffSettings.harvesterLimitPerRefineryMultiplier * initialItemCount[Structure_Refinery];
+		militaryValueLimit = lround(initialMilitaryValue * diffSettings.militaryValueMultiplier);
+		
+		// Special case for late missions (mission 21+)
+		if (currentGame && currentGame->getGameInitSettings().getMission() >= 21) {
+			if (difficulty == Difficulty::Easy && militaryValueLimit < 2000) {
+				militaryValueLimit = 2000;
 			}
+			else if (difficulty == Difficulty::Medium && militaryValueLimit < 4000) {
+				militaryValueLimit = 4000;
+			}
+			else if (difficulty == Difficulty::Hard) {
+				initialItemCount[Structure_Refinery] = 2;
+				militaryValueLimit = 10000;
+				harvesterLimit = diffSettings.harvesterLimitPerRefineryMultiplier * initialItemCount[Structure_Refinery];
+			}
+		}
+		
+		// Brutal difficulty special handling
+		if (difficulty == Difficulty::Brutal && initialItemCount[Structure_Refinery] < 2) {
+			initialItemCount[Structure_Refinery] = 2;
+			harvesterLimit = diffSettings.harvesterLimitPerRefineryMultiplier * initialItemCount[Structure_Refinery];
+		}
+		
+		logDebug("Campaign Mode - Difficulty: %d, HarvesterLimit: %d, MilitaryValueLimit: %d", 
+			static_cast<int>(difficulty), harvesterLimit, militaryValueLimit);
 
-		} break;
+	} break;
 
 	case GameMode::Custom: {
 		// set initial unit position
 		findSquadRallyLocation();
 		retreatAllUnits();
 
-		// Set harvester limits based on map size and difficulty
+		// Set harvester/military limits based on map size and difficulty from config
 		int mapsize = 4096; // Default fallback size
 		if (currentGameMap) {
 			mapsize = currentGameMap->getSizeX() * currentGameMap->getSizeY();
 		}
 		
-		switch (difficulty) {
-		case Difficulty::Easy: {
-			if (mapsize <= 1024) {
-				harvesterLimit = 2;  // 32x32
-				militaryValueLimit = 3000;  // 32x32
-			} else if (mapsize <= 4096) {
-				harvesterLimit = 2;  // 62x62, 64x64
-				militaryValueLimit = 8000;  // 64x64
-			} else if (mapsize <= 16384) {
-				harvesterLimit = 8;  // 128x128
-				militaryValueLimit = 20000;  // 128x128
-			} else {
-				harvesterLimit = 8 * (mapsize / 16384.0);  // Scale for larger maps
-				militaryValueLimit = 20000 * (mapsize / 16384.0);
-			}
-			logDebug("BUILD EASY CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
-		} break;
-
-		case Difficulty::Medium: {
-			if (mapsize <= 1024) {
-				harvesterLimit = 3;  // 32x32
-				militaryValueLimit = 5000;  // 32x32
-			} else if (mapsize <= 4096) {
-				harvesterLimit = 4;  // 62x62, 64x64
-				militaryValueLimit = 12000;  // 64x64
-			} else if (mapsize <= 16384) {
-				harvesterLimit = 15;  // 128x128
-				militaryValueLimit = 35000;  // 128x128
-			} else {
-				harvesterLimit = 15 * (mapsize / 16384.0);  // Scale for larger maps
-				militaryValueLimit = 35000 * (mapsize / 16384.0);
-			}
-			logDebug("BUILD MEDIUM CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
-		} break;
-
-		case Difficulty::Hard: {
-			if (mapsize <= 1024) {
-				harvesterLimit = 4;  // 32x32
-				militaryValueLimit = 8000;  // 32x32
-			} else if (mapsize <= 4096) {
-				harvesterLimit = 7;  // 62x62, 64x64
-				militaryValueLimit = 20000;  // 64x64
-			} else if (mapsize <= 16384) {
-				harvesterLimit = 40;  // 128x128
-				militaryValueLimit = 50000;  // 128x128
-			} else {
-				harvesterLimit = 40 * (mapsize / 16384.0);  // Scale for larger maps
-				militaryValueLimit = 50000 * (mapsize / 16384.0);
-			}
-			logDebug("BUILD HARD CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
-		} break;
-
-		case Difficulty::Brutal: {
-			if (mapsize <= 1024) {
-				harvesterLimit = 10;  // 32x32 - increased from 5
-				militaryValueLimit = 20000;  // 32x32 - increased from 12000
-			} else if (mapsize <= 4096) {
-				harvesterLimit = 20;  // 62x62, 64x64 - increased from 10
-				militaryValueLimit = 40000;  // 64x64 - increased from 30000
-			} else if (mapsize <= 16384) {
-				harvesterLimit = 100;  // 128x128 - increased from 70 to 100
-				militaryValueLimit = 80000;  // 128x128 - increased from 75000 to 80000
-			} else {
-				harvesterLimit = 100 * (mapsize / 16384.0);  // Scale for larger maps - base increased to 100
-				militaryValueLimit = 80000 * (mapsize / 16384.0);  // Scale for larger maps - base increased to 80000
-			}
-			logDebug("BUILD BRUTAL CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
-		} break;
-
-		case Difficulty::Defend: {
-			if (mapsize <= 1024) {
-				harvesterLimit = 3;  // 32x32
-				militaryValueLimit = 4000;  // 32x32
-			} else if (mapsize <= 4096) {
-				harvesterLimit = 4;  // 62x62, 64x64
-				militaryValueLimit = 10000;  // 64x64
-			} else if (mapsize <= 16384) {
-				harvesterLimit = 15;  // 128x128
-				militaryValueLimit = 25000;  // 128x128
-			} else {
-				harvesterLimit = 15 * (mapsize / 16384.0);  // Scale for larger maps
-				militaryValueLimit = 25000 * (mapsize / 16384.0);
-			}
-			logDebug("BUILD DEFEND CUSTOM. mapsize: %d, harvesterLimit: %d, militaryValueLimit: %d", mapsize, harvesterLimit, militaryValueLimit);
-		} break;
+		// Use config values based on map size
+		if (mapsize <= 1024) {
+			// Small map (32x32)
+			harvesterLimit = diffSettings.harvesterLimitCustomSmallMap;
+			militaryValueLimit = diffSettings.militaryValueLimitCustomSmallMap;
+		} else if (mapsize <= 4096) {
+			// Medium map (62x62, 64x64)
+			harvesterLimit = diffSettings.harvesterLimitCustomMediumMap;
+			militaryValueLimit = diffSettings.militaryValueLimitCustomMediumMap;
+		} else if (mapsize <= 16384) {
+			// Large map (128x128)
+			harvesterLimit = diffSettings.harvesterLimitCustomLargeMap;
+			militaryValueLimit = diffSettings.militaryValueLimitCustomLargeMap;
+		} else {
+			// Huge maps - scale from large map values
+			harvesterLimit = diffSettings.harvesterLimitCustomLargeMap * (mapsize / 16384.0);
+			militaryValueLimit = diffSettings.militaryValueLimitCustomLargeMap * (mapsize / 16384.0);
 		}
+		
+		logDebug("Custom Mode - Difficulty: %d, Mapsize: %d, HarvesterLimit: %d, MilitaryValueLimit: %d", 
+			static_cast<int>(difficulty), mapsize, harvesterLimit, militaryValueLimit);
 
 		// what is this useful for? Reseting limits or something
 		/*
@@ -1186,58 +1102,19 @@ void QuantBot::build(int militaryValue) {
 	// Which units perform. By and large launchers and siege tanks have the best damage to loss ratio
 	// commenting this out for now
 
-	// Commenting ignoring the logic for now and going with gut feel
+	// Use config values for unit ratios in early game (varies by difficulty AND house)
 	if (totalDamage < 3000) {
-		switch (houseID) {
-		case HOUSE_HARKONNEN:
-			launcherPercent = 0.70_fix;
-			specialPercent = 0.10_fix;
-			siegePercent = 0.10_fix;
-			siegePercent = 0.10_fix;
-			ornithopterPercent = 0.0_fix;
-			break;
-
-		case HOUSE_ORDOS:
-			launcherPercent = 0.0_fix; // Don't have these
-			specialPercent = 0.25_fix;
-			siegePercent = 0.25_fix;
-			tankPercent = 0.25_fix;
-			ornithopterPercent = 0.25_fix;
-			break;
-
-		case HOUSE_ATREIDES:
-			launcherPercent = 0.20_fix;
-			specialPercent = 0.65_fix;
-			siegePercent = 0.00_fix;
-			tankPercent = 0.00_fix;
-			ornithopterPercent = 0.15_fix;
-			break;
+		const QuantBotConfig& config = getQuantBotConfig();
+		const QuantBotConfig::UnitRatios& ratios = config.getRatios(houseID, static_cast<int>(difficulty));
 		
-		case HOUSE_FREMEN:
-			launcherPercent = 0.20_fix;
-			specialPercent = 0.00_fix;
-			siegePercent = 0.05_fix;
-			tankPercent = 0.65_fix;
-			ornithopterPercent = 0.10_fix;
-			break;
+		tankPercent = FixPoint(static_cast<int>(ratios.tank * 100)) / 100;
+		siegePercent = FixPoint(static_cast<int>(ratios.siegeTank * 100)) / 100;
+		launcherPercent = FixPoint(static_cast<int>(ratios.launcher * 100)) / 100;
+		specialPercent = FixPoint(static_cast<int>(ratios.special * 100)) / 100;
+		ornithopterPercent = FixPoint(static_cast<int>(ratios.ornithopter * 100)) / 100;
 		
-		case HOUSE_SARDAUKAR:
-			launcherPercent = 0.45_fix;
-			specialPercent = 0.00_fix;
-			siegePercent = 0.40_fix;
-			tankPercent = 0.05_fix;
-			ornithopterPercent = 0.10_fix;
-		break;
-
-		default:
-			launcherPercent = 0.30_fix;
-			specialPercent = 0.05_fix;
-			siegePercent = 0.30_fix;
-			tankPercent = 0.30_fix;
-			ornithopterPercent = 0.10_fix;
-
-			break;
-		}
+		logDebug("Using config unit ratios for house %d difficulty %d - Tank: %.2f, Siege: %.2f, Launcher: %.2f, Special: %.2f, Orni: %.2f",
+			houseID, static_cast<int>(difficulty), ratios.tank, ratios.siegeTank, ratios.launcher, ratios.special, ratios.ornithopter);
 	}
 
 	// lets analyse damage inflicted
@@ -1932,19 +1809,22 @@ void QuantBot::scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits)
 
 void QuantBot::attack(int militaryValue) {
 
-	// reset attack timer for every 15s
-	attackTimer = MILLI2CYCLES(15000);
+	// Get config for this difficulty
+	const QuantBotConfig& config = getQuantBotConfig();
+	const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
 
-	// if AI is set to only defend then don't attack
-	if (difficulty == Difficulty::Defend) {
-		logDebug("Don't attack. Defend only AI");
+	// Reset attack timer using config value
+	attackTimer = MILLI2CYCLES(config.attackTimerMs);
+
+	// Check if this difficulty is allowed to attack at all
+	if (!diffSettings.attackEnabled) {
+		logDebug("Don't attack. Difficulty %d has attackEnabled = false", static_cast<int>(difficulty));
 		return;
-		// Set max attack squad sizes for campaigns, AI will only attack with this number of units
-		// should move and refactor this to run once at start. Also should rework military value
 	}
 
-	// Ornithopter attack loop
-	if (getHouse()->getNumItems(Unit_Ornithopter) > 4) {
+	// Ornithopter attack loop - check if enabled and threshold met
+	int ornithopterCount = getHouse()->getNumItems(Unit_Ornithopter);
+	if (diffSettings.ornithopterAttackEnabled && ornithopterCount > diffSettings.ornithopterAttackThreshold) {
 		Coord squadRallyPoint = findSquadRallyLocation();
 		const StructureBase* closestEnemyStructure = nullptr;
 		FixPoint closestDistance = FixPt_MAX;
@@ -1970,13 +1850,19 @@ void QuantBot::attack(int militaryValue) {
 					doAttackObject(pUnit, closestEnemyStructure, true);
 				}
 			}
+			logDebug("Ornithopter attack: %d ornithopters sent (threshold: %d)", ornithopterCount, diffSettings.ornithopterAttackThreshold);
 		}
+	} else if (!diffSettings.ornithopterAttackEnabled) {
+		logDebug("Ornithopter attacks disabled for difficulty %d", static_cast<int>(difficulty));
+	} else if (ornithopterCount <= diffSettings.ornithopterAttackThreshold) {
+		logDebug("Ornithopter attack delayed: have %d, need >%d", ornithopterCount, diffSettings.ornithopterAttackThreshold);
 	}
 
-	// Main attack loop
-	if (militaryValue < militaryValueLimit * 0.30_fix) {
-		logDebug("Don't attack. Not enough troops: house: %d  dif: %d  mStr: %d  mLim: %d",
-			getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, attackTimer);
+	// Main attack loop - check military strength threshold from config
+	FixPoint attackThreshold = FixPoint(static_cast<int>(config.attackThresholdPercent * 100)) / 100;
+	if (militaryValue < militaryValueLimit * attackThreshold) {
+		logDebug("Don't attack. Not enough troops: house: %d  dif: %d  mStr: %d  mLim: %d (need %.1f%%)",
+			getHouse()->getHouseID(), static_cast<Uint8>(difficulty), militaryValue, militaryValueLimit, config.attackThresholdPercent * 100.0f);
 		return;
 	}
 

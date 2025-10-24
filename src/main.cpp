@@ -240,11 +240,8 @@ void toogleFullscreen()
 
 std::string getConfigFilepath()
 {
-    // determine path to config file
-    char tmp[FILENAME_MAX];
-    fnkdat(CONFIGFILENAME, tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT);
-
-    return std::string(tmp);
+    // Config file is in config subdirectory of game directory
+    return getDuneLegacyDataDir() + "/config/" + CONFIGFILENAME;
 }
 
 std::string getLogFilepath()
@@ -258,10 +255,49 @@ std::string getLogFilepath()
     return std::string(tmp);
 }
 
+std::string getDefaultPlayerName() {
+    char playername[MAX_PLAYERNAMELENGHT+1] = "Player";
+
+#ifdef _WIN32
+    DWORD playernameLength = MAX_PLAYERNAMELENGHT+1;
+    GetUserName(playername, &playernameLength);
+#else
+    struct passwd* pwent = getpwuid(getuid());
+
+    if(pwent != nullptr) {
+        strncpy(playername, pwent->pw_name, MAX_PLAYERNAMELENGHT + 1);
+        playername[MAX_PLAYERNAMELENGHT] = '\0';
+    }
+#endif
+
+    playername[0] = toupper(playername[0]);
+    return std::string(playername);
+}
+
 void createDefaultConfigFile(const std::string& configfilepath, const std::string& language) {
     SDL_Log("Creating config file '%s'", configfilepath.c_str());
 
+    // Try to copy template file first
+    try {
+        auto templateFile = pFileManager->openFile(CONFIGFILENAME);
+        if (templateFile) {
+            SDL_Log("Copying Dune Legacy.ini template...");
+            INIFile templateINI(templateFile.get());
+            
+            // Set user-specific defaults
+            templateINI.setStringValue("General", "Player Name", getDefaultPlayerName());
+            templateINI.setStringValue("General", "Language", language);
+            
+            if (templateINI.saveChangesTo(configfilepath)) {
+                SDL_Log("Config file created from template successfully");
+                return;
+            }
+        }
+    } catch (std::exception& e) {
+        SDL_Log("Warning: Could not copy template, creating config programmatically: %s", e.what());
+    }
 
+    // Fallback: create programmatically
     auto file = sdl2::RWops_ptr{ SDL_RWFromFile(configfilepath.c_str(), "w") };
     if(!file) {
         THROW(sdl_error, "Opening config file failed: %s!", SDL_GetError());
@@ -290,7 +326,7 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
                                 "# There are three different possibilities to play music\n"
                                 "#  adl       - This option will use the Dune 2 music as used on e.g. SoundBlaster16 cards\n"
                                 "#  xmi       - This option plays the xmi files of Dune 2. Sounds more midi-like\n"
-                                "#  directory - Plays music from the \"music\"-directory inside your configuration directory\n"
+                                "#  directory - Plays music from the \"music\"-directory inside your game directory\n"
                                 "#              The \"music\"-directory should contain 5 subdirectories named attack, intro, peace, win and lose\n"
                                 "#              Put any mp3, ogg or mid file there and it will be played in the particular situation\n"
                                 "Music Type = adl\n"
@@ -320,23 +356,8 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
                                 "Manual Carryall Drops = false           # If true, player can request carryall to transport units\n"
                                 "Maximum Number of Units Override = -1   # Override the maximum number of units each house is allowed to build (-1 = do not override)\n";
 
-    char playername[MAX_PLAYERNAMELENGHT+1] = "Player";
-
-#ifdef _WIN32
-    DWORD playernameLength = MAX_PLAYERNAMELENGHT+1;
-    GetUserName(playername, &playernameLength);
-#else
-    struct passwd* pwent = getpwuid(getuid());
-
-    if(pwent != nullptr) {
-        strncpy(playername, pwent->pw_name, MAX_PLAYERNAMELENGHT + 1);
-        playername[MAX_PLAYERNAMELENGHT] = '\0';
-    }
-#endif
-
-    playername[0] = toupper(playername[0]);
-
     // replace player name, language, server port and metaserver
+    std::string playername = getDefaultPlayerName();
     std::string strConfigfile = fmt::sprintf(configfile, playername, language, DEFAULT_PORT, DEFAULT_METASERVER);
 
     if(SDL_RWwrite(file.get(), strConfigfile.c_str(), 1, strConfigfile.length()) == 0) {

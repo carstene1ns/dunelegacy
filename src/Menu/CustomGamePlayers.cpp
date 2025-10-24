@@ -29,6 +29,7 @@
 #include <GUI/dune/DuneStyle.h>
 
 #include <players/PlayerFactory.h>
+#include <players/QuantBotConfig.h>
 
 #include <misc/fnkdat.h>
 #include <misc/FileSystem.h>
@@ -687,6 +688,19 @@ void CustomGamePlayers::onNext()
         addAllPlayersToGameInitSettings();
 
         if(pNetworkManager != nullptr) {
+            // Multiplayer game - log config hash for verification
+            QuantBotConfig& config = getQuantBotConfig();
+            std::string configHash = config.getConfigHash();
+            SDL_Log("==================== MULTIPLAYER CONFIG CHECK ====================");
+            SDL_Log("Starting multiplayer game with QuantBot config hash: %s", configHash.c_str());
+            SDL_Log("IMPORTANT: All players must have identical QuantBot Config.ini files!");
+            SDL_Log("Config file location: %s", getQuantBotConfigFilepath().c_str());
+            SDL_Log("If AI behavior differs between players, verify config files match.");
+            SDL_Log("================================================================");
+            
+            // TODO: Add network protocol to verify all players have matching config hashes
+            // For now, players should manually verify their config files are identical
+            
             unsigned int timeLeft = 5000;
             startGameTime = SDL_GetTicks() + timeLeft;
             pNetworkManager->sendStartGame(timeLeft);

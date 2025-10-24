@@ -172,6 +172,7 @@ target_sources(dunelegacy
         players/AIPlayer.cpp
         players/CampaignAIPlayer.cpp
         players/QuantBot.cpp
+        players/QuantBotConfig.cpp
         players/SmartBot.cpp
 
         # Structures

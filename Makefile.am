@@ -19,6 +19,9 @@ EXTRA_DIST = include \
              data/Dune2-Versions.txt \
              data/maps \
              data/locale \
+            config/ObjectData.ini \
+            config/QuantBot\ Config.ini \
+            config/Dune\ Legacy.ini \
              Doxyfile \
              ToDo.txt \
              SoftwareDesign.txt \
@@ -51,6 +54,13 @@ datafiles_DATA = data/LEGACY.PAK \
                  data/Dune2-Versions.txt
 
 datafilesdir = $(dunelegacydatadir)
+
+# Install configuration template files
+configfiles_DATA = config/ObjectData.ini \
+                   config/QuantBot\ Config.ini \
+                   config/Dune\ Legacy.ini
+
+configfilesdir = $(dunelegacydatadir)/config
 
 install-data-local:
 	@$(NORMAL_INSTALL)

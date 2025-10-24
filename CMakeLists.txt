@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # Project name and version
-project(DuneLegacy VERSION 0.98.6 LANGUAGES C CXX)
+project(DuneLegacy VERSION 0.98.6a LANGUAGES C CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -175,6 +175,14 @@ if(WIN32)
 endif()
 
 # Install data files
+# Install configuration template files to config subdirectory
+install(FILES 
+    config/ObjectData.ini
+    "config/QuantBot Config.ini"
+    "config/Dune Legacy.ini"
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/config
+)
+
 # install(DIRECTORY data/
 #     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}
 #     PATTERN "*.svn" EXCLUDE

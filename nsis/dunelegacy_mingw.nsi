@@ -6,7 +6,7 @@ SetCompressor /SOLID lzma
 Name "Dune Legacy"
 BrandingText " http://dunelegacy.sourceforge.net"
 !define INSTALLATIONNAME "Dune Legacy"
-!define VERSION "0.98.4-optimized"
+!define VERSION "0.98.6a-optimized"
 OutFile "../build/installer/Dune Legacy ${VERSION}-win64 Setup.exe"
 InstallDir "$PROGRAMFILES\${INSTALLATIONNAME}"
 
