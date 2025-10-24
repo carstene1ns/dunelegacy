@@ -1145,7 +1145,7 @@ void QuantBot::build(int militaryValue) {
 	// Use config values for unit ratios in early game (varies by difficulty AND house)
 	if (totalDamage < 3000) {
 		const QuantBotConfig& config = getQuantBotConfig();
-		const QuantBotConfig::UnitRatios& ratios = config.getRatios(houseID, static_cast<int>(difficulty));
+		const QuantBotConfig::UnitRatios& ratios = config.getRatios(houseID);
 		
 		tankPercent = FixPoint(static_cast<int>(ratios.tank * 100)) / 100;
 		siegePercent = FixPoint(static_cast<int>(ratios.siegeTank * 100)) / 100;
