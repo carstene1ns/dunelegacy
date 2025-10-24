@@ -353,7 +353,7 @@ add_custom_command(
 # Install data directory
 install(
     DIRECTORY ${DATA_DIR}/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/dunelegacy
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}
     FILES_MATCHING PATTERN "*.*"
 )
 
@@ -366,6 +366,6 @@ install(TARGETS dunelegacy
 # Define data directory path for runtime
 target_compile_definitions(dunelegacy
     PRIVATE
-        DATA_DIRECTORY="${CMAKE_INSTALL_DATADIR}/dunelegacy"
-        DUNELEGACY_DATADIR="${CMAKE_INSTALL_FULL_DATADIR}/dunelegacy"
+        DATA_DIRECTORY="${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
+        DUNELEGACY_DATADIR="${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}"
 ) 
