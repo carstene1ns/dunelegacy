@@ -1688,27 +1688,27 @@ void QuantBot::build(int militaryValue) {
 								itemID = Structure_Refinery;
 								itemCount[Unit_Harvester]++;
 							}
-						else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
-							itemID = Structure_StarPort;
+					else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
+						itemID = Structure_StarPort;
+					}
+					// PROACTIVE: Upgrade CY to level 2 early (required for rocket turrets)
+					// Do this AFTER Starport, BEFORE Heavy Factory for earlier ornithopter defense
+					else if (pBuilder->getCurrentUpgradeLevel() < 2 
+						&& itemCount[Structure_StarPort] > 0
+						&& money > 1000) {
+						if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+							doRepair(pBuilder);
+							logDebug("PROACTIVE: Repairing CY before upgrade (level %d, need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel());
 						}
-						// PROACTIVE: Upgrade CY to level 2 early (required for Radar → insurance turrets)
-						else if (pBuilder->getCurrentUpgradeLevel() < 2 
-							&& itemCount[Structure_HeavyFactory] > 0
-							&& money > 1000) {
-							if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
-								doRepair(pBuilder);
-								logDebug("PROACTIVE: Repairing CY before upgrade (level %d, need level 2)", pBuilder->getCurrentUpgradeLevel());
-							}
-							else if (!pBuilder->isUpgrading() && pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
-								doUpgrade(pBuilder);
-								logDebug("PROACTIVE: Upgrading CY to level %d (need level 2 for Radar)", pBuilder->getCurrentUpgradeLevel() + 1);
-							}
-							// else: already upgrading, just wait
+						else if (!pBuilder->isUpgrading() && pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
+							doUpgrade(pBuilder);
+							logDebug("PROACTIVE: Upgrading CY to level %d (need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel() + 1);
 						}
-						else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
-							itemID = Structure_Radar;
-							logDebug("PROACTIVE: Building Radar (enables insurance rocket turrets)");
-						}
+						// else: already upgrading, just wait
+					}
+					else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
+						itemID = Structure_Radar;
+					}
 							else if (pBuilder->isAvailableToBuild(Structure_LightFactory)
 								&& itemCount[Structure_LightFactory] == 0 && money > 500) {
 								itemID = Structure_LightFactory; // Essential for basic units
@@ -1727,8 +1727,8 @@ void QuantBot::build(int militaryValue) {
 								itemID = Structure_Refinery;
 							itemCount[Unit_Harvester]++;
 													}
-						// Note: CY upgrade is done proactively (after Heavy Factory) and reactively (ornithopter counter)
-						// Rocket turrets: 2 insurance turrets built after Radar, then scaled up reactively if needed
+					// Note: CY upgrade is done proactively (after Starport, before Heavy Factory) and reactively (ornithopter counter)
+					// Rocket turrets: 2 insurance turrets built after CY level 2, then scaled up reactively if needed
 						else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
 								if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
 									itemID = Structure_HighTechFactory;
