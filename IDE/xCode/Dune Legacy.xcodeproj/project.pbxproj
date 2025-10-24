@@ -294,6 +294,15 @@
 		E375D33E2DB00C5E00F459C8 /* SOUND.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32C2DB00C5D00F459C8 /* SOUND.PAK */; };
 		E375D33F2DB00C5E00F459C8 /* VOC.PAK in CopyFiles */ = {isa = PBXBuildFile; fileRef = E375D32D2DB00C5D00F459C8 /* VOC.PAK */; };
 		E398899A2EA8A80A00188668 /* CrashHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E39889992EA8A80A00188668 /* CrashHandler.cpp */; };
+		E39889B82EABC2A200188668 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = E39889B62EABC2A200188668 /* README.md */; };
+		E39889B92EABC2A200188668 /* ObjectData.ini in Resources */ = {isa = PBXBuildFile; fileRef = E39889B42EABC2A200188668 /* ObjectData.ini */; };
+		E39889BA2EABC2A200188668 /* Dune Legacy.ini in Resources */ = {isa = PBXBuildFile; fileRef = E39889B32EABC2A200188668 /* Dune Legacy.ini */; };
+		E39889BB2EABC2A200188668 /* QuantBot Config.ini in Resources */ = {isa = PBXBuildFile; fileRef = E39889B52EABC2A200188668 /* QuantBot Config.ini */; };
+		E39889BD2EABC2B300188668 /* QuantBotConfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E39889BC2EABC2B300188668 /* QuantBotConfig.cpp */; };
+		E39889C02EABC44B00188668 /* Dune Legacy.ini in CopyFiles */ = {isa = PBXBuildFile; fileRef = E39889B32EABC2A200188668 /* Dune Legacy.ini */; };
+		E39889C12EABC44B00188668 /* ObjectData.ini in CopyFiles */ = {isa = PBXBuildFile; fileRef = E39889B42EABC2A200188668 /* ObjectData.ini */; };
+		E39889C22EABC44B00188668 /* QuantBot Config.ini in CopyFiles */ = {isa = PBXBuildFile; fileRef = E39889B52EABC2A200188668 /* QuantBot Config.ini */; };
+		E39889C32EABC44B00188668 /* README.md in CopyFiles */ = {isa = PBXBuildFile; fileRef = E39889B62EABC2A200188668 /* README.md */; };
 		E3D11F8F2DAFFD0600C4A670 /* SDL2_ttf.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */; };
 		E3D11F902DAFFD2D00C4A670 /* SDL2_ttf.framework in Copy Frameworks into .app bundle */ = {isa = PBXBuildFile; fileRef = E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -417,6 +426,19 @@
 				E375D33F2DB00C5E00F459C8 /* VOC.PAK in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
+		};
+		E39889BF2EABC41E00188668 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = config;
+			dstSubfolderSpec = 7;
+			files = (
+				E39889C02EABC44B00188668 /* Dune Legacy.ini in CopyFiles */,
+				E39889C12EABC44B00188668 /* ObjectData.ini in CopyFiles */,
+				E39889C22EABC44B00188668 /* QuantBot Config.ini in CopyFiles */,
+				E39889C32EABC44B00188668 /* README.md in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -992,6 +1014,12 @@
 		E398899C2EA8A83100188668 /* CrashHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CrashHandler.h; sourceTree = "<group>"; };
 		E398899D2EA8A83100188668 /* SpatialGrid.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SpatialGrid.h; sourceTree = "<group>"; };
 		E398899E2EA8A83100188668 /* SpatialGridHandle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SpatialGridHandle.h; sourceTree = "<group>"; };
+		E39889B32EABC2A200188668 /* Dune Legacy.ini */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Dune Legacy.ini"; sourceTree = "<group>"; };
+		E39889B42EABC2A200188668 /* ObjectData.ini */ = {isa = PBXFileReference; lastKnownFileType = text; path = ObjectData.ini; sourceTree = "<group>"; };
+		E39889B52EABC2A200188668 /* QuantBot Config.ini */ = {isa = PBXFileReference; lastKnownFileType = text; path = "QuantBot Config.ini"; sourceTree = "<group>"; };
+		E39889B62EABC2A200188668 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		E39889BC2EABC2B300188668 /* QuantBotConfig.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = QuantBotConfig.cpp; sourceTree = "<group>"; };
+		E39889BE2EABC2C300188668 /* QuantBotConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QuantBotConfig.h; sourceTree = "<group>"; };
 		E3D11F8E2DAFFD0600C4A670 /* SDL2_ttf.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_ttf.framework; path = external/frameworks/SDL2_ttf.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -1356,6 +1384,7 @@
 		1358FC2A13D3B71500FAD5B7 /* players */ = {
 			isa = PBXGroup;
 			children = (
+				E39889BE2EABC2C300188668 /* QuantBotConfig.h */,
 				E375D3122DB0098200F459C8 /* CampaignAIPlayer.h */,
 				E311BCC51BF9CF8C005C993B /* QuantBot.h */,
 				E311BCC61BF9CF8C005C993B /* SmartBot.h */,
@@ -1681,6 +1710,7 @@
 		1358FDE313D3B72F00FAD5B7 /* players */ = {
 			isa = PBXGroup;
 			children = (
+				E39889BC2EABC2B300188668 /* QuantBotConfig.cpp */,
 				E375D3102DB0095900F459C8 /* CampaignAIPlayer.cpp */,
 				1358FDE413D3B72F00FAD5B7 /* AIPlayer.cpp */,
 				1358FDE513D3B72F00FAD5B7 /* HumanPlayer.cpp */,
@@ -1929,6 +1959,7 @@
 		29B97315FDCFA39411CA2CEA /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
+				E39889B72EABC2A200188668 /* config */,
 				1358FD5913D3B72E00FAD5B7 /* src */,
 				1358FB6513D3B71500FAD5B7 /* include */,
 				32CA4F630368D1EE00C91783 /* Dune Legacy_Prefix.pch */,
@@ -1993,6 +2024,17 @@
 			name = fixmath;
 			sourceTree = "<group>";
 		};
+		E39889B72EABC2A200188668 /* config */ = {
+			isa = PBXGroup;
+			children = (
+				E39889B32EABC2A200188668 /* Dune Legacy.ini */,
+				E39889B42EABC2A200188668 /* ObjectData.ini */,
+				E39889B52EABC2A200188668 /* QuantBot Config.ini */,
+				E39889B62EABC2A200188668 /* README.md */,
+			);
+			path = config;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -2008,6 +2050,7 @@
 				8D11072E0486CEB800E47090 /* Frameworks */,
 				002F39FD09D0883400EBEB88 /* Copy Frameworks into .app bundle */,
 				E375D31C2DB00C1B00F459C8 /* CopyFiles */,
+				E39889BF2EABC41E00188668 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -2058,6 +2101,10 @@
 				134D2FE90F38F178001B38EF /* LEGACY.PAK in Resources */,
 				13E564D1169B55BE00D282B9 /* OPENSD2.PAK in Resources */,
 				13E929C010AF72BF00169991 /* Dune2-Versions.txt in Resources */,
+				E39889B82EABC2A200188668 /* README.md in Resources */,
+				E39889B92EABC2A200188668 /* ObjectData.ini in Resources */,
+				E39889BA2EABC2A200188668 /* Dune Legacy.ini in Resources */,
+				E39889BB2EABC2A200188668 /* QuantBot Config.ini in Resources */,
 				13C9211D114D618F00A1E7AA /* dunelegacy.icns in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2236,6 +2283,7 @@
 				1358FEBC13D3B72F00FAD5B7 /* AirUnit.cpp in Sources */,
 				1358FEBD13D3B72F00FAD5B7 /* Carryall.cpp in Sources */,
 				1358FEBE13D3B72F00FAD5B7 /* Devastator.cpp in Sources */,
+				E39889BD2EABC2B300188668 /* QuantBotConfig.cpp in Sources */,
 				1358FEBF13D3B72F00FAD5B7 /* Deviator.cpp in Sources */,
 				1358FEC113D3B72F00FAD5B7 /* Frigate.cpp in Sources */,
 				1358FEC213D3B72F00FAD5B7 /* GroundUnit.cpp in Sources */,

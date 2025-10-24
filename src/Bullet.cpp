@@ -162,7 +162,7 @@ void Bullet::init()
         case Bullet_TurretRocket: {
             damageRadius = TILESIZE/2;
             speed = 20;
-            detonationTimer = 60;  // Safety timer: 60 cycles = 2 seconds at 30 FPS (gives rockets more time to catch ornithopters)
+            detonationTimer = -1;  // Fly indefinitely until hitting target (no safety timer)
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
         } break;
