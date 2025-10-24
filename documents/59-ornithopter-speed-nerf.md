@@ -6,7 +6,7 @@
 
 ## Summary
 
-Reduced ornithopter speed from 22.0 to 18.0 to allow turret rockets (speed 20) to catch and hit them. Also added safety detonation timer to turret rockets as backup.
+Reduced ornithopter speed from 22.0 to 18.0 (then further to 17.0 - see document 63) to allow turret rockets (speed 20) to catch and hit them. Also added safety detonation timer to turret rockets as backup.
 
 ## Problem Analysis
 
