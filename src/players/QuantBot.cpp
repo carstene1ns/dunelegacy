@@ -1665,16 +1665,16 @@ void QuantBot::build(int militaryValue) {
 				}
 				}
 				
-				// INSURANCE: Build 2 baseline rocket turrets for ornithopter defense (proactive, not reactive)
-				// Build these after Radar is complete, even if no enemy ornithopters yet
-				else if (itemCount[Structure_Radar] > 0 
-					&& itemCount[Structure_RocketTurret] < 2
-					&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
-					&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
-					&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-					itemID = Structure_RocketTurret;
-					logDebug("INSURANCE: Building baseline rocket turret (%d/2) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
-				}
+			// INSURANCE: Build 4 baseline rocket turrets for ornithopter defense (proactive, not reactive)
+			// Build these after Radar is complete, even if no enemy ornithopters yet
+			else if (itemCount[Structure_Radar] > 0 
+				&& itemCount[Structure_RocketTurret] < 4
+				&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
+				&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+				&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+				itemID = Structure_RocketTurret;
+				logDebug("INSURANCE: Building baseline rocket turret (%d/4) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
+			}
 				
 				// Essential infrastructure
 				else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
