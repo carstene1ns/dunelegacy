@@ -240,7 +240,17 @@ void toogleFullscreen()
 
 std::string getConfigFilepath()
 {
-    // Config file is in config subdirectory of game directory
+    // User config file is stored in user directory (AppData on Windows, ~/.config on Linux, etc.)
+    char tmp[FILENAME_MAX];
+    if(fnkdat(CONFIGFILENAME, tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT) < 0) {
+        THROW(std::runtime_error, "fnkdat() failed for config file!");
+    }
+    return std::string(tmp);
+}
+
+std::string getConfigTemplateFilepath()
+{
+    // Template config file is in config subdirectory of game directory
     return getDuneLegacyDataDir() + "/config/" + CONFIGFILENAME;
 }
 
@@ -275,13 +285,13 @@ std::string getDefaultPlayerName() {
 }
 
 void createDefaultConfigFile(const std::string& configfilepath, const std::string& language) {
-    SDL_Log("Creating config file '%s'", configfilepath.c_str());
+    SDL_Log("Creating user config file '%s'", configfilepath.c_str());
 
-    // Try to copy template file first
+    // Try to copy template file from config directory first
     try {
-        auto templateFile = pFileManager->openFile(CONFIGFILENAME);
+        auto templateFile = pFileManager->openFile("config/" + std::string(CONFIGFILENAME));
         if (templateFile) {
-            SDL_Log("Copying Dune Legacy.ini template...");
+            SDL_Log("Copying template from game installation directory...");
             INIFile templateINI(templateFile.get());
             
             // Set user-specific defaults
@@ -289,12 +299,15 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
             templateINI.setStringValue("General", "Language", language);
             
             if (templateINI.saveChangesTo(configfilepath)) {
-                SDL_Log("Config file created from template successfully");
+                SDL_Log("User config file created from template successfully");
+                SDL_Log("  Template location: %s", getConfigTemplateFilepath().c_str());
+                SDL_Log("  User config location: %s", configfilepath.c_str());
                 return;
             }
         }
     } catch (std::exception& e) {
-        SDL_Log("Warning: Could not copy template, creating config programmatically: %s", e.what());
+        SDL_Log("Warning: Could not copy template from config directory: %s", e.what());
+        SDL_Log("Falling back to programmatic creation...");
     }
 
     // Fallback: create programmatically
