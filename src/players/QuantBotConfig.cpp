@@ -29,66 +29,66 @@ QuantBotConfig::QuantBotConfig() {
     defend.attackEnabled = false;                           // Never attacks
     defend.ornithopterAttackEnabled = false;                // No ornithopter attacks
     defend.ornithopterAttackThreshold = 999;                // Effectively disabled
-    defend.militaryValueMultiplier = 1.8f;                  // Campaign: 180% of initial
-    defend.militaryValueLimitCustomSmallMap = 4000;         // Custom small
-    defend.militaryValueLimitCustomMediumMap = 8000;        // Custom medium
-    defend.militaryValueLimitCustomLargeMap = 12000;        // Custom large
-    defend.harvesterLimitPerRefineryMultiplier = 2;         // 2 harvesters per refinery
-    defend.harvesterLimitCustomSmallMap = 2;
-    defend.harvesterLimitCustomMediumMap = 3;
-    defend.harvesterLimitCustomLargeMap = 4;
+    defend.harvesterLimitPerRefineryMultiplier = 2;         // Campaign: 2 harvesters per refinery
+    defend.militaryValueMultiplier = 1.8f;                  // Campaign: 1.8x initial military value
+    defend.harvesterLimitCustomSmallMap = 3;                // Custom: Small map (32x32)
+    defend.harvesterLimitCustomMediumMap = 4;               // Custom: Medium map (64x64)
+    defend.harvesterLimitCustomLargeMap = 15;               // Custom: Large map (128x128)
+    defend.militaryValueLimitCustomSmallMap = 4000;
+    defend.militaryValueLimitCustomMediumMap = 10000;
+    defend.militaryValueLimitCustomLargeMap = 25000;
     
     // === EASY DIFFICULTY ===
     easy.attackEnabled = true;                              // Can attack
     easy.ornithopterAttackEnabled = false;                  // NO ornithopter attacks
     easy.ornithopterAttackThreshold = 999;                  // Disabled
-    easy.militaryValueMultiplier = 1.0f;                    // Campaign: 100% of initial
-    easy.militaryValueLimitCustomSmallMap = 6000;
-    easy.militaryValueLimitCustomMediumMap = 12000;
-    easy.militaryValueLimitCustomLargeMap = 18000;
-    easy.harvesterLimitPerRefineryMultiplier = 1;           // 1 harvester per refinery
+    easy.harvesterLimitPerRefineryMultiplier = 1;           // Campaign: 1 harvester per refinery
+    easy.militaryValueMultiplier = 1.0f;                    // Campaign: 1.0x initial (min 2000 at mission 21+)
     easy.harvesterLimitCustomSmallMap = 2;
-    easy.harvesterLimitCustomMediumMap = 3;
-    easy.harvesterLimitCustomLargeMap = 4;
+    easy.harvesterLimitCustomMediumMap = 2;
+    easy.harvesterLimitCustomLargeMap = 8;
+    easy.militaryValueLimitCustomSmallMap = 3000;
+    easy.militaryValueLimitCustomMediumMap = 8000;
+    easy.militaryValueLimitCustomLargeMap = 20000;
     
     // === MEDIUM DIFFICULTY ===
     medium.attackEnabled = true;
     medium.ornithopterAttackEnabled = false;                // NO ornithopter attacks
     medium.ornithopterAttackThreshold = 999;                // Disabled
-    medium.militaryValueMultiplier = 1.5f;                  // Campaign: 150% of initial
-    medium.militaryValueLimitCustomSmallMap = 8000;
-    medium.militaryValueLimitCustomMediumMap = 16000;
-    medium.militaryValueLimitCustomLargeMap = 24000;
-    medium.harvesterLimitPerRefineryMultiplier = 2;         // 2 harvesters per refinery
+    medium.harvesterLimitPerRefineryMultiplier = 2;         // Campaign: 2 harvesters per refinery
+    medium.militaryValueMultiplier = 1.5f;                  // Campaign: 1.5x initial (min 4000 at mission 21+)
     medium.harvesterLimitCustomSmallMap = 3;
     medium.harvesterLimitCustomMediumMap = 4;
-    medium.harvesterLimitCustomLargeMap = 5;
+    medium.harvesterLimitCustomLargeMap = 15;
+    medium.militaryValueLimitCustomSmallMap = 5000;
+    medium.militaryValueLimitCustomMediumMap = 12000;
+    medium.militaryValueLimitCustomLargeMap = 35000;
     
     // === HARD DIFFICULTY ===
     hard.attackEnabled = true;
     hard.ornithopterAttackEnabled = true;
     hard.ornithopterAttackThreshold = 4;                    // Needs 4+ ornithopters
-    hard.militaryValueMultiplier = 2.0f;                    // Campaign: 200% of initial
-    hard.militaryValueLimitCustomSmallMap = 10000;
-    hard.militaryValueLimitCustomMediumMap = 20000;
-    hard.militaryValueLimitCustomLargeMap = 30000;
-    hard.harvesterLimitPerRefineryMultiplier = 2;
+    hard.harvesterLimitPerRefineryMultiplier = 2;           // Campaign: 2 harvesters per refinery
+    hard.militaryValueMultiplier = 2.0f;                    // Campaign: 2.0x initial (fixed 10000 at mission 21+)
     hard.harvesterLimitCustomSmallMap = 4;
-    hard.harvesterLimitCustomMediumMap = 5;
-    hard.harvesterLimitCustomLargeMap = 6;
+    hard.harvesterLimitCustomMediumMap = 7;
+    hard.harvesterLimitCustomLargeMap = 40;
+    hard.militaryValueLimitCustomSmallMap = 8000;
+    hard.militaryValueLimitCustomMediumMap = 20000;
+    hard.militaryValueLimitCustomLargeMap = 50000;
     
     // === BRUTAL DIFFICULTY ===
     brutal.attackEnabled = true;
     brutal.ornithopterAttackEnabled = true;
     brutal.ornithopterAttackThreshold = 4;
-    brutal.militaryValueMultiplier = 3.0f;                  // Campaign: 300% of initial
-    brutal.militaryValueLimitCustomSmallMap = 15000;
-    brutal.militaryValueLimitCustomMediumMap = 30000;
-    brutal.militaryValueLimitCustomLargeMap = 45000;
-    brutal.harvesterLimitPerRefineryMultiplier = 3;         // 3 harvesters per refinery
-    brutal.harvesterLimitCustomSmallMap = 5;
-    brutal.harvesterLimitCustomMediumMap = 6;
-    brutal.harvesterLimitCustomLargeMap = 8;
+    brutal.harvesterLimitPerRefineryMultiplier = 3;         // Campaign: 3 harvesters per refinery
+    brutal.militaryValueMultiplier = 3.0f;                  // Campaign: 3.0x initial military
+    brutal.harvesterLimitCustomSmallMap = 10;
+    brutal.harvesterLimitCustomMediumMap = 20;
+    brutal.harvesterLimitCustomLargeMap = 100;
+    brutal.militaryValueLimitCustomSmallMap = 20000;
+    brutal.militaryValueLimitCustomMediumMap = 40000;
+    brutal.militaryValueLimitCustomLargeMap = 80000;
     
     // === UNIT COMPOSITION RATIOS ===
     // Set ratios for each difficulty level, with progressive ornithopter reduction on lower difficulties
