@@ -1775,14 +1775,14 @@ void QuantBot::build(int militaryValue) {
 									activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory), money, money / 4000, techLevel);
 							}
 						}
-							// If we need more refinerys for our harvesters or we don't have a heavy factory
-							else if (((itemCount[Structure_Refinery] * 3.5_fix < harvesterLimit)
-							|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
-								&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
-								itemID = Structure_Refinery;
-								itemCount[Unit_Harvester]++;
-				
-							}
+						// If we need more refinerys for our harvesters or we don't have a heavy factory
+						else if (((itemCount[Structure_Refinery] * 3.5_fix < itemCount[Unit_Harvester])
+						|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
+							&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
+							itemID = Structure_Refinery;
+							itemCount[Unit_Harvester]++;
+			
+						}
 							else if (pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 2000
 								&& itemCount[Structure_RepairYard] * 6000 < militaryValue) {
 								// If we have a lot of troops get some repair facilities (1 per 6000 military value)

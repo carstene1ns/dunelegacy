@@ -112,14 +112,14 @@ void TurretBase::updateStructureSpecificStuff() {
         currentGame->frameTiming.turretScanMsThisFrame += scanMs;
         currentGame->frameTiming.turretScansThisFrame++;
         
-        // 5-10 frame scan interval
-        // At 30 FPS: 5 frames = 160ms, 10 frames = 320ms
-        // Average: 7.5 frames = ~4 scans/second per turret
-        // With 240 turrets (typical 4-AI game), this is ~32 scans/frame (~1.5ms)
-        // This provides good responsiveness while avoiding the performance death spiral
-        int baseDelay = 5;  // 5 frames base
-        int randomDelay = currentGame->randomGen.rand(0, 5);  // +0-5 frames random
-        findTargetTimer = baseDelay + randomDelay;  // 5-10 frames total
+        // 10-30 frame scan interval
+        // At 30 FPS: 10 frames = 320ms, 30 frames = 1000ms
+        // Average: 20 frames = ~1.5 scans/second per turret
+        // With 240 turrets (typical 4-AI game), this is ~12 scans/frame (~0.4ms)
+        // Better distribution prevents performance spikes while maintaining good responsiveness
+        int baseDelay = 10;  // 10 frames base
+        int randomDelay = currentGame->randomGen.rand(0, 20);  // +0-20 frames random
+        findTargetTimer = baseDelay + randomDelay;  // 10-30 frames total
     }
 
     if(findTargetTimer > 0) {
