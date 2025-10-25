@@ -170,11 +170,15 @@ OptionsMenu::OptionsMenu() : MenuBase()
     fullScreenCheckbox.setText(_("Full Screen"));
     fullScreenCheckbox.setChecked(settings.video.fullscreen);
     fullScreenCheckbox.setOnClick(std::bind(&OptionsMenu::onChangeOption, this, true));
-    videoHBox.addWidget(&fullScreenCheckbox, 240);
+    videoHBox.addWidget(&fullScreenCheckbox, 155);
+    frameLimitCheckbox.setText(_("Limit to 31 FPS"));
+    frameLimitCheckbox.setChecked(settings.video.frameLimit);
+    frameLimitCheckbox.setOnClick(std::bind(&OptionsMenu::onChangeOption, this, true));
+    videoHBox.addWidget(&frameLimitCheckbox, 155);
     showTutorialHintsCheckbox.setText(_("Show Tutorial Hints"));
     showTutorialHintsCheckbox.setChecked(settings.general.showTutorialHints);
     showTutorialHintsCheckbox.setOnClick(std::bind(&OptionsMenu::onChangeOption, this, true));
-    videoHBox.addWidget(&showTutorialHintsCheckbox, 240);
+    videoHBox.addWidget(&showTutorialHintsCheckbox, 155);
     videoHBox.addWidget(Spacer::create(), 0.5);
 
     mainVBox.addWidget(&videoHBox, 0.01);
@@ -265,6 +269,7 @@ void OptionsMenu::onChangeOption(bool bInteractive) {
     }
     bChanged |= (settings.video.preferredZoomLevel != zoomlevelDropDownBox.getSelectedEntryIntData());
     bChanged |= (settings.video.fullscreen != fullScreenCheckbox.isChecked());
+    bChanged |= (settings.video.frameLimit != frameLimitCheckbox.isChecked());
     bChanged |= (settings.video.scaler != scalerDropDownBox.getSelectedEntry());
 
     bChanged |= (settings.audio.playSFX != playSFXCheckbox.isChecked());
@@ -331,6 +336,7 @@ void OptionsMenu::onOptionsOK() {
     settings.video.preferredZoomLevel = zoomlevelDropDownBox.getSelectedEntryIntData();
     settings.video.scaler = scalerDropDownBox.getSelectedEntry();
     settings.video.fullscreen = fullScreenCheckbox.isChecked();
+    settings.video.frameLimit = frameLimitCheckbox.isChecked();
 
     settings.audio.playSFX = playSFXCheckbox.isChecked();
     settings.audio.playMusic = playMusicCheckbox.isChecked();
@@ -372,6 +378,7 @@ void OptionsMenu::saveConfiguration2File() {
     myINIFile.setIntValue("Video","Width",settings.video.width);
     myINIFile.setIntValue("Video","Height",settings.video.height);
     myINIFile.setBoolValue("Video","Fullscreen",settings.video.fullscreen);
+    myINIFile.setBoolValue("Video","FrameLimit",settings.video.frameLimit);
     myINIFile.setIntValue("Video","Preferred Zoom Level",settings.video.preferredZoomLevel);
     myINIFile.setStringValue("Video","Scaler",settings.video.scaler);
     myINIFile.setBoolValue("Video","RotateUnitGraphics",settings.video.rotateUnitGraphics);

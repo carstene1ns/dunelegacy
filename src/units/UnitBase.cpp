@@ -1425,12 +1425,46 @@ void UnitBase::quitDeviation() {
 
 bool UnitBase::update() {
     if(active) {
+        // Time targeting
+        Uint64 targetStart = SDL_GetPerformanceCounter();
         targeting();
+        Uint64 targetEnd = SDL_GetPerformanceCounter();
+        double targetMs = currentGame->getElapsedMs(targetStart, targetEnd);
+        currentGame->frameTiming.unitTargetingMs += targetMs;
+        currentGame->frameTiming.unitTargetingMsThisFrame += targetMs;
+        
+        // Time navigate
+        Uint64 navStart = SDL_GetPerformanceCounter();
         navigate();
+        Uint64 navEnd = SDL_GetPerformanceCounter();
+        double navMs = currentGame->getElapsedMs(navStart, navEnd);
+        currentGame->frameTiming.unitNavigateMs += navMs;
+        currentGame->frameTiming.unitNavigateMsThisFrame += navMs;
+        
+        // Time move
+        Uint64 moveStart = SDL_GetPerformanceCounter();
         move();
+        Uint64 moveEnd = SDL_GetPerformanceCounter();
+        double moveMs = currentGame->getElapsedMs(moveStart, moveEnd);
+        currentGame->frameTiming.unitMoveMs += moveMs;
+        currentGame->frameTiming.unitMoveMsThisFrame += moveMs;
+        
         if(active) {
+            // Time turn
+            Uint64 turnStart = SDL_GetPerformanceCounter();
             turn();
+            Uint64 turnEnd = SDL_GetPerformanceCounter();
+            double turnMs = currentGame->getElapsedMs(turnStart, turnEnd);
+            currentGame->frameTiming.unitTurnMs += turnMs;
+            currentGame->frameTiming.unitTurnMsThisFrame += turnMs;
+            
+            // Time updateVisibleUnits
+            Uint64 visStart = SDL_GetPerformanceCounter();
             updateVisibleUnits();
+            Uint64 visEnd = SDL_GetPerformanceCounter();
+            double visMs = currentGame->getElapsedMs(visStart, visEnd);
+            currentGame->frameTiming.unitVisibilityMs += visMs;
+            currentGame->frameTiming.unitVisibilityMsThisFrame += visMs;
         }
     }
 

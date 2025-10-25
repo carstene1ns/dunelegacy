@@ -34,7 +34,8 @@ TurretBase::TurretBase(House* newOwner) : StructureBase(newOwner)
     angle = currentGame->randomGen.rand(0, 7);
     drawnAngle = lround(angle);
 
-    findTargetTimer = 0;
+    // BUG FIX: Stagger initial scans so not all turrets scan on first frame (0-50 cycles)
+    findTargetTimer = currentGame->randomGen.rand(0, 50);
     weaponTimer = 0;
 }
 
@@ -68,7 +69,17 @@ void TurretBase::save(OutputStream& stream) const {
 void TurretBase::updateStructureSpecificStuff() {
     if(target && (target.getObjPointer() != nullptr)) {
         if(!canAttack(target.getObjPointer()) || !targetInWeaponRange()) {
+            // Track when rocket turret loses ornithopter target
+            if(getItemID() == Structure_RocketTurret && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.rocketTurretLosesOrniTarget++;
+            }
+            
             setTarget(nullptr);
+            // BUG FIX: Reset timer when losing target to prevent immediate rescan spam
+            // This was missing in 0.97.5 and caused turrets to rescan every frame during combat
+            if(findTargetTimer < 25) {
+                findTargetTimer = 25;  // Wait at least 25 cycles (~0.8 seconds) before rescanning
+            }
         } else if(targetInWeaponRange()) {
             Coord closestPoint = target.getObjPointer()->getClosestPoint(location);
             int wantedAngle = destinationDrawnAngle(location, closestPoint);
@@ -94,17 +105,44 @@ void TurretBase::updateStructureSpecificStuff() {
                 }
             }
 
-            if(drawnAngle == wantedAngle) {
+            // FIX: Allow ±1 angle tolerance for firing to handle fast-moving targets
+            // Calculate angular difference considering wrap-around (0 and 7 are adjacent)
+            int angleDiff = abs(drawnAngle - wantedAngle);
+            if(angleDiff > NUM_ANGLES/2) {
+                angleDiff = NUM_ANGLES - angleDiff;
+            }
+            
+            // Track firing opportunities for rocket turrets vs ornithopters
+            if(getItemID() == Structure_RocketTurret && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
+                if(angleDiff <= 1) {
+                    currentGame->combatStats.orniInRangeCorrectAngle++;
+                } else {
+                    currentGame->combatStats.orniInRangeButWrongAngle++;
+                }
+            }
+            
+            if(angleDiff <= 1) {
                 attack();
             }
 
         } else {
             setTarget(nullptr);
+            // BUG FIX: Reset timer when target moves out of range
+            if(findTargetTimer < 25) {
+                findTargetTimer = 25;
+            }
         }
     } else if((attackMode != STOP) && (findTargetTimer == 0)) {
         // Measure turret target scan performance
         const Uint64 scanStart = SDL_GetPerformanceCounter();
-        setTarget(findTarget());
+        const ObjectBase* newTarget = findTarget();
+        
+        // Track rocket turret targeting ornithopters
+        if(getItemID() == Structure_RocketTurret && newTarget && newTarget->getItemID() == Unit_Ornithopter) {
+            currentGame->combatStats.rocketTurretTargetsOrni++;
+        }
+        
+        setTarget(newTarget);
         const Uint64 scanEnd = SDL_GetPerformanceCounter();
         
         // Record timing to Game's performance tracking system
@@ -112,14 +150,9 @@ void TurretBase::updateStructureSpecificStuff() {
         currentGame->frameTiming.turretScanMsThisFrame += scanMs;
         currentGame->frameTiming.turretScansThisFrame++;
         
-        // 10-30 frame scan interval
-        // At 30 FPS: 10 frames = 320ms, 30 frames = 1000ms
-        // Average: 20 frames = ~1.5 scans/second per turret
-        // With 240 turrets (typical 4-AI game), this is ~12 scans/frame (~0.4ms)
-        // Better distribution prevents performance spikes while maintaining good responsiveness
-        int baseDelay = 10;  // 10 frames base
-        int randomDelay = currentGame->randomGen.rand(0, 20);  // +0-20 frames random
-        findTargetTimer = baseDelay + randomDelay;  // 10-30 frames total
+        // Scan every 1 second at default speed (16ms/cycle) with random spread
+        // 1000ms / 16ms = 62.5 cycles, use 52-72 range (avg 62 = 1 second)
+        findTargetTimer = 52 + currentGame->randomGen.rand(0, 20);
     }
 
     if(findTargetTimer > 0) {
@@ -158,10 +191,10 @@ void TurretBase::handleDamage(int damage, Uint32 damagerID, House* damagerOwner)
     // Call base class damage handling
     ObjectBase::handleDamage(damage, damagerID, damagerOwner);
     
-    // If turret doesn't have a target, immediately scan for one
-    // This allows turrets to retaliate when attacked (especially by ornithopters)
-    if(!target) {
-        findTargetTimer = 0;
+    // If turret doesn't have a target, scan soon (but not immediately to prevent spam)
+    // This allows turrets to retaliate quickly when attacked
+    if(!target && findTargetTimer > 10) {
+        findTargetTimer = 10;  // Scan in 10 cycles = quick response to damage
     }
 }
 

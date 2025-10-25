@@ -595,14 +595,53 @@ public:
         double minPathfindingMs = 999999.0;
         double minRenderingMs = 999999.0;
         double minNetworkWaitMs = 999999.0;
+        
+        // Detailed unit timing breakdown
+        double unitTargetingMs = 0.0;
+        double unitNavigateMs = 0.0;
+        double unitMoveMs = 0.0;
+        double unitTurnMs = 0.0;
+        double unitVisibilityMs = 0.0;
+        double unitTargetingMsThisFrame = 0.0;
+        double unitNavigateMsThisFrame = 0.0;
+        double unitMoveMsThisFrame = 0.0;
+        double unitTurnMsThisFrame = 0.0;
+        double unitVisibilityMsThisFrame = 0.0;
+        int unitCount = 0;
     };
 
     FrameTiming frameTiming;
+    
+    // Rocket Turret vs Ornithopter Statistics
+    struct CombatStats {
+        // Targeting stats
+        int rocketTurretTargetsOrni = 0;      // Turret acquires ornithopter as target
+        int rocketTurretLosesOrniTarget = 0;  // Turret loses ornithopter target
+        
+        // Firing opportunity stats
+        int orniInRangeButWrongAngle = 0;     // Ornithopter in range but turret not aimed
+        int orniInRangeCorrectAngle = 0;      // Ornithopter in range and turret aimed correctly
+        int rocketTurretFiresOnOrni = 0;      // Turret actually fires rocket at ornithopter
+        int rocketTurretFireBlocked = 0;      // Weapon timer not ready
+        
+        // Bullet tracking
+        int turretRocketsSpawned = 0;         // Total turret rockets created
+        int turretRocketsHitOrni = 0;         // Rockets that damaged ornithopter
+        int turretRocketsKillOrni = 0;        // Rockets that killed ornithopter
+        int turretRocketsExpired = 0;         // Rockets that expired (timer)
+        int turretRocketsProximityDetonated = 0; // Rockets detonated via proximity
+        
+        Uint32 lastDumpTime = 0;              // Last time we dumped stats (SDL ticks)
+    };
+    
+    CombatStats combatStats;
     
     inline double getElapsedMs(Uint64 start, Uint64 end) const {
         const Uint64 frequency = SDL_GetPerformanceFrequency();
         return (static_cast<double>(end - start) / static_cast<double>(frequency)) * 1000.0;
     }
+    
+    void dumpCombatStats();  // Dump combat statistics
 
 private:
     bool        chatMode = false;   ///< chat mode on?
@@ -699,7 +738,7 @@ private:
     std::unordered_set<Uint32> pendingPathRequestIds;
 
     static constexpr double TargetBudgetMs = 3.0;
-    static constexpr double PathBudgetMs = 12.0;  // Increased for 32ms frames - handles 10-20ms spikes
+    static constexpr double PathBudgetMs = 6.0;  // Optimized for 60 FPS (16ms frames) - 36% of frame budget
     static constexpr std::size_t kPathNodeBudget = 2048;
 
     // Game loop methods

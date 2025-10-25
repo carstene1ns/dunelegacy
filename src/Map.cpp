@@ -166,8 +166,21 @@ void Map::damage(Uint32 damagerID, House* damagerOwner, const Coord& realPos, Ui
                             }
                         }
                     } else {
-                        const auto scaledDamage = lround(damage) >> (distance/4 + 1);
+                        // FIX: Apply full damage to air units within explosion radius (no distance falloff)
+                        // This ensures rockets can effectively damage fast-moving air targets
+                        const auto scaledDamage = lround(damage);
+                        const auto healthBefore = pAirUnit->getHealth();
                         pAirUnit->handleDamage(scaledDamage, damagerID, damagerOwner);
+                        
+                        // Track rocket turret hits and kills on ornithopters
+                        if(bulletID == Bullet_TurretRocket && pAirUnit->getItemID() == Unit_Ornithopter) {
+                            if(scaledDamage > 0) {
+                                currentGame->combatStats.turretRocketsHitOrni++;
+                            }
+                            if(healthBefore > 0 && pAirUnit->getHealth() <= 0) {
+                                currentGame->combatStats.turretRocketsKillOrni++;
+                            }
+                        }
                     }
                 }
             }

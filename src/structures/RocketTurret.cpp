@@ -75,10 +75,23 @@ bool RocketTurret::canAttack(const ObjectBase* object) const {
 }
 
 void RocketTurret::attack() {
-    if((weaponTimer == 0) && (target.getObjPointer() != nullptr)) {
+    if((target.getObjPointer() != nullptr)) {
         Coord centerPoint = getCenterPoint();
         ObjectBase* pObject = target.getObjPointer();
         Coord targetCenterPoint = pObject->getClosestCenterPoint(location);
+        
+        // Track firing attempts for rocket turrets vs ornithopters
+        if(pObject->getItemID() == Unit_Ornithopter) {
+            if(weaponTimer == 0) {
+                currentGame->combatStats.rocketTurretFiresOnOrni++;
+            } else {
+                currentGame->combatStats.rocketTurretFireBlocked++;
+            }
+        }
+        
+        if(weaponTimer != 0) {
+            return;  // Weapon not ready
+        }
 
         if(distanceFrom(centerPoint, targetCenterPoint) < 3 * TILESIZE) {
             // Close range: shoot bullets at ground units, rockets at air units
@@ -99,6 +112,11 @@ void RocketTurret::attack() {
                                                        currentGame->objectData.data[itemID][originalHouseID].weapondamage,
                                                        true,
                                                        pObject ) );
+                
+                // Track turret rocket spawns for ornithopters
+                if(pObject->getItemID() == Unit_Ornithopter) {
+                    currentGame->combatStats.turretRocketsSpawned++;
+                }
 
                 currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
                 soundPlayer->playSoundAt(attackSound, location);
@@ -110,6 +128,11 @@ void RocketTurret::attack() {
                                                    currentGame->objectData.data[itemID][originalHouseID].weapondamage,
                                                    pObject->isAFlyingUnit(),
                                                    pObject ) );
+            
+            // Track turret rocket spawns for ornithopters
+            if(pObject->isAFlyingUnit() && pObject->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.turretRocketsSpawned++;
+            }
 
             currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
             soundPlayer->playSoundAt(attackSound, location);

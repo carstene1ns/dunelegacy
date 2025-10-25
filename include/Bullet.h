@@ -60,7 +60,7 @@ private:
     int      damageRadius;               ///< The radius of the bullet
     bool     explodesAtGroundObjects;    ///< false = bullet goes through objects, true = bullet explodes at ground objects
     FixPoint speed;                      ///< The speed of this bullet
-    Sint8    detonationTimer;            ///< How long is this bullet alive before it explodes
+    Sint16   detonationTimer;            ///< How long is this bullet alive before it explodes (changed from Sint8 to support longer timers)
 
     // bullet state
     Uint32   bulletID;                   ///< The ID of the bullet

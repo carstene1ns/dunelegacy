@@ -287,6 +287,7 @@ void Game::processObjects()
 
     // Time unit updates
     Uint64 unitStart = SDL_GetPerformanceCounter();
+    frameTiming.unitCount = unitList.size();
     for(UnitBase* pUnit : unitList) {
         pUnit->update();
     }
@@ -1077,6 +1078,11 @@ void Game::runMainLoop() {
         frameTiming.networkWaitMsThisFrame = 0.0;
         frameTiming.turretScanMsThisFrame = 0.0;
         frameTiming.turretScansThisFrame = 0;
+        frameTiming.unitTargetingMsThisFrame = 0.0;
+        frameTiming.unitNavigateMsThisFrame = 0.0;
+        frameTiming.unitMoveMsThisFrame = 0.0;
+        frameTiming.unitTurnMsThisFrame = 0.0;
+        frameTiming.unitVisibilityMsThisFrame = 0.0;
         
         // Reset pathfinding budget for this frame
         pathfindingBudgetRemainingMs = PathBudgetMs;
@@ -1088,12 +1094,13 @@ void Game::runMainLoop() {
         frameTime += actualFrameTime;
         frameStart = frameEnd;
 
-        // Software FPS limiter at ~31 FPS for multiplayer stability
+        // Software FPS limiter (configurable via settings.video.frameLimit)
         // VSync is disabled to avoid compositor blocking, so we use software limiting instead
-        // Using 32ms (not 16ms) to match 0.97.0 behavior and reduce multiplayer jitter
-        const int targetFrameTime = 32; // ~31 FPS = 32ms per frame
-        if(actualFrameTime < targetFrameTime) {
-            SDL_Delay(targetFrameTime - actualFrameTime);
+        if(settings.video.frameLimit == true) {
+            const int targetFrameTime = 32; // ~31 FPS = 32ms per frame
+            if(actualFrameTime < targetFrameTime) {
+                SDL_Delay(targetFrameTime - actualFrameTime);
+            }
         }
 
         if(bShowFPS) {
@@ -1351,6 +1358,15 @@ void Game::updateGameState() {
 
     gameCycleCount++;
     
+    // Dump combat statistics every 30 seconds
+    const Uint32 currentTime = SDL_GetTicks();
+    if(combatStats.lastDumpTime == 0) {
+        combatStats.lastDumpTime = currentTime;
+    } else if(currentTime - combatStats.lastDumpTime >= 30000) {
+        dumpCombatStats();
+        combatStats.lastDumpTime = currentTime;
+    }
+    
     if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {
         finishedLevel = true;
     }
@@ -1467,8 +1483,22 @@ void Game::logFrameTiming() {
         frameTiming.minGameCyclesPerFrame, avgGameCycles, frameTiming.maxGameCyclesPerFrame);
     SDL_Log("[Performance] AI:         min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minAiMs, avgAi, frameTiming.maxAiMs);
-    SDL_Log("[Performance] Units:      min=%.2fms avg=%.2fms max=%.2fms",
-        frameTiming.minUnitsMs, avgUnits, frameTiming.maxUnitsMs);
+    SDL_Log("[Performance] Units:      min=%.2fms avg=%.2fms max=%.2fms (%d units)",
+        frameTiming.minUnitsMs, avgUnits, frameTiming.maxUnitsMs, frameTiming.unitCount);
+    
+    // Detailed unit breakdown
+    const double avgTargeting = frameTiming.unitTargetingMs / frameTiming.frameCount;
+    const double avgNavigate = frameTiming.unitNavigateMs / frameTiming.frameCount;
+    const double avgMove = frameTiming.unitMoveMs / frameTiming.frameCount;
+    const double avgTurn = frameTiming.unitTurnMs / frameTiming.frameCount;
+    const double avgVisibility = frameTiming.unitVisibilityMs / frameTiming.frameCount;
+    const double unitsTotal = avgTargeting + avgNavigate + avgMove + avgTurn + avgVisibility;
+    SDL_Log("[Performance]   ↳ Targeting:   %.2fms (%.1f%%)", avgTargeting, unitsTotal > 0 ? (avgTargeting/unitsTotal*100) : 0);
+    SDL_Log("[Performance]   ↳ Navigate:    %.2fms (%.1f%%)", avgNavigate, unitsTotal > 0 ? (avgNavigate/unitsTotal*100) : 0);
+    SDL_Log("[Performance]   ↳ Move:        %.2fms (%.1f%%)", avgMove, unitsTotal > 0 ? (avgMove/unitsTotal*100) : 0);
+    SDL_Log("[Performance]   ↳ Turn:        %.2fms (%.1f%%)", avgTurn, unitsTotal > 0 ? (avgTurn/unitsTotal*100) : 0);
+    SDL_Log("[Performance]   ↳ Visibility:  %.2fms (%.1f%%)", avgVisibility, unitsTotal > 0 ? (avgVisibility/unitsTotal*100) : 0);
+    
     SDL_Log("[Performance] Structures: min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minStructuresMs, avgStructures, frameTiming.maxStructuresMs);
     SDL_Log("[Performance] Pathfinding: min=%.2fms avg=%.2fms max=%.2fms",
@@ -1532,6 +1562,13 @@ void Game::logFrameTiming() {
     frameTiming.minPathfindingMs = 999999.0;
     frameTiming.minNetworkWaitMs = 999999.0;
     frameTiming.minRenderingMs = 999999.0;
+    
+    // Reset unit breakdown
+    frameTiming.unitTargetingMs = 0.0;
+    frameTiming.unitNavigateMs = 0.0;
+    frameTiming.unitMoveMs = 0.0;
+    frameTiming.unitTurnMs = 0.0;
+    frameTiming.unitVisibilityMs = 0.0;
 }
 
 void Game::onOptions()
@@ -2788,4 +2825,58 @@ bool Game::handleNetworkUpdates() {
     }
     
     return bWaitForNetwork;
+}
+
+void Game::dumpCombatStats() {
+    SDL_Log("[Combat Stats] ==================== 30-SECOND ROCKET TURRET ANALYSIS ====================");
+    
+    // Targeting
+    SDL_Log("[Combat Stats] TARGETING:");
+    SDL_Log("[Combat Stats]   Ornithopters Acquired as Target:  %d", combatStats.rocketTurretTargetsOrni);
+    SDL_Log("[Combat Stats]   Target Lost (out of range/dead):  %d", combatStats.rocketTurretLosesOrniTarget);
+    
+    // Firing Opportunities
+    SDL_Log("[Combat Stats] FIRING OPPORTUNITIES:");
+    const int totalOpportunities = combatStats.orniInRangeCorrectAngle;
+    SDL_Log("[Combat Stats]   Ornithopter in Range + Correct Angle: %d", combatStats.orniInRangeCorrectAngle);
+    SDL_Log("[Combat Stats]   Ornithopter in Range BUT Wrong Angle: %d", combatStats.orniInRangeButWrongAngle);
+    SDL_Log("[Combat Stats]   Actually Fired:                       %d", combatStats.rocketTurretFiresOnOrni);
+    SDL_Log("[Combat Stats]   Blocked by Weapon Timer:              %d", combatStats.rocketTurretFireBlocked);
+    
+    if(totalOpportunities > 0) {
+        const double fireRate = static_cast<double>(combatStats.rocketTurretFiresOnOrni) / totalOpportunities * 100.0;
+        SDL_Log("[Combat Stats]   Fire Success Rate: %.1f%% (%d fired / %d opportunities)", 
+                fireRate, combatStats.rocketTurretFiresOnOrni, totalOpportunities);
+    }
+    
+    // Bullet Performance
+    SDL_Log("[Combat Stats] ROCKET PERFORMANCE:");
+    SDL_Log("[Combat Stats]   Rockets Spawned:          %d", combatStats.turretRocketsSpawned);
+    SDL_Log("[Combat Stats]   Proximity Detonations:    %d", combatStats.turretRocketsProximityDetonated);
+    SDL_Log("[Combat Stats]   Timer Expirations:        %d", combatStats.turretRocketsExpired);
+    SDL_Log("[Combat Stats]   Rockets Hit Ornithopter:  %d", combatStats.turretRocketsHitOrni);
+    SDL_Log("[Combat Stats]   Rockets Killed Ornithopter: %d", combatStats.turretRocketsKillOrni);
+    
+    if(combatStats.turretRocketsSpawned > 0) {
+        const double hitRate = static_cast<double>(combatStats.turretRocketsHitOrni) / combatStats.turretRocketsSpawned * 100.0;
+        const double killRate = static_cast<double>(combatStats.turretRocketsKillOrni) / combatStats.turretRocketsSpawned * 100.0;
+        SDL_Log("[Combat Stats]   Hit Rate:  %.1f%% (%d hits / %d rockets)", 
+                hitRate, combatStats.turretRocketsHitOrni, combatStats.turretRocketsSpawned);
+        SDL_Log("[Combat Stats]   Kill Rate: %.1f%% (%d kills / %d rockets)", 
+                killRate, combatStats.turretRocketsKillOrni, combatStats.turretRocketsSpawned);
+    }
+    
+    // Reset stats
+    combatStats.rocketTurretTargetsOrni = 0;
+    combatStats.rocketTurretLosesOrniTarget = 0;
+    combatStats.orniInRangeButWrongAngle = 0;
+    combatStats.orniInRangeCorrectAngle = 0;
+    combatStats.rocketTurretFiresOnOrni = 0;
+    combatStats.rocketTurretFireBlocked = 0;
+    combatStats.turretRocketsSpawned = 0;
+    combatStats.turretRocketsHitOrni = 0;
+    combatStats.turretRocketsKillOrni = 0;
+    combatStats.turretRocketsExpired = 0;
+    combatStats.turretRocketsProximityDetonated = 0;
+    SDL_Log("[Combat Stats] ================================================================================");
 }

@@ -26,6 +26,7 @@
 #include <Map.h>
 #include <House.h>
 #include <Explosion.h>
+#include <units/AirUnit.h>
 
 #include <misc/draw_util.h>
 #include <misc/exceptions.h>
@@ -162,7 +163,7 @@ void Bullet::init()
         case Bullet_TurretRocket: {
             damageRadius = TILESIZE/2;
             speed = 20;
-            detonationTimer = -1;  // Fly indefinitely until hitting target (no safety timer)
+            detonationTimer = 312;  // Explode after 312 cycles (5 seconds at 16ms/cycle) to give more chase time
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
         } break;
@@ -370,6 +371,39 @@ void Bullet::update()
 
         if(detonationTimer > 0) {
             detonationTimer--;
+        }
+        
+        // FIX: Check detonation timer for rockets outside "reached destination" block
+        // This ensures rockets explode after their timer expires even if they never reach the target
+        if((bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) 
+           && detonationTimer == 0) {
+            // Track turret rocket timer expirations for ornithopters
+            if(bulletID == Bullet_TurretRocket && airAttack && target.getObjPointer() 
+               && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.turretRocketsExpired++;
+            }
+            destroy();
+            return;
+        }
+        
+        // FIX: Add proximity fuse for TurretRocket vs air units
+        // Check distance directly to target instead of relying on tile positions
+        if(bulletID == Bullet_TurretRocket && airAttack && target.getObjPointer()) {
+            auto* pAirUnit = dynamic_cast<AirUnit*>(target.getObjPointer());
+            if(pAirUnit && pAirUnit->isActive()) {
+                const Coord bulletPos = Coord(lround(realX), lround(realY));
+                const FixPoint distance = distanceFrom(bulletPos, pAirUnit->getCenterPoint());
+                // Detonate if within damage radius (proximity fuse)
+                // Damage radius is TILESIZE/2 (16px), so detonate when within that range
+                if(distance <= TILESIZE/2) {
+                    // Track proximity detonations for ornithopters
+                    if(pAirUnit->getItemID() == Unit_Ornithopter) {
+                        currentGame->combatStats.turretRocketsProximityDetonated++;
+                    }
+                    destroy();
+                    return;
+                }
+            }
         }
 
         if(bulletID == Bullet_Sonic) {

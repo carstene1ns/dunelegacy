@@ -475,7 +475,39 @@ void QuantBot::update() {
 			}
 		}
 	}
-	//logDebug("Military Value %d  Initial Military Value %d", militaryValue, initialMilitaryValue);
+	
+	// Log military stats every 30 seconds
+	static Uint32 lastMilitaryLogTime = 0;
+	const Uint32 currentTime = SDL_GetTicks();
+	if(lastMilitaryLogTime == 0) {
+		lastMilitaryLogTime = currentTime;
+	} else if(currentTime - lastMilitaryLogTime >= 30000) {
+		SDL_Log("[QuantBot %s] ========== MILITARY STATUS ==========", getHouse()->getHouseID() == HOUSETYPE::HOUSE_HARKONNEN ? "Harkonnen" : 
+				getHouse()->getHouseID() == HOUSETYPE::HOUSE_ATREIDES ? "Atreides" : 
+				getHouse()->getHouseID() == HOUSETYPE::HOUSE_ORDOS ? "Ordos" : 
+				getHouse()->getHouseID() == HOUSETYPE::HOUSE_FREMEN ? "Fremen" : 
+				getHouse()->getHouseID() == HOUSETYPE::HOUSE_SARDAUKAR ? "Sardaukar" : "Mercenary");
+		SDL_Log("[QuantBot] Military Value: %d (Initial: %d)", militaryValue, initialMilitaryValue);
+		
+		// Count units by type
+		int infantry = getHouse()->getNumItems(Unit_Soldier) + getHouse()->getNumItems(Unit_Trooper) + getHouse()->getNumItems(Unit_Saboteur);
+		int lightVehicles = getHouse()->getNumItems(Unit_Trike) + getHouse()->getNumItems(Unit_RaiderTrike) + getHouse()->getNumItems(Unit_Quad);
+		int tanks = getHouse()->getNumItems(Unit_Tank) + getHouse()->getNumItems(Unit_SiegeTank) + getHouse()->getNumItems(Unit_Devastator) + getHouse()->getNumItems(Unit_SonicTank);
+		int special = getHouse()->getNumItems(Unit_Launcher) + getHouse()->getNumItems(Unit_Deviator);
+		int air = getHouse()->getNumItems(Unit_Ornithopter);
+		
+		int totalMilitary = infantry + lightVehicles + tanks + special + air;
+		if(totalMilitary > 0) {
+			SDL_Log("[QuantBot] Troop Composition: Infantry=%d (%.0f%%), Light=%d (%.0f%%), Tanks=%d (%.0f%%), Special=%d (%.0f%%), Air=%d (%.0f%%)",
+					infantry, infantry * 100.0 / totalMilitary,
+					lightVehicles, lightVehicles * 100.0 / totalMilitary,
+					tanks, tanks * 100.0 / totalMilitary,
+					special, special * 100.0 / totalMilitary,
+					air, air * 100.0 / totalMilitary);
+		}
+		SDL_Log("[QuantBot] =====================================");
+		lastMilitaryLogTime = currentTime;
+	}
 
 	checkAllUnits();
 
@@ -1665,15 +1697,15 @@ void QuantBot::build(int militaryValue) {
 				}
 				}
 				
-			// INSURANCE: Build 4 baseline rocket turrets for ornithopter defense (proactive, not reactive)
+			// INSURANCE: Build 2 baseline rocket turrets for ornithopter defense (proactive, not reactive)
 			// Build these after Radar is complete, even if no enemy ornithopters yet
 			else if (itemCount[Structure_Radar] > 0 
-				&& itemCount[Structure_RocketTurret] < 4
+				&& itemCount[Structure_RocketTurret] < 2
 				&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
 				&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
 				&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
 				itemID = Structure_RocketTurret;
-				logDebug("INSURANCE: Building baseline rocket turret (%d/4) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
+				logDebug("INSURANCE: Building baseline rocket turret (%d/2) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
 			}
 				
 				// Essential infrastructure
@@ -2245,6 +2277,21 @@ void QuantBot::retreatAllUnits() {
 
                 case Unit_Ornithopter: {
                     const UnitBase* pOrnithopter = pUnit;
+                    
+                    // Check if ornithopter attacks are enabled for this difficulty
+                    const QuantBotConfig& config = getQuantBotConfig();
+                    const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
+                    
+                    if (!diffSettings.ornithopterAttackEnabled) {
+                        // Ornithopter attacks disabled - only patrol defensively
+                        if (!pOrnithopter->hasATarget() && !pOrnithopter->wasForced()) {
+                            Coord ownBaseCentre = findBaseCentre(getHouse()->getHouseID());
+                            if (ownBaseCentre.isValid() && ownBaseCentre != pOrnithopter->getGuardPoint()) {
+                                const_cast<UnitBase*>(pOrnithopter)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
+                            }
+                        }
+                        break; // Exit early, don't execute attack logic below
+                    }
                     
                     // Calculate current military value for ornithopter attack decisions
                     int militaryValue = 0;
