@@ -386,18 +386,18 @@ void Bullet::update()
             return;
         }
         
-        // FIX: Add proximity fuse for TurretRocket vs air units
+        // FIX: Add proximity fuse for TurretRocket vs ALL units
         // Check distance directly to target instead of relying on tile positions
-        if(bulletID == Bullet_TurretRocket && airAttack && target.getObjPointer()) {
-            auto* pAirUnit = dynamic_cast<AirUnit*>(target.getObjPointer());
-            if(pAirUnit && pAirUnit->isActive()) {
+        if(bulletID == Bullet_TurretRocket && target.getObjPointer()) {
+            ObjectBase* pTarget = target.getObjPointer();
+            if(pTarget && pTarget->isActive() && pTarget->isAUnit()) {
                 const Coord bulletPos = Coord(lround(realX), lround(realY));
-                const FixPoint distance = distanceFrom(bulletPos, pAirUnit->getCenterPoint());
+                const FixPoint distance = distanceFrom(bulletPos, pTarget->getCenterPoint());
                 // Detonate if within damage radius (proximity fuse)
                 // Damage radius is TILESIZE/2 (16px), so detonate when within that range
                 if(distance <= TILESIZE/2) {
-                    // Track proximity detonations for ornithopters
-                    if(pAirUnit->getItemID() == Unit_Ornithopter) {
+                    // Track proximity detonations for ornithopters (air units)
+                    if(airAttack && pTarget->getItemID() == Unit_Ornithopter) {
                         currentGame->combatStats.turretRocketsProximityDetonated++;
                     }
                     destroy();
