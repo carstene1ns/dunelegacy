@@ -80,15 +80,6 @@ void RocketTurret::attack() {
         ObjectBase* pObject = target.getObjPointer();
         Coord targetCenterPoint = pObject->getClosestCenterPoint(location);
         
-        // Track firing attempts for rocket turrets vs ornithopters
-        if(pObject->getItemID() == Unit_Ornithopter) {
-            if(weaponTimer == 0) {
-                currentGame->combatStats.rocketTurretFiresOnOrni++;
-            } else {
-                currentGame->combatStats.rocketTurretFireBlocked++;
-            }
-        }
-        
         if(weaponTimer != 0) {
             return;  // Weapon not ready
         }
@@ -112,11 +103,6 @@ void RocketTurret::attack() {
                                                        currentGame->objectData.data[itemID][originalHouseID].weapondamage,
                                                        true,
                                                        pObject ) );
-                
-                // Track turret rocket spawns for ornithopters
-                if(pObject->getItemID() == Unit_Ornithopter) {
-                    currentGame->combatStats.turretRocketsSpawned++;
-                }
 
                 currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
                 soundPlayer->playSoundAt(attackSound, location);
@@ -128,11 +114,6 @@ void RocketTurret::attack() {
                                                    currentGame->objectData.data[itemID][originalHouseID].weapondamage,
                                                    pObject->isAFlyingUnit(),
                                                    pObject ) );
-            
-            // Track turret rocket spawns for ornithopters
-            if(pObject->isAFlyingUnit() && pObject->getItemID() == Unit_Ornithopter) {
-                currentGame->combatStats.turretRocketsSpawned++;
-            }
 
             currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
             soundPlayer->playSoundAt(attackSound, location);

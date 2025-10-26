@@ -171,16 +171,6 @@ void Map::damage(Uint32 damagerID, House* damagerOwner, const Coord& realPos, Ui
                         const auto scaledDamage = lround(damage);
                         const auto healthBefore = pAirUnit->getHealth();
                         pAirUnit->handleDamage(scaledDamage, damagerID, damagerOwner);
-                        
-                        // Track rocket turret hits and kills on ornithopters
-                        if(bulletID == Bullet_TurretRocket && pAirUnit->getItemID() == Unit_Ornithopter) {
-                            if(scaledDamage > 0) {
-                                currentGame->combatStats.turretRocketsHitOrni++;
-                            }
-                            if(healthBefore > 0 && pAirUnit->getHealth() <= 0) {
-                                currentGame->combatStats.turretRocketsKillOrni++;
-                            }
-                        }
                     }
                 }
             }

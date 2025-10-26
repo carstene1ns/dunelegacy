@@ -8,6 +8,32 @@
     <atom:link href="http://dunelegacy.sourceforge.net/website/feed.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <title>Dune Legacy 0.98.6.3 Released</title>
+      <description>&lt;p&gt;Dune Legacy 0.98.6.3 is now available! This hotfix release addresses a critical rocket turret damage bug and improves overall game performance.&lt;/p&gt;
+
+&lt;h3&gt;What's New in 0.98.6.3&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;Fixed Rocket Turret Damage (CRITICAL):&lt;/b&gt; Turrets now properly damage air units - hit rate improved from 3.5% to 66-100%! The damage formula was incorrectly scaling to zero at explosion radius.&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;60+ FPS Support:&lt;/b&gt; Game now runs smoothly at higher framerates with optimized pathfinding&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;New Menu Option:&lt;/b&gt; "Limit to 31 FPS" checkbox for multiplayer stability or low-end systems&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Ornithopter Balance:&lt;/b&gt; Speed adjusted to 17 (from 15) after fixing targeting - still 23% slower than original&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Fixed QuantBot:&lt;/b&gt; AI correctly respects ornithopter attack settings on Easy/Medium difficulties&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Enhanced Logging:&lt;/b&gt; Added detailed performance metrics and combat statistics to Dune Legacy.log&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;Download&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;b&gt;Windows:&lt;/b&gt; &lt;a href=&quot;https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/Dune%20Legacy%200.98.6.3%20Setup.zip/download&quot;&gt;Dune Legacy 0.98.6.3 Setup.zip&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;macOS:&lt;/b&gt; &lt;a href=&quot;https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.6.3-macOS.dmg/download&quot;&gt;DuneLegacy-0.98.6.3-macOS.dmg&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This release may have slightly over-nerfed ornithopters - feedback welcome! The rocket turret fix was critical: damage was rounding to zero despite proximity detonations, making turrets completely ineffective against air units.&lt;/p&gt;</description>
+      <pubDate>Fri, 25 Oct 2025 00:00:00 +0000</pubDate>
+      <link>http://dunelegacy.sourceforge.net/website/news.html#2025-10-25-00-00-00</link>
+      <guid isPermaLink="true">http://dunelegacy.sourceforge.net/website/news.html#2025-10-25-00-00-00</guid>
+    </item>
+
+    <item>
       <title>Dune Legacy 0.98.6.2 Released</title>
       <description>&lt;p&gt;Dune Legacy 0.98.6.2 is now available! This release focuses on game balance and adds user-editable configuration files for units, structures, and AI behavior.&lt;/p&gt;
 

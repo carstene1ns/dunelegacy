@@ -373,15 +373,10 @@ void Bullet::update()
             detonationTimer--;
         }
         
-        // FIX: Check detonation timer for rockets outside "reached destination" block
-        // This ensures rockets explode after their timer expires even if they never reach the target
-        if((bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) 
-           && detonationTimer == 0) {
-            // Track turret rocket timer expirations for ornithopters
-            if(bulletID == Bullet_TurretRocket && airAttack && target.getObjPointer() 
-               && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
-                currentGame->combatStats.turretRocketsExpired++;
-            }
+        // FIX: Check detonation timer for TurretRockets outside "reached destination" block
+        // This ensures turret rockets explode after their timer expires even if they never reach the target
+        // NOTE: Only applies to TurretRocket - launchers (Bullet_Rocket) use the old logic
+        if(bulletID == Bullet_TurretRocket && detonationTimer == 0) {
             destroy();
             return;
         }
@@ -396,10 +391,6 @@ void Bullet::update()
                 // Detonate if within damage radius (proximity fuse)
                 // Damage radius is TILESIZE/2 (16px), so detonate when within that range
                 if(distance <= TILESIZE/2) {
-                    // Track proximity detonations for ornithopters (air units)
-                    if(airAttack && pTarget->getItemID() == Unit_Ornithopter) {
-                        currentGame->combatStats.turretRocketsProximityDetonated++;
-                    }
                     destroy();
                     return;
                 }

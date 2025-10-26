@@ -34,8 +34,9 @@ TurretBase::TurretBase(House* newOwner) : StructureBase(newOwner)
     angle = currentGame->randomGen.rand(0, 7);
     drawnAngle = lround(angle);
 
-    // BUG FIX: Stagger initial scans so not all turrets scan on first frame (0-50 cycles)
-    findTargetTimer = currentGame->randomGen.rand(0, 50);
+    // BUG FIX: Stagger initial scans so not all turrets scan on first frame
+    // Use objectID for deterministic staggering (no randomness needed for multiplayer)
+    findTargetTimer = objectID % 50;  // 0-49 cycle stagger based on object ID
     weaponTimer = 0;
 }
 
@@ -69,16 +70,11 @@ void TurretBase::save(OutputStream& stream) const {
 void TurretBase::updateStructureSpecificStuff() {
     if(target && (target.getObjPointer() != nullptr)) {
         if(!canAttack(target.getObjPointer()) || !targetInWeaponRange()) {
-            // Track when rocket turret loses ornithopter target
-            if(getItemID() == Structure_RocketTurret && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
-                currentGame->combatStats.rocketTurretLosesOrniTarget++;
-            }
-            
             setTarget(nullptr);
             // BUG FIX: Reset timer when losing target to prevent immediate rescan spam
-            // This was missing in 0.97.5 and caused turrets to rescan every frame during combat
+            // Use deterministic stagger based on objectID for multiplayer sync
             if(findTargetTimer < 25) {
-                findTargetTimer = 25;  // Wait at least 25 cycles (~0.8 seconds) before rescanning
+                findTargetTimer = 25 + (objectID % 15);  // 25-39 cycles, deterministic per turret
             }
         } else if(targetInWeaponRange()) {
             Coord closestPoint = target.getObjPointer()->getClosestPoint(location);
@@ -112,15 +108,6 @@ void TurretBase::updateStructureSpecificStuff() {
                 angleDiff = NUM_ANGLES - angleDiff;
             }
             
-            // Track firing opportunities for rocket turrets vs ornithopters
-            if(getItemID() == Structure_RocketTurret && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
-                if(angleDiff <= 1) {
-                    currentGame->combatStats.orniInRangeCorrectAngle++;
-                } else {
-                    currentGame->combatStats.orniInRangeButWrongAngle++;
-                }
-            }
-            
             if(angleDiff <= 1) {
                 attack();
             }
@@ -128,20 +115,15 @@ void TurretBase::updateStructureSpecificStuff() {
         } else {
             setTarget(nullptr);
             // BUG FIX: Reset timer when target moves out of range
+            // Use deterministic stagger based on objectID for multiplayer sync
             if(findTargetTimer < 25) {
-                findTargetTimer = 25;
+                findTargetTimer = 25 + (objectID % 15);  // 25-39 cycles, deterministic per turret
             }
         }
     } else if((attackMode != STOP) && (findTargetTimer == 0)) {
         // Measure turret target scan performance
         const Uint64 scanStart = SDL_GetPerformanceCounter();
         const ObjectBase* newTarget = findTarget();
-        
-        // Track rocket turret targeting ornithopters
-        if(getItemID() == Structure_RocketTurret && newTarget && newTarget->getItemID() == Unit_Ornithopter) {
-            currentGame->combatStats.rocketTurretTargetsOrni++;
-        }
-        
         setTarget(newTarget);
         const Uint64 scanEnd = SDL_GetPerformanceCounter();
         
@@ -150,9 +132,10 @@ void TurretBase::updateStructureSpecificStuff() {
         currentGame->frameTiming.turretScanMsThisFrame += scanMs;
         currentGame->frameTiming.turretScansThisFrame++;
         
-        // Scan every 1 second at default speed (16ms/cycle) with random spread
-        // 1000ms / 16ms = 62.5 cycles, use 52-72 range (avg 62 = 1 second)
-        findTargetTimer = 52 + currentGame->randomGen.rand(0, 20);
+        // Scan every ~1 second at default speed (16ms/cycle) with deterministic stagger
+        // Base: 50 cycles, Stagger: 0-19 cycles per turret (based on objectID)
+        // Result: 50-69 cycle intervals, averages to ~59.5 cycles = 0.95 seconds
+        findTargetTimer = 50 + (objectID % 20);
     }
 
     if(findTargetTimer > 0) {
