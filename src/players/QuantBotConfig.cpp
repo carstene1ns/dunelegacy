@@ -25,6 +25,8 @@
 #include <globals.h>
 
 #include <climits>
+#include <fstream>
+#include <functional>
 
 // Constructor with default values
 QuantBotConfig::QuantBotConfig() {
@@ -337,6 +339,40 @@ std::string getQuantBotConfigFilepath() {
         THROW(std::runtime_error, "fnkdat() failed for QuantBot Config.ini!");
     }
     return std::string(tmp);
+}
+
+std::string getObjectDataFilepath() {
+    // ObjectData.ini is also in user directory
+    char tmp[FILENAME_MAX];
+    if(fnkdat("config/ObjectData.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT) < 0) {
+        THROW(std::runtime_error, "fnkdat() failed for ObjectData.ini!");
+    }
+    return std::string(tmp);
+}
+
+std::string getObjectDataHash() {
+    std::string filePath = getObjectDataFilepath();
+    
+    // Open and read the file
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file.is_open()) {
+        SDL_Log("Warning: Could not open ObjectData.ini for hashing: %s", filePath.c_str());
+        return "ERROR_FILE_NOT_FOUND";
+    }
+    
+    // Read file contents
+    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+    
+    // Generate hash
+    std::hash<std::string> hasher;
+    size_t hash = hasher(contents);
+    
+    // Convert to hex string
+    char hashStr[17];
+    snprintf(hashStr, sizeof(hashStr), "%016zx", hash);
+    
+    return std::string(hashStr);
 }
 
 void QuantBotConfig::logSettings() const {

@@ -24,6 +24,7 @@
 #include <misc/exceptions.h>
 
 #include <globals.h>
+#include <players/QuantBotConfig.h>
 
 #include <stdio.h>
 #include <algorithm>
@@ -599,6 +600,55 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                 }
             } break;
 
+            case NETWORKPACKET_CONFIG_HASH: {
+                std::string quantBotHash = packetStream.readString();
+                std::string objectDataHash = packetStream.readString();
+                
+                PeerData* peerData = static_cast<PeerData*>(peer->data);
+                if(peerData) {
+                    peerData->quantBotConfigHash = quantBotHash;
+                    peerData->objectDataHash = objectDataHash;
+                    
+                    SDL_Log("Received config hashes from %s - QuantBot: %s, ObjectData: %s", 
+                            peerData->name.c_str(), quantBotHash.c_str(), objectDataHash.c_str());
+                    
+                    // If server, verify all peers have matching configs
+                    if(bIsServer && !peerList.empty()) {
+                        // Get our own hashes (server's hashes)
+                        std::string serverQuantBotHash = getQuantBotConfig().getConfigHash();
+                        std::string serverObjectDataHash = getObjectDataHash();
+                        
+                        // Check if any peer has mismatched configs
+                        bool mismatchFound = false;
+                        std::string mismatchMessage;
+                        
+                        for(ENetPeer* pPeer : peerList) {
+                            PeerData* pData = static_cast<PeerData*>(pPeer->data);
+                            if(pData && (!pData->quantBotConfigHash.empty() || !pData->objectDataHash.empty())) {
+                                if(pData->quantBotConfigHash != serverQuantBotHash) {
+                                    mismatchFound = true;
+                                    mismatchMessage += fmt::sprintf("\n- %s has different QuantBot Config.ini (Hash: %s vs Server: %s)",
+                                                                   pData->name.c_str(), pData->quantBotConfigHash.c_str(), serverQuantBotHash.c_str());
+                                }
+                                if(pData->objectDataHash != serverObjectDataHash) {
+                                    mismatchFound = true;
+                                    mismatchMessage += fmt::sprintf("\n- %s has different ObjectData.ini (Hash: %s vs Server: %s)",
+                                                                   pData->name.c_str(), pData->objectDataHash.c_str(), serverObjectDataHash.c_str());
+                                }
+                            }
+                        }
+                        
+                        if(mismatchFound && pOnConfigMismatch) {
+                            std::string errorMsg = std::string("CONFIG MISMATCH DETECTED!\n\nMultiplayer game cannot continue - config files don't match:") + mismatchMessage + 
+                                                 "\n\nPlease ensure all players have identical config files:\n" +
+                                                 "- " + getQuantBotConfigFilepath() + "\n" +
+                                                 "- " + getObjectDataFilepath();
+                            pOnConfigMismatch(errorMsg);
+                        }
+                    }
+                }
+            } break;
+
             case NETWORKPACKET_STARTGAME: {
                 Uint32 timeLeft = packetStream.readUint32();
 
@@ -710,6 +760,28 @@ void NetworkManager::sendChangeEventList(const ChangeEventList& changeEventList)
     } else {
         sendPacketToHost(packetStream);
     }
+}
+
+void NetworkManager::sendConfigHash(const std::string& quantBotHash, const std::string& objectDataHash) {
+    if(bIsServer) {
+        // Server sends to all clients
+        for(ENetPeer* pCurrentPeer : peerList) {
+            ENetPacketOStream packetStream(ENET_PACKET_FLAG_RELIABLE);
+            packetStream.writeUint32(NETWORKPACKET_CONFIG_HASH);
+            packetStream.writeString(quantBotHash);
+            packetStream.writeString(objectDataHash);
+            sendPacketToPeer(pCurrentPeer, packetStream);
+        }
+    } else {
+        // Client sends to server
+        ENetPacketOStream packetStream(ENET_PACKET_FLAG_RELIABLE);
+        packetStream.writeUint32(NETWORKPACKET_CONFIG_HASH);
+        packetStream.writeString(quantBotHash);
+        packetStream.writeString(objectDataHash);
+        sendPacketToHost(packetStream);
+    }
+    
+    SDL_Log("Sent config hashes - QuantBot: %s, ObjectData: %s", quantBotHash.c_str(), objectDataHash.c_str());
 }
 
 void NetworkManager::sendStartGame(unsigned int timeLeft) {

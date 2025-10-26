@@ -51,6 +51,7 @@
 #define NETWORKPACKET_STARTGAME             8
 #define NETWORKPACKET_COMMANDLIST           9
 #define NETWORKPACKET_SELECTIONLIST         10
+#define NETWORKPACKET_CONFIG_HASH           11
 
 #define AWAITING_CONNECTION_TIMEOUT     5000
 
@@ -78,6 +79,8 @@ public:
     void sendChatMessage(const std::string& message);
 
     void sendChangeEventList(const ChangeEventList& changeEventList);
+
+    void sendConfigHash(const std::string& quantBotHash, const std::string& objectDataHash);
 
     void sendStartGame(unsigned int timeLeft);
 
@@ -174,6 +177,14 @@ public:
         this->pOnReceiveSelectionList = pOnReceiveSelectionList;
     }
 
+    /**
+        Sets the function that should be called when a config mismatch is detected.
+        \param  pOnConfigMismatch   function to call with error message
+    */
+    inline void setOnConfigMismatch(std::function<void (const std::string&)> pOnConfigMismatch) {
+        this->pOnConfigMismatch = pOnConfigMismatch;
+    }
+
 private:
     static void debugNetwork(PRINTF_FORMAT_STRING const char* fmt, ...) PRINTF_VARARG_FUNC(1);
 
@@ -207,6 +218,8 @@ private:
         Uint32                  timeout;
 
         std::string             name;
+        std::string             quantBotConfigHash;
+        std::string             objectDataHash;
         std::list<ENetPeer*>    notYetConnectedPeers;
     };
 
@@ -233,6 +246,7 @@ private:
     std::function<void (unsigned int)>                                      pOnStartGame;
     std::function<void (const std::string&, const CommandList&)>            pOnReceiveCommandList;
     std::function<void (const std::string&, const std::set<Uint32>&, int)>  pOnReceiveSelectionList;
+    std::function<void (const std::string&)>                                 pOnConfigMismatch;
 
     std::unique_ptr<LANGameFinderAndAnnouncer>  pLANGameFinderAndAnnouncer = nullptr;
     std::unique_ptr<MetaServerClient>           pMetaServerClient = nullptr;

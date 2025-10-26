@@ -105,8 +105,12 @@ struct QuantBotConfig {
 // Global instance (initialized on first use)
 QuantBotConfig& getQuantBotConfig();
 
-// Get config file path
+// Get config file paths
 std::string getQuantBotConfigFilepath();
+std::string getObjectDataFilepath();
+
+// Get config file hashes for multiplayer verification
+std::string getObjectDataHash();
 
 #endif // QUANTBOTCONFIG_H
 

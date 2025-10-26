@@ -126,7 +126,9 @@
 QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Difficulty difficulty)
 	: Player(associatedHouse, playername), difficulty(difficulty) {
 
-	buildTimer = getRandomGen().rand(0, 3) * 50;
+	// MULTIPLAYER FIX: Use deterministic stagger based on house ID instead of random
+	// This prevents desync issues in multiplayer games
+	buildTimer = (getHouse()->getHouseID() % 4) * 50;  // 0-150 cycles stagger
 
     attackTimer = MILLI2CYCLES(150000);
     retreatTimer = MILLI2CYCLES(60000); //turning off
@@ -1633,7 +1635,8 @@ void QuantBot::build(int militaryValue) {
 								logDebug("***CampAI Build A new Rocket turret increasing count to: %d", itemCount[Structure_RocketTurret]);
 							}
 
-							buildTimer = getRandomGen().rand(0, 3) * 5;
+							// MULTIPLAYER FIX: Use deterministic timer instead of random
+							buildTimer = 5 + (getHouse()->getHouseID() % 10);  // 5-14 cycles
 						}
 						else {
 							// custom AI starts here:
@@ -1893,7 +1896,8 @@ void QuantBot::build(int militaryValue) {
 		}
 	}
 
-	buildTimer = getRandomGen().rand(0, 3) * 5;
+	// MULTIPLAYER FIX: Use deterministic timer instead of random
+	buildTimer = 5 + (getHouse()->getHouseID() % 10);  // 5-14 cycles
 }
 
 
