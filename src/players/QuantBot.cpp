@@ -476,12 +476,16 @@ void QuantBot::update() {
 		}
 	}
 	
-	// Log military stats every 30 seconds
-	static Uint32 lastMilitaryLogTime = 0;
-	const Uint32 currentTime = SDL_GetTicks();
-	if(lastMilitaryLogTime == 0) {
-		lastMilitaryLogTime = currentTime;
-	} else if(currentTime - lastMilitaryLogTime >= 30000) {
+	// Log military stats every 30 seconds (game time)
+	// MULTIPLAYER FIX: Use game cycles instead of SDL_GetTicks() to ensure
+	// all clients execute this logging at the same game cycle
+	static Uint32 lastMilitaryLogCycle = 0;
+	const Uint32 currentCycle = getGameCycleCount();
+	const Uint32 LOG_INTERVAL = MILLI2CYCLES(30000); // 30 seconds in game cycles
+	
+	if(lastMilitaryLogCycle == 0) {
+		lastMilitaryLogCycle = currentCycle;
+	} else if(currentCycle - lastMilitaryLogCycle >= LOG_INTERVAL) {
 		SDL_Log("[QuantBot %s] ========== MILITARY STATUS ==========", getHouse()->getHouseID() == HOUSETYPE::HOUSE_HARKONNEN ? "Harkonnen" : 
 				getHouse()->getHouseID() == HOUSETYPE::HOUSE_ATREIDES ? "Atreides" : 
 				getHouse()->getHouseID() == HOUSETYPE::HOUSE_ORDOS ? "Ordos" : 
@@ -506,7 +510,7 @@ void QuantBot::update() {
 					air, air * 100.0 / totalMilitary);
 		}
 		SDL_Log("[QuantBot] =====================================");
-		lastMilitaryLogTime = currentTime;
+		lastMilitaryLogCycle = currentCycle;
 	}
 
 	checkAllUnits();
