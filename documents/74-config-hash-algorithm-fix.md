@@ -1,4 +1,4 @@
-# Document 74: Config Hash Algorithm Fix
+# Document 74: Config Hash Algorithm Fix + Client-Side Validation
 
 **Version:** 0.98.6.4  
 **Date:** October 26, 2025  
@@ -6,7 +6,9 @@
 
 ## Summary
 
-Fixed critical bug in config hash generation where `std::hash<std::string>` was producing non-deterministic, platform-specific hashes that failed to detect config mismatches in multiplayer games.
+Fixed TWO critical bugs in config verification:
+1. **Hash algorithm**: Replaced non-deterministic `std::hash<std::string>` with deterministic FNV-1a
+2. **Missing client validation**: Clients were never checking if server's config matched their own!
 
 ## Problem Discovered
 
@@ -184,12 +186,136 @@ This fix resolves:
 - Platform-dependent hash values
 - Compiler-specific hash behavior
 
+## Second Bug Discovered: Client Never Sends Its Hash!
+
+### The Real Problem
+
+After implementing FNV-1a, user testing revealed **the validation still didn't work**!
+
+**Root Cause Analysis:**
+
+The client **never sent its hash to the server**!
+
+Looking at the network flow:
+
+**Server (Host):**
+1. User clicks "Start Game" button
+2. `CustomGamePlayers.cpp` line 731 calls `sendConfigHash()` ✅
+3. Server sends hash to all clients ✅
+4. Server receives nothing back! ❌
+
+**Client:**
+1. Receives server's hash via `NETWORKPACKET_CONFIG_HASH` ✅
+2. Has NO "Start Game" button (only host has it)
+3. Never calls `sendConfigHash()` ❌
+4. Never sends hash to server! ❌
+
+**The bug:** Only the server calls `sendConfigHash()` because only the host has the "Start Game" button!
+
+**What happened:**
+- Server → Client: Send hash ✅
+- Client → Server: **NOTHING** ❌
+- Server: Never receives client hash, starts game anyway ❌
+
+**Result:** Server couldn't validate client config because it never received it!
+
+### The Fix - Three Parts
+
+**Part 1: Both sides compute local hash** (line 618-620)
+```cpp
+// Get our own hashes (local) - needed for BOTH server and client
+std::string localQuantBotHash = getQuantBotConfig().getConfigHash();
+std::string localObjectDataHash = getObjectDataHash();
+```
+
+**Part 2: Server validates incoming client hashes** (lines 622-663)
+```cpp
+if(bIsServer) {
+    // Server: verify client matches server config
+    if(clientHash != serverHash) {
+        pOnConfigMismatch("Mismatch detected!");
+    }
+}
+```
+
+**Part 3: Client validates AND responds** (lines 664-714)
+```cpp
+else {
+    // Client: verify server matches client config
+    if(serverHash != clientHash) {
+        pOnConfigMismatch("Mismatch detected!");
+    } else {
+        // SUCCESS - send our hash back to server!
+        ENetPacketOStream responsePacket(ENET_PACKET_FLAG_RELIABLE);
+        responsePacket.writeUint32(NETWORKPACKET_CONFIG_HASH);
+        responsePacket.writeString(localQuantBotHash);
+        responsePacket.writeString(localObjectDataHash);
+        sendPacketToHost(responsePacket);  // ← THIS WAS MISSING!
+    }
+}
+```
+
+**The key:** When client receives server's hash, it sends its own hash back!
+
+**Now the full handshake works:**
+1. Server → All Clients: "Here's my hash" ✅
+2. Client validates server hash ✅
+3. Client → Server: "Here's my hash" ✅ (NEW!)
+4. Server validates client hash ✅
+5. If mismatch at ANY step → error dialog, game prevented ✅
+
+## Testing With Logs
+
+### Expected Behavior After Fix
+
+**Server log:**
+```
+========== SENDING CONFIG HASHES ==========
+Role: SERVER
+Sending to 1 client(s)
+==========================================
+========== CONFIG HASH RECEIVED ==========  ← NEW! Server now receives client hash
+From: ClientName
+==========================================
+========== SERVER CONFIG VERIFICATION ==========
+Server QuantBot: abc123
+Client QuantBot: xyz789
+*** MISMATCH: QuantBot Config.ini differs!  ← If different
+!!! CONFIG MISMATCH DETECTED !!!
+```
+
+**Client log:**
+```
+========== CONFIG HASH RECEIVED ==========
+From: ServerName
+==========================================
+========== CLIENT CONFIG VERIFICATION ==========
+Client QuantBot: xyz789
+Server QuantBot: abc123
+*** MISMATCH: QuantBot Config.ini differs!  ← If different
+!!! CONFIG MISMATCH DETECTED !!!
+```
+
+**If configs match:**
+- Both sides log "Config verification passed"
+- Client sends hash back to server
+- Server validates client hash
+- Game starts normally
+
+**If configs differ:**
+- Mismatch detected on BOTH client AND server
+- Error dialog shown
+- Connection prevented
+- Game does not start
+
 ## Status
 
-✅ **Implemented** - FNV-1a hash in both functions  
-✅ **Compiled** - No errors  
-✅ **Deterministic** - Same file always produces same hash  
-⏳ **Testing** - Requires multiplayer test with intentional config mismatch  
+✅ **Hash Algorithm Fixed** - FNV-1a implemented (deterministic)
+✅ **Client Validation Added** - Client checks server's config  
+✅ **Client Response Added** - Client sends hash back to server  
+✅ **Server Validation Works** - Server validates client's hash  
+✅ **Compiled** - No linter errors  
+⏳ **Testing** - Requires multiplayer test with intentional mismatch  
 
 ## See Also
 

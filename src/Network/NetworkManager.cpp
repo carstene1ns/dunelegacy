@@ -615,35 +615,35 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                     SDL_Log("ObjectData.ini hash: %s", objectDataHash.c_str());
                     SDL_Log("==========================================");
                     
-                    // If server, verify all peers have matching configs
+                    // Get our own hashes (local)
+                    std::string localQuantBotHash = getQuantBotConfig().getConfigHash();
+                    std::string localObjectDataHash = getObjectDataHash();
+                    
                     if(bIsServer) {
-                        // Get our own hashes (server's hashes)
-                        std::string serverQuantBotHash = getQuantBotConfig().getConfigHash();
-                        std::string serverObjectDataHash = getObjectDataHash();
-                        
+                        // Server: verify client matches server config
                         SDL_Log("========== SERVER CONFIG VERIFICATION ==========");
-                        SDL_Log("Server QuantBot Config.ini hash: %s", serverQuantBotHash.c_str());
-                        SDL_Log("Server ObjectData.ini hash: %s", serverObjectDataHash.c_str());
+                        SDL_Log("Server QuantBot Config.ini hash: %s", localQuantBotHash.c_str());
+                        SDL_Log("Server ObjectData.ini hash: %s", localObjectDataHash.c_str());
                         SDL_Log("Checking peer: %s", peerData->name.c_str());
                         SDL_Log("  Peer QuantBot: %s (Match: %s)", peerData->quantBotConfigHash.c_str(), 
-                                (peerData->quantBotConfigHash == serverQuantBotHash) ? "YES" : "NO");
+                                (peerData->quantBotConfigHash == localQuantBotHash) ? "YES" : "NO");
                         SDL_Log("  Peer ObjectData: %s (Match: %s)", peerData->objectDataHash.c_str(),
-                                (peerData->objectDataHash == serverObjectDataHash) ? "YES" : "NO");
+                                (peerData->objectDataHash == localObjectDataHash) ? "YES" : "NO");
                         
                         // Check if this peer has mismatched configs
                         bool mismatchFound = false;
                         std::string mismatchMessage;
                         
-                        if(peerData->quantBotConfigHash != serverQuantBotHash) {
+                        if(peerData->quantBotConfigHash != localQuantBotHash) {
                             mismatchFound = true;
                             mismatchMessage += fmt::sprintf("\n- %s has different QuantBot Config.ini\n  Client: %s\n  Server: %s",
-                                                           peerData->name.c_str(), peerData->quantBotConfigHash.c_str(), serverQuantBotHash.c_str());
+                                                           peerData->name.c_str(), peerData->quantBotConfigHash.c_str(), localQuantBotHash.c_str());
                             SDL_Log("*** MISMATCH: QuantBot Config.ini differs!");
                         }
-                        if(peerData->objectDataHash != serverObjectDataHash) {
+                        if(peerData->objectDataHash != localObjectDataHash) {
                             mismatchFound = true;
                             mismatchMessage += fmt::sprintf("\n- %s has different ObjectData.ini\n  Client: %s\n  Server: %s",
-                                                           peerData->name.c_str(), peerData->objectDataHash.c_str(), serverObjectDataHash.c_str());
+                                                           peerData->name.c_str(), peerData->objectDataHash.c_str(), localObjectDataHash.c_str());
                             SDL_Log("*** MISMATCH: ObjectData.ini differs!");
                         }
                         
@@ -660,6 +660,56 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                             }
                         } else {
                             SDL_Log("Config verification passed for %s", peerData->name.c_str());
+                        }
+                    } else {
+                        // Client: verify server matches client config AND send our hash back
+                        SDL_Log("========== CLIENT CONFIG VERIFICATION ==========");
+                        SDL_Log("Client QuantBot Config.ini hash: %s", localQuantBotHash.c_str());
+                        SDL_Log("Client ObjectData.ini hash: %s", localObjectDataHash.c_str());
+                        SDL_Log("Checking server: %s", peerData->name.c_str());
+                        SDL_Log("  Server QuantBot: %s (Match: %s)", peerData->quantBotConfigHash.c_str(), 
+                                (peerData->quantBotConfigHash == localQuantBotHash) ? "YES" : "NO");
+                        SDL_Log("  Server ObjectData: %s (Match: %s)", peerData->objectDataHash.c_str(),
+                                (peerData->objectDataHash == localObjectDataHash) ? "YES" : "NO");
+                        
+                        // Check if server has mismatched configs
+                        bool mismatchFound = false;
+                        std::string mismatchMessage;
+                        
+                        if(peerData->quantBotConfigHash != localQuantBotHash) {
+                            mismatchFound = true;
+                            mismatchMessage += fmt::sprintf("\n- QuantBot Config.ini differs\n  Your hash: %s\n  Server hash: %s",
+                                                           localQuantBotHash.c_str(), peerData->quantBotConfigHash.c_str());
+                            SDL_Log("*** MISMATCH: QuantBot Config.ini differs!");
+                        }
+                        if(peerData->objectDataHash != localObjectDataHash) {
+                            mismatchFound = true;
+                            mismatchMessage += fmt::sprintf("\n- ObjectData.ini differs\n  Your hash: %s\n  Server hash: %s",
+                                                           localObjectDataHash.c_str(), peerData->objectDataHash.c_str());
+                            SDL_Log("*** MISMATCH: ObjectData.ini differs!");
+                        }
+                        
+                        SDL_Log("================================================");
+                        
+                        if(mismatchFound) {
+                            SDL_Log("!!! CONFIG MISMATCH DETECTED - CANNOT JOIN GAME !!!");
+                            if(pOnConfigMismatch) {
+                                std::string errorMsg = std::string("CONFIG MISMATCH DETECTED!\n\nCannot join multiplayer game - your config files don't match the server's:") + mismatchMessage + 
+                                                     "\n\nPlease ensure your config files match the server's:\n" +
+                                                     "- " + getQuantBotConfigFilepath() + "\n" +
+                                                     "- " + getObjectDataFilepath();
+                                pOnConfigMismatch(errorMsg);
+                            }
+                        } else {
+                            SDL_Log("Config verification passed - configs match server");
+                            
+                            // Send our hash back to server for verification
+                            SDL_Log("Sending client config hash to server for verification");
+                            ENetPacketOStream responsePacket(ENET_PACKET_FLAG_RELIABLE);
+                            responsePacket.writeUint32(NETWORKPACKET_CONFIG_HASH);
+                            responsePacket.writeString(localQuantBotHash);
+                            responsePacket.writeString(localObjectDataHash);
+                            sendPacketToHost(responsePacket);
                         }
                     }
                 }
