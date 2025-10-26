@@ -715,6 +715,16 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                         
                         SDL_Log("================================================");
                         
+                        // ALWAYS send our config back to server for server-side validation
+                        // (even if client-side validation failed, server needs to validate too)
+                        SDL_Log("Sending client config to server for verification");
+                        ENetPacketOStream responsePacket(ENET_PACKET_FLAG_RELIABLE);
+                        responsePacket.writeUint32(NETWORKPACKET_CONFIG_HASH);
+                        responsePacket.writeString(localVersion);
+                        responsePacket.writeString(localQuantBotHash);
+                        responsePacket.writeString(localObjectDataHash);
+                        sendPacketToHost(responsePacket);
+                        
                         if(mismatchFound) {
                             SDL_Log("!!! CONFIG MISMATCH DETECTED - CANNOT JOIN GAME !!!");
                             if(pOnConfigMismatch) {
@@ -726,15 +736,6 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                             }
                         } else {
                             SDL_Log("Config verification passed - configs match server");
-                            
-                            // Send our version and hashes back to server for verification
-                            SDL_Log("Sending client config to server for verification");
-                            ENetPacketOStream responsePacket(ENET_PACKET_FLAG_RELIABLE);
-                            responsePacket.writeUint32(NETWORKPACKET_CONFIG_HASH);
-                            responsePacket.writeString(localVersion);
-                            responsePacket.writeString(localQuantBotHash);
-                            responsePacket.writeString(localObjectDataHash);
-                            sendPacketToHost(responsePacket);
                         }
                     }
                 }

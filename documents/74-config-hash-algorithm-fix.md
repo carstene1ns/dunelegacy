@@ -1,4 +1,4 @@
-# Document 74: Config Hash Complete Fix (4 Bugs) + Version Check
+# Document 74: Config Hash Complete Fix (6 Bugs!) + Version Check
 
 **Version:** 0.98.6.4  
 **Date:** October 26, 2025  
@@ -6,14 +6,14 @@
 
 ## Summary
 
-Fixed **FOUR** critical bugs in config verification (discovered iteratively through user testing):
+Fixed **SIX** critical bugs in config verification (discovered iteratively through user testing):
 
 1. **Hash algorithm**: Replaced non-deterministic `std::hash<std::string>` with deterministic FNV-1a
 2. **Missing client response**: Clients never sent their hash back to server for validation
 3. **Client race condition**: STARTGAME packet overwrote config mismatch cancellation on client
 4. **Server countdown continues**: Server's update loop didn't check for mismatch during countdown
-
-**PLUS: Added game version checking** to prevent different game versions from connecting via direct IP.
+5. **Client conditional send**: Client only sent config if local validation passed
+6. **Version checking added**: Game version validated for all connections (enhancement)
 
 ## Problem Discovered
 
@@ -484,11 +484,52 @@ Added game version to config verification packet:
   Server version: 0.98.6.4
 ```
 
+## Sixth Bug: Client Only Sent Config If Validation Passed!
+
+### The Problem
+
+After all previous fixes, server STILL started! Why?
+
+**Client code logic:**
+```cpp
+if(mismatchFound) {
+    // Show error
+} else {
+    // ONLY send config if no mismatch ← BUG!
+    sendConfigToServer();
+}
+```
+
+**What happened:**
+1. Client detects mismatch locally
+2. Client shows error
+3. Client **DOESN'T send** config to server!
+4. Server never receives client config
+5. Server never validates
+6. Server starts game! ❌
+
+### The Fix
+
+Client must ALWAYS send config, even if local validation fails:
+
+```cpp
+// Line 718-726: ALWAYS send first
+sendConfigToServer();
+
+// THEN check local validation
+if(mismatchFound) {
+    showError();
+}
+```
+
+**Why:** Both sides need to validate independently. Just because client found mismatch doesn't mean server shouldn't also validate!
+
 ## Status
 
 ✅ **Hash Algorithm Fixed** - FNV-1a implemented (deterministic)  
 ✅ **Client Validation Added** - Client checks server's config  
 ✅ **Client Response Added** - Client sends hash back to server  
+✅ **Client Always Sends** - Even if local validation fails (for server validation)  
 ✅ **Server Validation Works** - Server validates client's hash  
 ✅ **Client Race Condition Fixed** - Flag prevents STARTGAME after mismatch  
 ✅ **Server Countdown Abort Fixed** - update() loop checks flag every frame  
