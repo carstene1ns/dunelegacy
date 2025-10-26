@@ -17,6 +17,8 @@
 
 #include <Network/NetworkManager.h>
 
+#include <config.h>
+
 #include <Network/ENetHelper.h>
 
 #include <GameInitSettings.h>
@@ -601,30 +603,37 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
             } break;
 
             case NETWORKPACKET_CONFIG_HASH: {
+                std::string gameVersion = packetStream.readString();
                 std::string quantBotHash = packetStream.readString();
                 std::string objectDataHash = packetStream.readString();
                 
                 PeerData* peerData = static_cast<PeerData*>(peer->data);
                 if(peerData) {
+                    peerData->gameVersion = gameVersion;
                     peerData->quantBotConfigHash = quantBotHash;
                     peerData->objectDataHash = objectDataHash;
                     
                     SDL_Log("========== CONFIG HASH RECEIVED ==========");
                     SDL_Log("From: %s", peerData->name.c_str());
+                    SDL_Log("Game version: %s", gameVersion.c_str());
                     SDL_Log("QuantBot Config.ini hash: %s", quantBotHash.c_str());
                     SDL_Log("ObjectData.ini hash: %s", objectDataHash.c_str());
                     SDL_Log("==========================================");
                     
-                    // Get our own hashes (local)
+                    // Get our own version and hashes (local)
+                    std::string localVersion = VERSIONSTRING;
                     std::string localQuantBotHash = getQuantBotConfig().getConfigHash();
                     std::string localObjectDataHash = getObjectDataHash();
                     
                     if(bIsServer) {
                         // Server: verify client matches server config
                         SDL_Log("========== SERVER CONFIG VERIFICATION ==========");
+                        SDL_Log("Server game version: %s", localVersion.c_str());
                         SDL_Log("Server QuantBot Config.ini hash: %s", localQuantBotHash.c_str());
                         SDL_Log("Server ObjectData.ini hash: %s", localObjectDataHash.c_str());
                         SDL_Log("Checking peer: %s", peerData->name.c_str());
+                        SDL_Log("  Peer version: %s (Match: %s)", peerData->gameVersion.c_str(),
+                                (peerData->gameVersion == localVersion) ? "YES" : "NO");
                         SDL_Log("  Peer QuantBot: %s (Match: %s)", peerData->quantBotConfigHash.c_str(), 
                                 (peerData->quantBotConfigHash == localQuantBotHash) ? "YES" : "NO");
                         SDL_Log("  Peer ObjectData: %s (Match: %s)", peerData->objectDataHash.c_str(),
@@ -634,6 +643,12 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                         bool mismatchFound = false;
                         std::string mismatchMessage;
                         
+                        if(peerData->gameVersion != localVersion) {
+                            mismatchFound = true;
+                            mismatchMessage += fmt::sprintf("\n- %s has different game version\n  Client: %s\n  Server: %s",
+                                                           peerData->name.c_str(), peerData->gameVersion.c_str(), localVersion.c_str());
+                            SDL_Log("*** MISMATCH: Game version differs!");
+                        }
                         if(peerData->quantBotConfigHash != localQuantBotHash) {
                             mismatchFound = true;
                             mismatchMessage += fmt::sprintf("\n- %s has different QuantBot Config.ini\n  Client: %s\n  Server: %s",
@@ -664,9 +679,12 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                     } else {
                         // Client: verify server matches client config AND send our hash back
                         SDL_Log("========== CLIENT CONFIG VERIFICATION ==========");
+                        SDL_Log("Client game version: %s", localVersion.c_str());
                         SDL_Log("Client QuantBot Config.ini hash: %s", localQuantBotHash.c_str());
                         SDL_Log("Client ObjectData.ini hash: %s", localObjectDataHash.c_str());
                         SDL_Log("Checking server: %s", peerData->name.c_str());
+                        SDL_Log("  Server version: %s (Match: %s)", peerData->gameVersion.c_str(),
+                                (peerData->gameVersion == localVersion) ? "YES" : "NO");
                         SDL_Log("  Server QuantBot: %s (Match: %s)", peerData->quantBotConfigHash.c_str(), 
                                 (peerData->quantBotConfigHash == localQuantBotHash) ? "YES" : "NO");
                         SDL_Log("  Server ObjectData: %s (Match: %s)", peerData->objectDataHash.c_str(),
@@ -676,6 +694,12 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                         bool mismatchFound = false;
                         std::string mismatchMessage;
                         
+                        if(peerData->gameVersion != localVersion) {
+                            mismatchFound = true;
+                            mismatchMessage += fmt::sprintf("\n- Game version differs\n  Your version: %s\n  Server version: %s",
+                                                           localVersion.c_str(), peerData->gameVersion.c_str());
+                            SDL_Log("*** MISMATCH: Game version differs!");
+                        }
                         if(peerData->quantBotConfigHash != localQuantBotHash) {
                             mismatchFound = true;
                             mismatchMessage += fmt::sprintf("\n- QuantBot Config.ini differs\n  Your hash: %s\n  Server hash: %s",
@@ -703,10 +727,11 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                         } else {
                             SDL_Log("Config verification passed - configs match server");
                             
-                            // Send our hash back to server for verification
-                            SDL_Log("Sending client config hash to server for verification");
+                            // Send our version and hashes back to server for verification
+                            SDL_Log("Sending client config to server for verification");
                             ENetPacketOStream responsePacket(ENET_PACKET_FLAG_RELIABLE);
                             responsePacket.writeUint32(NETWORKPACKET_CONFIG_HASH);
+                            responsePacket.writeString(localVersion);
                             responsePacket.writeString(localQuantBotHash);
                             responsePacket.writeString(localObjectDataHash);
                             sendPacketToHost(responsePacket);
@@ -828,9 +853,10 @@ void NetworkManager::sendChangeEventList(const ChangeEventList& changeEventList)
     }
 }
 
-void NetworkManager::sendConfigHash(const std::string& quantBotHash, const std::string& objectDataHash) {
+void NetworkManager::sendConfigHash(const std::string& quantBotHash, const std::string& objectDataHash, const std::string& gameVersion) {
     SDL_Log("========== SENDING CONFIG HASHES ==========");
     SDL_Log("Role: %s", bIsServer ? "SERVER" : "CLIENT");
+    SDL_Log("Version: %s", gameVersion.c_str());
     SDL_Log("QuantBot: %s", quantBotHash.c_str());
     SDL_Log("ObjectData: %s", objectDataHash.c_str());
     
@@ -840,6 +866,7 @@ void NetworkManager::sendConfigHash(const std::string& quantBotHash, const std::
         for(ENetPeer* pCurrentPeer : peerList) {
             ENetPacketOStream packetStream(ENET_PACKET_FLAG_RELIABLE);
             packetStream.writeUint32(NETWORKPACKET_CONFIG_HASH);
+            packetStream.writeString(gameVersion);
             packetStream.writeString(quantBotHash);
             packetStream.writeString(objectDataHash);
             sendPacketToPeer(pCurrentPeer, packetStream);
@@ -849,12 +876,13 @@ void NetworkManager::sendConfigHash(const std::string& quantBotHash, const std::
         SDL_Log("Sending to server");
         ENetPacketOStream packetStream(ENET_PACKET_FLAG_RELIABLE);
         packetStream.writeUint32(NETWORKPACKET_CONFIG_HASH);
+        packetStream.writeString(gameVersion);
         packetStream.writeString(quantBotHash);
         packetStream.writeString(objectDataHash);
         sendPacketToHost(packetStream);
     }
     
-    SDL_Log("Config hashes sent successfully");
+    SDL_Log("Config sent successfully");
     SDL_Log("==========================================");
 }
 

@@ -1,4 +1,4 @@
-# Document 74: Config Hash Algorithm Fix + Client-Side Validation + Race Condition Fix
+# Document 74: Config Hash Complete Fix (4 Bugs) + Version Check
 
 **Version:** 0.98.6.4  
 **Date:** October 26, 2025  
@@ -6,10 +6,14 @@
 
 ## Summary
 
-Fixed THREE critical bugs in config verification:
+Fixed **FOUR** critical bugs in config verification (discovered iteratively through user testing):
+
 1. **Hash algorithm**: Replaced non-deterministic `std::hash<std::string>` with deterministic FNV-1a
 2. **Missing client response**: Clients never sent their hash back to server for validation
-3. **Race condition**: STARTGAME packet overwrote config mismatch cancellation
+3. **Client race condition**: STARTGAME packet overwrote config mismatch cancellation on client
+4. **Server countdown continues**: Server's update loop didn't check for mismatch during countdown
+
+**PLUS: Added game version checking** to prevent different game versions from connecting via direct IP.
 
 ## Problem Discovered
 
@@ -384,13 +388,111 @@ void CustomGamePlayers::onStartGame(unsigned int timeLeft) {
 4. `onStartGame()` checks flag, **rejects** the packet
 5. Game does NOT start ✅
 
+## Fourth Bug: Server Countdown Continues!
+
+### The Problem
+
+After fixing the race condition on **client** side, the server still started!
+
+**Server flow:**
+1. Server sends hash to clients
+2. Server **immediately** starts countdown (`startGameTime = now + 5000`)
+3. Client receives hash, validates, sends response back
+4. Server receives client hash response
+5. Server validates, finds mismatch
+6. Server calls `onConfigMismatch()` → sets `bConfigMismatchDetected = true`
+7. But countdown is already running!
+8. `update()` loop doesn't check flag → Server starts game anyway ❌
+
+**The issue:** The `update()` loop runs the countdown to completion without checking if a mismatch was detected.
+
+### The Fix - Check Flag in Update Loop
+
+Added check in `update()` loop to continuously monitor for config mismatch:
+
+**File: `src/Menu/CustomGamePlayers.cpp` (line 436-442)**
+```cpp
+void CustomGamePlayers::update() {
+    if(startGameTime > 0) {
+        // Check EVERY frame if mismatch detected
+        if(bConfigMismatchDetected) {
+            SDL_Log("Aborting game start - config mismatch detected");
+            startGameTime = 0;  // Cancel countdown
+            return;  // Don't proceed
+        }
+        
+        if(SDL_GetTicks() >= startGameTime) {
+            // Start game...
+        }
+    }
+}
+```
+
+**How it works:**
+1. Server starts countdown
+2. Client response arrives, server validates, finds mismatch
+3. `onConfigMismatch()` called → `bConfigMismatchDetected = true`
+4. **Next update() call** → checks flag, sees mismatch, cancels countdown ✅
+5. Server logs "Aborting game start - config mismatch detected"
+6. Server doesn't start game ✅
+
+## Fifth Enhancement: Game Version Checking
+
+### Why Needed
+
+While LAN game discovery already filters by version, **direct IP connections** had no version check:
+- Player A: Dune Legacy 0.98.6.3
+- Player B: Dune Legacy 0.98.6.4
+
+Could connect and would likely desync due to code differences!
+
+### The Fix
+
+Added game version to config verification packet:
+
+**Files Modified:**
+
+1. **`include/Network/NetworkManager.h`**
+   - Updated `sendConfigHash()` signature to include `gameVersion` parameter
+   - Added `gameVersion` field to `PeerData` structure
+
+2. **`src/Network/NetworkManager.cpp`**
+   - Added `#include <config.h>` for `VERSIONSTRING`
+   - Read/write version in `NETWORKPACKET_CONFIG_HASH` handler
+   - Validate version matches on both client and server
+   - Include version in mismatch error messages
+
+3. **`src/Menu/CustomGamePlayers.cpp`**
+   - Added `#include <config.h>` for `VERSIONSTRING`
+   - Pass `VERSIONSTRING` to `sendConfigHash()` call
+   - Log version being sent
+
+**How It Works:**
+```
+1. Server sends: version + config hashes
+2. Client receives, validates version matches
+3. Client sends: version + config hashes back
+4. Server receives, validates version matches
+5. If ANY mismatch → error dialog, game prevented
+```
+
+**Example Mismatch:**
+```
+*** MISMATCH: Game version differs!
+- Game version differs
+  Your version: 0.98.6.3
+  Server version: 0.98.6.4
+```
+
 ## Status
 
 ✅ **Hash Algorithm Fixed** - FNV-1a implemented (deterministic)  
 ✅ **Client Validation Added** - Client checks server's config  
 ✅ **Client Response Added** - Client sends hash back to server  
 ✅ **Server Validation Works** - Server validates client's hash  
-✅ **Race Condition Fixed** - Flag prevents STARTGAME after mismatch  
+✅ **Client Race Condition Fixed** - Flag prevents STARTGAME after mismatch  
+✅ **Server Countdown Abort Fixed** - update() loop checks flag every frame  
+✅ **Version Checking Added** - Game version validated for all connections  
 ✅ **Compiled** - No linter errors  
 ⏳ **Testing** - Requires multiplayer test with intentional mismatch  
 

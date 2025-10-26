@@ -80,7 +80,7 @@ public:
 
     void sendChangeEventList(const ChangeEventList& changeEventList);
 
-    void sendConfigHash(const std::string& quantBotHash, const std::string& objectDataHash);
+    void sendConfigHash(const std::string& quantBotHash, const std::string& objectDataHash, const std::string& gameVersion);
 
     void sendStartGame(unsigned int timeLeft);
 
@@ -218,6 +218,7 @@ private:
         Uint32                  timeout;
 
         std::string             name;
+        std::string             gameVersion;
         std::string             quantBotConfigHash;
         std::string             objectDataHash;
         std::list<ENetPeer*>    notYetConnectedPeers;

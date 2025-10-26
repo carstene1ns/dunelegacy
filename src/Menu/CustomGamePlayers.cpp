@@ -17,6 +17,8 @@
 
 #include <Menu/CustomGamePlayers.h>
 
+#include <config.h>
+
 #include <FileClasses/GFXManager.h>
 #include <FileClasses/TextManager.h>
 #include <FileClasses/INIFile.h>
@@ -434,6 +436,13 @@ CustomGamePlayers::~CustomGamePlayers()
 
 void CustomGamePlayers::update() {
     if(startGameTime > 0) {
+        // Check if config mismatch was detected - abort game start
+        if(bConfigMismatchDetected) {
+            SDL_Log("Aborting game start - config mismatch detected");
+            startGameTime = 0;
+            return;
+        }
+        
         if(SDL_GetTicks() >= startGameTime) {
             startGameTime = 0;
 
@@ -725,13 +734,14 @@ void CustomGamePlayers::onNext()
             SDL_Log("  QuantBot Config: %s", getQuantBotConfigFilepath().c_str());
             SDL_Log("  ObjectData.ini:  %s", getObjectDataFilepath().c_str());
             SDL_Log("");
-            SDL_Log("Config hashes being sent:");
+            SDL_Log("Config being sent:");
+            SDL_Log("  Game version: %s", VERSIONSTRING);
             SDL_Log("  QuantBot Config.ini hash: %s", quantBotHash.c_str());
             SDL_Log("  ObjectData.ini hash:      %s", objectDataHash.c_str());
             SDL_Log("==================================================================");
             
-            // Send config hashes to all players for verification
-            pNetworkManager->sendConfigHash(quantBotHash, objectDataHash);
+            // Send version and config hashes to all players for verification
+            pNetworkManager->sendConfigHash(quantBotHash, objectDataHash, VERSIONSTRING);
             
             unsigned int timeLeft = 5000;
             startGameTime = SDL_GetTicks() + timeLeft;
