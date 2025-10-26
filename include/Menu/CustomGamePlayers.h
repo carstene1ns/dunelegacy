@@ -61,6 +61,7 @@ private:
     ChangeEventList getChangeEventList();
 
     void onReceiveChatMessage(const std::string& name, const std::string& message);
+    void onConfigMismatch(const std::string& errorMessage);
     void onPeerDisconnected(const std::string& playername, bool bHost, int cause);
 
     void extractMapInfo(INIFile* pMap);

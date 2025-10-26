@@ -401,6 +401,7 @@ CustomGamePlayers::CustomGamePlayers(const GameInitSettings& newGameInitSettings
         pNetworkManager->setOnPeerDisconnected(std::bind(&CustomGamePlayers::onPeerDisconnected, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         pNetworkManager->setOnReceiveChangeEventList(std::bind(&CustomGamePlayers::onReceiveChangeEventList, this, std::placeholders::_1));
         pNetworkManager->setOnReceiveChatMessage(std::bind(&CustomGamePlayers::onReceiveChatMessage, this, std::placeholders::_1, std::placeholders::_2));
+        pNetworkManager->setOnConfigMismatch(std::bind(&CustomGamePlayers::onConfigMismatch, this, std::placeholders::_1));
 
         if(bServer) {
             pNetworkManager->setGetChangeEventListForNewPlayerCallback(std::bind(&CustomGamePlayers::getChangeEventListForNewPlayer, this, std::placeholders::_1));
@@ -641,6 +642,19 @@ void CustomGamePlayers::onReceiveChatMessage(const std::string& name, const std:
     addChatMessage(name, message);
 }
 
+void CustomGamePlayers::onConfigMismatch(const std::string& errorMessage) {
+    SDL_Log("CONFIG MISMATCH DETECTED: %s", errorMessage.c_str());
+    openWindow(MsgBox::create(errorMessage));
+    
+    // Disconnect from multiplayer game
+    if(pNetworkManager != nullptr) {
+        pNetworkManager->disconnect();
+    }
+    
+    // Return to previous menu
+    quit(MENU_QUIT_DEFAULT);
+}
+
 void CustomGamePlayers::onNext()
 {
     // check if we have at least two houses on the map and if we have more than one team
@@ -688,18 +702,21 @@ void CustomGamePlayers::onNext()
         addAllPlayersToGameInitSettings();
 
         if(pNetworkManager != nullptr) {
-            // Multiplayer game - log config hash for verification
+            // Multiplayer game - send and verify config hashes
             QuantBotConfig& config = getQuantBotConfig();
-            std::string configHash = config.getConfigHash();
+            std::string quantBotHash = config.getConfigHash();
+            std::string objectDataHash = getObjectDataHash();
+            
             SDL_Log("==================== MULTIPLAYER CONFIG CHECK ====================");
-            SDL_Log("Starting multiplayer game with QuantBot config hash: %s", configHash.c_str());
-            SDL_Log("IMPORTANT: All players must have identical QuantBot Config.ini files!");
-            SDL_Log("Config file location: %s", getQuantBotConfigFilepath().c_str());
-            SDL_Log("If AI behavior differs between players, verify config files match.");
+            SDL_Log("QuantBot Config hash: %s", quantBotHash.c_str());
+            SDL_Log("ObjectData.ini hash: %s", objectDataHash.c_str());
+            SDL_Log("Config files:");
+            SDL_Log("- %s", getQuantBotConfigFilepath().c_str());
+            SDL_Log("- %s", getObjectDataFilepath().c_str());
             SDL_Log("================================================================");
             
-            // TODO: Add network protocol to verify all players have matching config hashes
-            // For now, players should manually verify their config files are identical
+            // Send config hashes to all players for verification
+            pNetworkManager->sendConfigHash(quantBotHash, objectDataHash);
             
             unsigned int timeLeft = 5000;
             startGameTime = SDL_GetTicks() + timeLeft;
