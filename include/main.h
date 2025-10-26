@@ -73,6 +73,13 @@ std::string getObjectDataTemplateFilepath();
 void createDefaultConfigFile(const std::string& configfilepath, const std::string& language);
 
 /**
+    This function restores default ObjectData.ini and QuantBot Config.ini from templates.
+    This overwrites the user's current config files in AppData.
+    \return true if successful, false otherwise
+*/
+bool restoreDefaultConfigs();
+
+/**
     This function is used by SDL to write out log messages
 */
 void logOutputFunction(void *userdata, int category, SDL_LogPriority priority, const char *message);

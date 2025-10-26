@@ -277,8 +277,8 @@ std::string getObjectDataConfigFilepath()
 
 std::string getObjectDataTemplateFilepath()
 {
-    // Template ObjectData.ini is in config subdirectory of game directory
-    return getDuneLegacyDataDir() + "/config/ObjectData.ini";
+    // Template ObjectData.bak is in config subdirectory of game directory
+    return getDuneLegacyDataDir() + "/config/ObjectData.bak";
 }
 
 std::string getDefaultPlayerName() {
@@ -298,6 +298,67 @@ std::string getDefaultPlayerName() {
 
     playername[0] = toupper(playername[0]);
     return std::string(playername);
+}
+
+bool restoreDefaultConfigs() {
+    SDL_Log("========== RESTORING DEFAULT CONFIG FILES ==========");
+    
+    bool success = true;
+    
+    // Restore ObjectData.ini
+    {
+        try {
+            std::string userPath = getObjectDataConfigFilepath();
+            SDL_Log("Restoring ObjectData.ini to: %s", userPath.c_str());
+            
+            auto templateFile = pFileManager->openFile("config/ObjectData.bak");
+            if (templateFile) {
+                INIFile templateINI(templateFile.get());
+                if (templateINI.saveChangesTo(userPath)) {
+                    SDL_Log("  ✓ ObjectData.ini restored successfully");
+                } else {
+                    SDL_Log("  ✗ Failed to restore ObjectData.ini");
+                    success = false;
+                }
+            } else {
+                SDL_Log("  ✗ Template file ObjectData.bak not found");
+                success = false;
+            }
+        } catch (std::exception& e) {
+            SDL_Log("  ✗ Error restoring ObjectData.ini: %s", e.what());
+            success = false;
+        }
+    }
+    
+    // Restore QuantBot Config.ini
+    {
+        try {
+            char tmp[FILENAME_MAX];
+            fnkdat("config/QuantBot Config.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT);
+            std::string userPath(tmp);
+            SDL_Log("Restoring QuantBot Config.ini to: %s", userPath.c_str());
+            
+            auto templateFile = pFileManager->openFile("config/QuantBot Config.bak");
+            if (templateFile) {
+                INIFile templateINI(templateFile.get());
+                if (templateINI.saveChangesTo(userPath)) {
+                    SDL_Log("  ✓ QuantBot Config.ini restored successfully");
+                } else {
+                    SDL_Log("  ✗ Failed to restore QuantBot Config.ini");
+                    success = false;
+                }
+            } else {
+                SDL_Log("  ✗ Template file QuantBot Config.bak not found");
+                success = false;
+            }
+        } catch (std::exception& e) {
+            SDL_Log("  ✗ Error restoring QuantBot Config.ini: %s", e.what());
+            success = false;
+        }
+    }
+    
+    SDL_Log("====================================================");
+    return success;
 }
 
 void createDefaultConfigFile(const std::string& configfilepath, const std::string& language) {
@@ -759,7 +820,7 @@ int main(int argc, char *argv[]) {
                 if (!existsFile(userObjectDataPath)) {
                     SDL_Log("ObjectData.ini not found in user directory, copying template...");
                     try {
-                        auto templateFile = pFileManager->openFile("config/ObjectData.ini");
+                        auto templateFile = pFileManager->openFile("config/ObjectData.bak");
                         if (templateFile) {
                             INIFile templateINI(templateFile.get());
                             if (templateINI.saveChangesTo(userObjectDataPath)) {
@@ -769,7 +830,7 @@ int main(int argc, char *argv[]) {
                             }
                         }
                     } catch (std::exception& e) {
-                        SDL_Log("Warning: Could not copy ObjectData.ini template: %s", e.what());
+                        SDL_Log("Warning: Could not copy ObjectData.bak template: %s", e.what());
                     }
                 }
             }
@@ -782,7 +843,7 @@ int main(int argc, char *argv[]) {
                 if (!existsFile(userQuantBotPath)) {
                     SDL_Log("QuantBot Config.ini not found in user directory, copying template...");
                     try {
-                        auto templateFile = pFileManager->openFile("config/QuantBot Config.ini");
+                        auto templateFile = pFileManager->openFile("config/QuantBot Config.bak");
                         if (templateFile) {
                             INIFile templateINI(templateFile.get());
                             if (templateINI.saveChangesTo(userQuantBotPath)) {
@@ -792,7 +853,7 @@ int main(int argc, char *argv[]) {
                             }
                         }
                     } catch (std::exception& e) {
-                        SDL_Log("Warning: Could not copy QuantBot Config.ini template: %s", e.what());
+                        SDL_Log("Warning: Could not copy QuantBot Config.bak template: %s", e.what());
                     }
                 }
             }

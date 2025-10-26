@@ -46,6 +46,7 @@ private:
     void    onOptionsOK();
     void    onOptionsCancel();
     void    onGameOptions();
+    void    onRestoreDefaults();
 
     void    saveConfiguration2File();
 
@@ -96,6 +97,9 @@ private:
     TextBox     portTextBox;
     HBox        networkMetaServerHBox;
     TextBox     metaServerTextBox;
+
+    HBox        restoreDefaultsHBox;
+    TextButton  restoreDefaultsButton;
 
     HBox        okCancelHBox;
     TextButton  acceptButton;

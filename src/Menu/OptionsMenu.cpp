@@ -221,6 +221,15 @@ OptionsMenu::OptionsMenu() : MenuBase()
     networkMetaServerHBox.addWidget(Spacer::create(), 0.5);
     mainVBox.addWidget(&networkMetaServerHBox, 0.01);
 
+    mainVBox.addWidget(VSpacer::create(10));
+
+    restoreDefaultsHBox.addWidget(Spacer::create(), 0.5);
+    restoreDefaultsButton.setText(_("Restore Config Defaults"));
+    restoreDefaultsButton.setOnClick(std::bind(&OptionsMenu::onRestoreDefaults, this));
+    restoreDefaultsHBox.addWidget(&restoreDefaultsButton, 320);
+    restoreDefaultsHBox.addWidget(Spacer::create(), 0.5);
+    mainVBox.addWidget(&restoreDefaultsHBox, 0.01);
+
     mainVBox.addWidget(Spacer::create(), 0.2);
 
     okCancelHBox.addWidget(Spacer::create());
@@ -365,6 +374,27 @@ void OptionsMenu::onOptionsCancel() {
 
 void OptionsMenu::onGameOptions() {
     openWindow(GameOptionsWindow::create(currentGameOptions));
+}
+
+void OptionsMenu::onRestoreDefaults() {
+    // Restore config files
+    if (restoreDefaultConfigs()) {
+        std::string successMessage = 
+            "Config files restored successfully!\n\n"
+            "ObjectData.ini and QuantBot Config.ini have been\n"
+            "reset to default values.\n\n"
+            "IMPORTANT: Changes will take effect on next game start.\n"
+            "Please restart the game.";
+        MsgBox* pMsgBox = MsgBox::create(successMessage);
+        openWindow(pMsgBox);
+    } else {
+        std::string errorMessage = 
+            "ERROR: Failed to restore config files!\n\n"
+            "Check the log file for details.";
+        MsgBox* pMsgBox = MsgBox::create(errorMessage);
+        pMsgBox->setTextColor(COLOR_RED);
+        openWindow(pMsgBox);
+    }
 }
 
 void OptionsMenu::saveConfiguration2File() {
