@@ -644,15 +644,24 @@ void CustomGamePlayers::onReceiveChatMessage(const std::string& name, const std:
 
 void CustomGamePlayers::onConfigMismatch(const std::string& errorMessage) {
     SDL_Log("CONFIG MISMATCH DETECTED: %s", errorMessage.c_str());
+    
+    // Cancel game start countdown
+    startGameTime = 0;
+    
+    // Show error dialog
     openWindow(MsgBox::create(errorMessage));
     
-    // Disconnect from multiplayer game
+    // Also display in chat so all players can see the details
     if(pNetworkManager != nullptr) {
-        pNetworkManager->disconnect();
+        // Send chat message with mismatch details
+        pNetworkManager->sendChatMessage("*** CONFIG MISMATCH DETECTED ***");
+        pNetworkManager->sendChatMessage(errorMessage);
+        pNetworkManager->sendChatMessage("*** FIX CONFIG FILES AND TRY AGAIN ***");
     }
     
-    // Return to previous menu
-    quit(MENU_QUIT_DEFAULT);
+    // Stay in lobby - players can see the error in chat and fix their configs
+    // Re-enable dropdowns so they can adjust settings if needed
+    // (Game start was cancelled above)
 }
 
 void CustomGamePlayers::onNext()
@@ -708,12 +717,15 @@ void CustomGamePlayers::onNext()
             std::string objectDataHash = getObjectDataHash();
             
             SDL_Log("==================== MULTIPLAYER CONFIG CHECK ====================");
-            SDL_Log("QuantBot Config hash: %s", quantBotHash.c_str());
-            SDL_Log("ObjectData.ini hash: %s", objectDataHash.c_str());
-            SDL_Log("Config files:");
-            SDL_Log("- %s", getQuantBotConfigFilepath().c_str());
-            SDL_Log("- %s", getObjectDataFilepath().c_str());
-            SDL_Log("================================================================");
+            SDL_Log("Role: %s", pNetworkManager->isServer() ? "SERVER" : "CLIENT");
+            SDL_Log("Config file locations:");
+            SDL_Log("  QuantBot Config: %s", getQuantBotConfigFilepath().c_str());
+            SDL_Log("  ObjectData.ini:  %s", getObjectDataFilepath().c_str());
+            SDL_Log("");
+            SDL_Log("Config hashes being sent:");
+            SDL_Log("  QuantBot Config.ini hash: %s", quantBotHash.c_str());
+            SDL_Log("  ObjectData.ini hash:      %s", objectDataHash.c_str());
+            SDL_Log("==================================================================");
             
             // Send config hashes to all players for verification
             pNetworkManager->sendConfigHash(quantBotHash, objectDataHash);
