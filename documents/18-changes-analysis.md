@@ -226,30 +226,7 @@ FixPoint ornithopterPercentage = ...;
 
 ---
 
-#### Change 1.12: Kiting Logic for Launchers/Deviators
-**Lines**: 2682-2691 (in checkAllUnits())
-**What**: 
-```cpp
-if ((pUnit->getItemID() == Unit_Launcher || pUnit->getItemID() == Unit_Deviator)
-    && pUnit->hasATarget() && (difficulty != Difficulty::Easy)) {
-    
-    if (blockDistance(pUnit->getLocation(), pUnit->getTarget()->getLocation()) <= 6 
-        && pUnit->getTarget()->getItemID() != Unit_Ornithopter) {
-        
-        doSetAttackMode(pUnit, AREAGUARD);
-        doMove2Pos(pUnit, squadCenterLocation.x, squadCenterLocation.y, true);
-    }
-}
-```
 
-**Why**: 
-- Keep launchers/deviators at safe distance from enemies
-- They have long range - should stay back
-- If enemy gets within 6 tiles, retreat to squad center
-
-**Category**: Game Logic (New Feature)
-**Impact**: Ranged units kite away from close enemies
-**Problems**: **CRITICAL BUG** - doMove2Pos() sets guardPoint to squad center, causing units to fire at that location when target lost. This was identified as root cause of off-screen firing!
 
 ---
 
