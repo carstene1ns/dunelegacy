@@ -25,6 +25,7 @@
 #include <globals.h>
 
 #include <climits>
+#include <cstdint>
 #include <fstream>
 #include <functional>
 
@@ -364,13 +365,19 @@ std::string getObjectDataHash() {
     std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     file.close();
     
-    // Generate hash
-    std::hash<std::string> hasher;
-    size_t hash = hasher(contents);
+    // Simple but deterministic hash using FNV-1a algorithm (64-bit)
+    // This is consistent across platforms and compilers
+    uint64_t hash = 14695981039346656037ULL; // FNV offset basis
+    const uint64_t prime = 1099511628211ULL;  // FNV prime
     
-    // Convert to hex string
+    for (char c : contents) {
+        hash ^= static_cast<uint64_t>(static_cast<unsigned char>(c));
+        hash *= prime;
+    }
+    
+    // Convert to hex string (16 characters)
     char hashStr[17];
-    snprintf(hashStr, sizeof(hashStr), "%016zx", hash);
+    snprintf(hashStr, sizeof(hashStr), "%016llx", (unsigned long long)hash);
     
     return std::string(hashStr);
 }
@@ -474,11 +481,17 @@ std::string QuantBotConfig::getConfigHash() const {
     configStr += std::to_string(attackThresholdPercent);
     configStr += std::to_string(minMoneyForProduction);
     
-    // Return a simple hash (first 16 chars for readability)
-    std::hash<std::string> hasher;
-    size_t hashValue = hasher(configStr);
-    char hashStr[32];
-    snprintf(hashStr, sizeof(hashStr), "%016zx", hashValue);
+    // Use FNV-1a hash (consistent across platforms and compilers)
+    uint64_t hash = 14695981039346656037ULL; // FNV offset basis
+    const uint64_t prime = 1099511628211ULL;  // FNV prime
+    
+    for (char c : configStr) {
+        hash ^= static_cast<uint64_t>(static_cast<unsigned char>(c));
+        hash *= prime;
+    }
+    
+    char hashStr[17];
+    snprintf(hashStr, sizeof(hashStr), "%016llx", (unsigned long long)hash);
     return std::string(hashStr);
 }
 
