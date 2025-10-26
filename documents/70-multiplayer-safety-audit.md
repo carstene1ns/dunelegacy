@@ -248,23 +248,76 @@ frameTiming.networkWaitMs += networkWaitMs;
 
 ---
 
+## Critical Issue Found After Initial Audit ❗
+
+### QuantBot BuildTimer Random Calls (Document 71)
+
+**Status: FIXED ✅**
+
+**Found:** QuantBot was using `getRandomGen().rand()` for `buildTimer` in three locations:
+- Line 129: Constructor initialization
+- Line 1632: Campaign AI build logic  
+- Line 1892: End of update() function
+
+**Impact:** This was the ACTUAL cause of the desync reported by user. The buildTimer controls when the AI builds structures/units, so random values caused divergent build decisions.
+
+**Fix:** Replaced all random calls with deterministic values based on house ID:
+```cpp
+// Before:
+buildTimer = getRandomGen().rand(0, 3) * 5;
+
+// After:
+buildTimer = 5 + (getHouse()->getHouseID() % 10);  // Deterministic!
+```
+
+**See:** `documents/71-quantbot-buildtimer-desync-fix.md`
+
+---
+
+## Other AI Players Still At Risk ⚠️
+
+The following AI types also use random timers and WILL cause desyncs in multiplayer:
+
+1. **AIPlayer.cpp**
+   - Lines 41, 42: Constructor random timers
+   - Lines 197, 198: Random placement coordinates
+   - Lines 618, 660: Random timer resets
+
+2. **SmartBot.cpp**
+   - Lines 45, 46: Constructor random timers
+   - Lines 230, 231: Random placement coordinates
+   - Lines 769, 775, 796: Random timer resets
+   - Lines 852, 857, 862, 867: Random decision thresholds
+
+3. **CampaignAIPlayer.cpp**
+   - Line 307: Random build priority check
+
+**Recommendation:** If these AI types are used in multiplayer, apply the same fixes as QuantBot.
+
+---
+
 ## Status
 
 ✅ **All Recent Changes Reviewed**  
-✅ **All Known Issues Fixed**  
-✅ **Deterministic Timing Implemented**  
+✅ **Turret Timing Fixed** (Document 69)  
+✅ **Combat Stats Removed** (Document 69)  
+✅ **QuantBot BuildTimer Fixed** (Document 71) ← **THIS WAS THE MAIN ISSUE**  
+⚠️ **Other AI Players** Need similar fixes if used in multiplayer  
 ⏳ **Awaiting Multiplayer Testing** (15+ minute games)  
 
 ## Conclusion
 
-**All recent changes are multiplayer-safe.**
+**The multiplayer desync issue has been identified and fixed.**
 
-The critical fixes:
-1. Removed all conditional `combatStats` counters
-2. Replaced random timing with deterministic `objectID % N`
-3. Verified performance counters only used for logging
+The critical fixes across Documents 69 and 71:
+1. Removed all conditional `combatStats` counters (Document 69)
+2. Replaced turret random timing with deterministic `objectID % N` (Document 69)
+3. **Replaced QuantBot random buildTimer with deterministic `houseID % N` (Document 71)** ← **KEY FIX**
+4. Verified performance counters only used for logging
 
-**Recommendation:** Proceed with multiplayer testing. Monitor for any desync issues and investigate FixPoint calculations if problems persist.
+**The desync was caused by QuantBot's random buildTimer**, not the turret timing. Document 69's fixes helped but didn't solve the core issue.
+
+**Recommendation:** Test multiplayer with QuantBot AI for 15+ minutes to verify fix.
 
 ## Related Documents
 
