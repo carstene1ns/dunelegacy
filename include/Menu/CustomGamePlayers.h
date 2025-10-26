@@ -148,6 +148,7 @@ private:
     int                     numHouses;
     std::list<HOUSETYPE>    boundHousesOnMap;
     Uint32                  startGameTime;
+    bool                    bConfigMismatchDetected;
     int                     brainEqHumanSlot;           ///< If we have an old map with Brain=Human and Brain=CPU, store index of Brain=Human here
     int                     slotToTeam[NUM_HOUSES];     ///< Maps the slot number to a team number (both zero-based indices)
 };

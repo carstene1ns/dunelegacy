@@ -1,4 +1,4 @@
-# Document 74: Config Hash Algorithm Fix + Client-Side Validation
+# Document 74: Config Hash Algorithm Fix + Client-Side Validation + Race Condition Fix
 
 **Version:** 0.98.6.4  
 **Date:** October 26, 2025  
@@ -6,9 +6,10 @@
 
 ## Summary
 
-Fixed TWO critical bugs in config verification:
+Fixed THREE critical bugs in config verification:
 1. **Hash algorithm**: Replaced non-deterministic `std::hash<std::string>` with deterministic FNV-1a
-2. **Missing client validation**: Clients were never checking if server's config matched their own!
+2. **Missing client response**: Clients never sent their hash back to server for validation
+3. **Race condition**: STARTGAME packet overwrote config mismatch cancellation
 
 ## Problem Discovered
 
@@ -308,12 +309,88 @@ Server QuantBot: abc123
 - Connection prevented
 - Game does not start
 
+## Third Bug Discovered: Race Condition!
+
+### The Problem
+
+After fixing bugs #1 and #2, user testing revealed: **error dialog appeared on both sides, but game started anyway!**
+
+**Root Cause: Packet Timing Race Condition**
+
+Server sends packets in rapid succession:
+```cpp
+sendConfigHash(...)      // Packet 1
+sendStartGame(5000)      // Packet 2 (sent immediately!)
+```
+
+**Client receives:**
+1. CONFIG_HASH packet arrives
+   - Validates hash, finds mismatch
+   - Calls `onConfigMismatch()`
+   - Sets `startGameTime = 0` ✅
+
+2. STARTGAME packet arrives (milliseconds later!)
+   - Calls `onStartGame(timeLeft)`
+   - Sets `startGameTime = SDL_GetTicks() + 5000` ❌
+   - **OVERWRITES** the cancellation!
+
+3. 5 seconds later → Game starts despite error!
+
+**Why this happened:** The server doesn't wait for validation before sending STARTGAME. Both packets are sent immediately, creating a race.
+
+### The Fix - Flag-Based Protection
+
+Added persistent flag to prevent countdown from restarting after mismatch detected.
+
+**File: `include/Menu/CustomGamePlayers.h`**
+```cpp
+bool bConfigMismatchDetected;  // Track if mismatch detected
+```
+
+**File: `src/Menu/CustomGamePlayers.cpp`**
+
+**Constructor (line 52):**
+```cpp
+CustomGamePlayers::CustomGamePlayers(...)
+ : ..., bConfigMismatchDetected(false), ... {
+```
+
+**onConfigMismatch (line 649):**
+```cpp
+void CustomGamePlayers::onConfigMismatch(const std::string& errorMessage) {
+    bConfigMismatchDetected = true;  // Set flag - permanent!
+    startGameTime = 0;  // Cancel countdown
+    openWindow(MsgBox::create(errorMessage));
+}
+```
+
+**onStartGame (line 1187-1192):**
+```cpp
+void CustomGamePlayers::onStartGame(unsigned int timeLeft) {
+    // Reject STARTGAME if mismatch already detected
+    if(bConfigMismatchDetected) {
+        SDL_Log("Ignoring STARTGAME packet - config mismatch detected");
+        return;  // Don't start countdown!
+    }
+    
+    startGameTime = SDL_GetTicks() + timeLeft;
+}
+```
+
+**How it works:**
+1. CONFIG_HASH arrives, mismatch detected
+2. `bConfigMismatchDetected = true` (permanent)
+3. STARTGAME arrives
+4. `onStartGame()` checks flag, **rejects** the packet
+5. Game does NOT start ✅
+
 ## Status
 
-✅ **Hash Algorithm Fixed** - FNV-1a implemented (deterministic)
+✅ **Hash Algorithm Fixed** - FNV-1a implemented (deterministic)  
 ✅ **Client Validation Added** - Client checks server's config  
 ✅ **Client Response Added** - Client sends hash back to server  
 ✅ **Server Validation Works** - Server validates client's hash  
+✅ **Race Condition Fixed** - Flag prevents STARTGAME after mismatch  
 ✅ **Compiled** - No linter errors  
 ⏳ **Testing** - Requires multiplayer test with intentional mismatch  
 

@@ -49,7 +49,7 @@
 
 
 CustomGamePlayers::CustomGamePlayers(const GameInitSettings& newGameInitSettings, bool server, bool LANServer)
- : MenuBase(), gameInitSettings(newGameInitSettings), bServer(server), bLANServer(LANServer), startGameTime(0), brainEqHumanSlot(-1) {
+ : MenuBase(), gameInitSettings(newGameInitSettings), bServer(server), bLANServer(LANServer), startGameTime(0), bConfigMismatchDetected(false), brainEqHumanSlot(-1) {
 
     // set up window
     SDL_Texture *pBackground = pGFXManager->getUIGraphic(UI_MenuBackground);
@@ -645,6 +645,9 @@ void CustomGamePlayers::onReceiveChatMessage(const std::string& name, const std:
 void CustomGamePlayers::onConfigMismatch(const std::string& errorMessage) {
     SDL_Log("CONFIG MISMATCH DETECTED: %s", errorMessage.c_str());
     
+    // Set flag to prevent game from starting
+    bConfigMismatchDetected = true;
+    
     // Cancel game start countdown
     startGameTime = 0;
     
@@ -1182,6 +1185,12 @@ void CustomGamePlayers::onPeerDisconnected(const std::string& playername, bool b
 }
 
 void CustomGamePlayers::onStartGame(unsigned int timeLeft) {
+    // Don't start if there was a config mismatch
+    if(bConfigMismatchDetected) {
+        SDL_Log("Ignoring STARTGAME packet - config mismatch already detected");
+        return;
+    }
+    
     startGameTime = SDL_GetTicks() + timeLeft;
     disableAllDropDownBoxes();
 }
