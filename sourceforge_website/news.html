@@ -130,6 +130,36 @@
           <br />
 
           <div class="post">
+            <div class="post-title"><h2><a name="2025-10-28-00-00-00">Dune Legacy 0.98.6.4 Released</a></h2></div>
+            <div class="post-date">October 28, 2025</div>
+            <div class="post-body">
+              <p>Dune Legacy 0.98.6.4 is now available! This critical bugfix release addresses rocket launcher targeting issues and includes comprehensive multiplayer config verification improvements.</p>
+              <h3>What's New in 0.98.6.4</h3>
+              <ul>
+                <li><b>Fixed Rocket Launcher Targeting (CRITICAL):</b> Rockets no longer explode a square before reaching their target - regression from 0.98.6.3 proximity fuse changes. Rocket launchers now properly use 4-pixel explosion distance for all targets.</li>
+                <li><b>Proximity Fuse Clarification:</b> Rocket turrets use 16-pixel proximity fuse ONLY when targeting flying units. Ground targets use standard 4-pixel explosion for both launchers and turrets.</li>
+                <li><b>Multiplayer Config Verification (6 Bugs Fixed!):</b> Game version, QuantBot Config, and ObjectData validation ensures all players have matching configurations
+                  <ul>
+                    <li>Fixed non-deterministic hash algorithm causing false negatives</li>
+                    <li>Added client-side validation - both host and clients verify configs</li>
+                    <li>Fixed race conditions preventing game start after mismatch detected</li>
+                    <li>Added game version checking to handshake protocol</li>
+                    <li>Clear error messages showing exactly which configs differ</li>
+                  </ul>
+                </li>
+                <li><b>Required for Multiplayer:</b> All players must use version 0.98.6.4 to prevent desyncs from config mismatches</li>
+              </ul>
+              <h3>Download</h3>
+              <ul>
+                <li><b>Windows:</b> <a href="https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/Dune%20Legacy%200.98.6.4%20Setup.exe/download">Dune Legacy 0.98.6.4 Setup.exe</a></li>
+                <li><b>macOS:</b> <a href="https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.6.4-macOS.dmg/download">DuneLegacy-0.98.6.4-macOS.dmg</a></li>
+              </ul>
+              <p><b>Technical Details:</b> The rocket launcher regression was caused by the proximity fuse check in 0.98.6.3 applying to all units (<code>isAUnit()</code>) instead of just flying units (<code>isAFlyingUnit()</code>). This caused rockets to detonate 16 pixels before ground targets instead of the correct 4-pixel explosion distance.</p>
+              <p>For full details, see the <a href="dune-legacy-0.98.6.4-released.html">release notes</a>.</p>
+            </div>
+          </div>
+
+          <div class="post">
             <div class="post-title"><h2><a name="2025-10-25-00-00-00">Dune Legacy 0.98.6.3 Released</a></h2></div>
             <div class="post-date">October 25, 2025</div>
             <div class="post-body">

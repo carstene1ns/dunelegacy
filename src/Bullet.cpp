@@ -163,7 +163,7 @@ void Bullet::init()
         case Bullet_TurretRocket: {
             damageRadius = TILESIZE/2;
             speed = 20;
-            detonationTimer = 312;  // Explode after 312 cycles (5 seconds at 16ms/cycle) to give more chase time
+            detonationTimer = 60;  // Explode after 60 cycles (~2 seconds at 31 FPS) - max pursuit time
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
         } break;
@@ -317,9 +317,12 @@ void Bullet::update()
     if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) {
 
         ObjectBase* pTarget = target.getObjPointer();
-        if(pTarget && pTarget->isAFlyingUnit()) {
+        
+        // Update destination to track flying units (only if target still alive)
+        if(pTarget && pTarget->isActive() && pTarget->isAFlyingUnit()) {
             destination = pTarget->getCenterPoint();
         }
+        // If target is destroyed, continue to last known destination and explode there
 
         FixPoint angleToDestinationRad = destinationAngleRad(Coord(lround(realX), lround(realY)), destination);
         FixPoint angleToDestination = RadToDeg256(angleToDestinationRad);
@@ -432,9 +435,19 @@ void Bullet::update()
         } else if(oldDistanceToDestination < newDistanceToDestination || newDistanceToDestination < 4)  {
 
             if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) {
-                if(detonationTimer == 0) {
+                // TurretRocket: Explode on impact (within 4 pixels) for ALL targets
+                //   - Proximity fuse (above) provides early detonation for flying units at 16 pixels
+                //   - This is the fallback/guaranteed detonation at 4 pixels
+                // Launchers (Rocket/DRocket): Explode when timer expires
+                
+                if(bulletID == Bullet_TurretRocket) {
+                    // TurretRocket explodes on impact for both ground and air targets
                     destroy();
-                return;
+                    return;
+                } else if(detonationTimer == 0) {
+                    // Launcher rockets explode when timer expires
+                    destroy();
+                    return;
                 }
             } else {
                 realX = destination.x;
