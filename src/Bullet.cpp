@@ -381,11 +381,11 @@ void Bullet::update()
             return;
         }
         
-        // FIX: Add proximity fuse for TurretRocket vs ALL units
-        // Check distance directly to target instead of relying on tile positions
+        // FIX: Add proximity fuse for TurretRocket vs FLYING units ONLY
+        // For ground units, turret rockets use the normal 4-pixel explosion (same as launchers)
         if(bulletID == Bullet_TurretRocket && target.getObjPointer()) {
             ObjectBase* pTarget = target.getObjPointer();
-            if(pTarget && pTarget->isActive() && pTarget->isAUnit()) {
+            if(pTarget && pTarget->isActive() && pTarget->isAFlyingUnit()) {
                 const Coord bulletPos = Coord(lround(realX), lround(realY));
                 const FixPoint distance = distanceFrom(bulletPos, pTarget->getCenterPoint());
                 // Detonate if within damage radius (proximity fuse)
