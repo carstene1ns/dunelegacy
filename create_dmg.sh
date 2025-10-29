@@ -2,7 +2,7 @@
 
 # Set variables
 APP_PATH="IDE/xCode/build/Release/Dune Legacy.app"
-DMG_NAME="DuneLegacy-0.98.6.3-macOS.dmg"
+DMG_NAME="DuneLegacy-0.98.6.4-macOS.dmg"
 VOLUME_NAME="Dune Legacy"
 
 # Create a temporary directory for DMG contents
