@@ -38,6 +38,8 @@
 #include <units/Harvester.h>
 #include <units/Saboteur.h>
 #include <units/Devastator.h>
+
+#include <vector>
 #include <units/Carryall.h>
 
 #include <algorithm>
@@ -1639,34 +1641,108 @@ void QuantBot::build(int militaryValue) {
 							buildTimer = 5 + (getHouse()->getHouseID() % 10);  // 5-14 cycles
 						}
 						else {
-							// custom AI starts here:
+								// custom AI starts here:
 
-							Uint32 itemID = NONE_ID;
+								Uint32 itemID = NONE_ID;
 
-						// Count enemy ornithopters - use MAXIMUM from a single enemy house, not sum
-						// (e.g., if enemy A has 5 ornis and enemy B has 3, use 5, not 8)
-						int maxEnemyOrnithopters = 0;
-						if (currentGame) {
-							for (int i = 0; i < NUM_HOUSES; i++) {
-								const House* pHouse = currentGame->getHouse(i);
-								if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
-									int houseOrnis = pHouse->getNumItems(Unit_Ornithopter);
-									if (houseOrnis > maxEnemyOrnithopters) {
-										maxEnemyOrnithopters = houseOrnis;
+								bool skipRemainingStructureLogic = false;
+
+								if (itemCount[Structure_HeavyFactory] > 0) {
+									heavyFactoryRushActive = false;
+								}
+
+								if ((money > 10000 && itemCount[Structure_HeavyFactory] == 0)
+									|| (heavyFactoryRushActive && itemCount[Structure_HeavyFactory] == 0)) {
+
+									heavyFactoryRushActive = true;
+
+									auto attemptBuild = [&](Uint32 structureID, const char* logLabel, bool incrementHarvester = false) -> bool {
+										if (!pBuilder->isAvailableToBuild(structureID)) {
+											return false;
+										}
+										if (structureID == Structure_Refinery && incrementHarvester) {
+											itemCount[Unit_Harvester]++;
+										}
+										itemID = structureID;
+										logDebug("HEAVY-FACTORY PUSH: %s (credits: %d)", logLabel, money);
+										return true;
+									};
+
+									auto ensureConstructionYardReady = [&]() {
+										if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+											doRepair(pBuilder);
+											logDebug("HEAVY-FACTORY PUSH: Repairing construction yard before upgrade (level %d)", pBuilder->getCurrentUpgradeLevel());
+											return true;
+										}
+										if (!pBuilder->isUpgrading() && pBuilder->getCurrentUpgradeLevel() < pBuilder->getMaxUpgradeLevel()) {
+											doUpgrade(pBuilder);
+											logDebug("HEAVY-FACTORY PUSH: Upgrading construction yard (level %d → %d)",
+												pBuilder->getCurrentUpgradeLevel(), pBuilder->getCurrentUpgradeLevel() + 1);
+											return true;
+										}
+										return pBuilder->isUpgrading();
+									};
+
+									skipRemainingStructureLogic = true;
+
+									if (itemCount[Structure_WindTrap] == 0) {
+										attemptBuild(Structure_WindTrap, "Building first Windtrap");
+									}
+									else if (itemCount[Structure_Refinery] == 0) {
+										attemptBuild(Structure_Refinery, "Building first Refinery", true);
+									}
+									else if (itemCount[Structure_Radar] == 0) {
+										if (attemptBuild(Structure_Radar, "Building Radar prerequisite")) {
+											// handled by attemptBuild
+										} else {
+											// Some maps require CY upgrade for radar access.
+											ensureConstructionYardReady();
+										}
+									}
+									else if (itemCount[Structure_LightFactory] == 0) {
+										if (attemptBuild(Structure_LightFactory, "Building Light Factory prerequisite")) {
+											// handled
+										} else {
+											ensureConstructionYardReady();
+										}
+									}
+									else {
+										if (attemptBuild(Structure_HeavyFactory, "Building first Heavy Factory")) {
+											// handled
+										} else {
+											ensureConstructionYardReady();
+										}
 									}
 								}
-							}
-						}
 
-				// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
-				// Aim for 2 turrets per ornithopter from the enemy house with the most ornithopters
-				int requiredTurrets = maxEnemyOrnithopters * 2;
-				if (maxEnemyOrnithopters > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
-						// Check prerequisites for rocket turrets: Windtrap, Radar, CY level 2
-						bool hasWindtrap = itemCount[Structure_WindTrap] > 0;
-						bool hasRadar = itemCount[Structure_Radar] > 0;
-						
-						if (pBuilder->getCurrentUpgradeLevel() < 2) {
+							// Count enemy ornithopters - use MAXIMUM from a single enemy house, not sum
+							// (e.g., if enemy A has 5 ornis and enemy B has 3, use 5, not 8)
+								int maxEnemyOrnithopters = 0;
+								int totalEnemyOrnithopters = 0;
+								if (currentGame) {
+								for (int i = 0; i < NUM_HOUSES; i++) {
+									const House* pHouse = currentGame->getHouse(i);
+									if (pHouse && pHouse->getTeamID() != getHouse()->getTeamID()) {
+										int houseOrnis = pHouse->getNumItems(Unit_Ornithopter);
+										totalEnemyOrnithopters += houseOrnis;
+										if (houseOrnis > maxEnemyOrnithopters) {
+											maxEnemyOrnithopters = houseOrnis;
+										}
+									}
+									}
+								}
+
+						// CRITICAL: Counter enemy ornithopters with rocket turrets (HIGH PRIORITY)
+						// Aim for max(3×max single-house ornithopters, 1.5×total enemy ornithopters)
+						int maxHouseTarget = maxEnemyOrnithopters * 3;
+						int totalTarget = (totalEnemyOrnithopters * 3 + 1) / 2; // ceil(total * 1.5)
+						int requiredTurrets = std::max(maxHouseTarget, totalTarget);
+						if (!skipRemainingStructureLogic && maxEnemyOrnithopters > 0 && itemCount[Structure_RocketTurret] < requiredTurrets) {
+								// Check prerequisites for rocket turrets: Windtrap, Radar, CY level 2
+								bool hasWindtrap = itemCount[Structure_WindTrap] > 0;
+								bool hasRadar = itemCount[Structure_Radar] > 0;
+								
+							if (pBuilder->getCurrentUpgradeLevel() < 2) {
 							if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
 								// Repair construction yard first if damaged
 								doRepair(pBuilder);
@@ -1694,78 +1770,89 @@ void QuantBot::build(int militaryValue) {
 						itemID = Structure_Radar;
 						logDebug("COUNTER-ORNITHOPTER: Building radar (prerequisite for rocket turrets) - max enemy ornis: %d", maxEnemyOrnithopters);
 					}
-					else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
-						&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
-						&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-						// All prerequisites met - build rocket turret to counter ornithopters
-						itemID = Structure_RocketTurret;
-						logDebug("COUNTER-ORNITHOPTER: Building rocket turret - max enemy ornis: %d, our turrets: %d, target: %d", 
-							maxEnemyOrnithopters, itemCount[Structure_RocketTurret], requiredTurrets);
-				}
-				}
-				
-			// INSURANCE: Build 2 baseline rocket turrets for ornithopter defense (proactive, not reactive)
-			// Build these after Radar is complete, even if no enemy ornithopters yet
-			else if (itemCount[Structure_Radar] > 0 
-				&& itemCount[Structure_RocketTurret] < 2
-				&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
-				&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
-				&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
-				itemID = Structure_RocketTurret;
+						else if (pBuilder->isAvailableToBuild(Structure_RocketTurret) 
+							&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+							&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+							// All prerequisites met - build rocket turret to counter ornithopters
+							itemID = Structure_RocketTurret;
+							logDebug("COUNTER-ORNITHOPTER: Building rocket turret - max enemy ornis: %d, total enemy ornis: %d, our turrets: %d, target: %d", 
+								maxEnemyOrnithopters, totalEnemyOrnithopters, itemCount[Structure_RocketTurret], requiredTurrets);
+					}
+						}
+						
+					// INSURANCE: Build 2 baseline rocket turrets for ornithopter defense (proactive, not reactive)
+					// Build these after Radar is complete, even if no enemy ornithopters yet
+				else if (!skipRemainingStructureLogic
+					&& itemCount[Structure_Radar] > 0 
+					&& itemCount[Structure_RocketTurret] < 2
+					&& pBuilder->isAvailableToBuild(Structure_RocketTurret)
+					&& findTurretPlaceLocation(Structure_RocketTurret).isValid()
+					&& (!getGameInitSettings().getGameOptions().rocketTurretsNeedPower || getHouse()->hasPower())) {
+					itemID = Structure_RocketTurret;
 				logDebug("INSURANCE: Building baseline rocket turret (%d/2) for ornithopter defense", itemCount[Structure_RocketTurret] + 1);
-			}
-				
-				// Essential infrastructure
-				else if (itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
-						itemID = Structure_WindTrap;
-					}
-					else if ((itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
-								itemID = Structure_Refinery;
-								itemCount[Unit_Harvester]++;
-							}
-							else if (itemCount[Structure_Refinery] < 4 && pBuilder->isAvailableToBuild(Structure_Refinery) && money < 4000) {
-								itemID = Structure_Refinery;
-								itemCount[Unit_Harvester]++;
-							}
-					else if (itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
-						itemID = Structure_StarPort;
-					}
-					// PROACTIVE: Upgrade CY to level 2 early (required for rocket turrets)
-					// Do this AFTER Starport, BEFORE Heavy Factory for earlier ornithopter defense
-					else if (pBuilder->getCurrentUpgradeLevel() < 2 
-						&& itemCount[Structure_StarPort] > 0
-						&& money > 1000) {
-						if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
-							doRepair(pBuilder);
-							logDebug("PROACTIVE: Repairing CY before upgrade (level %d, need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel());
+				}
+					
+					// Essential infrastructure
+					else if (!skipRemainingStructureLogic
+						&& itemCount[Structure_WindTrap] == 0 && pBuilder->isAvailableToBuild(Structure_WindTrap)) {
+							itemID = Structure_WindTrap;
+						}
+						else if (!skipRemainingStructureLogic
+							&& (itemCount[Structure_Refinery] == 0 || itemCount[Structure_Refinery] < itemCount[Unit_Harvester] / 3) && pBuilder->isAvailableToBuild(Structure_Refinery)) {
+									itemID = Structure_Refinery;
+									itemCount[Unit_Harvester]++;
+								}
+								else if (!skipRemainingStructureLogic
+									&& itemCount[Structure_Refinery] < 4 && pBuilder->isAvailableToBuild(Structure_Refinery) && money < 4000) {
+									itemID = Structure_Refinery;
+									itemCount[Unit_Harvester]++;
+								}
+						else if (!skipRemainingStructureLogic
+							&& itemCount[Structure_StarPort] == 0 && pBuilder->isAvailableToBuild(Structure_StarPort) && findPlaceLocation(Structure_StarPort).isValid()) {
+							itemID = Structure_StarPort;
+						}
+						// PROACTIVE: Upgrade CY to level 2 early (required for rocket turrets)
+						// Do this AFTER Starport, BEFORE Heavy Factory for earlier ornithopter defense
+						else if (!skipRemainingStructureLogic
+							&& pBuilder->getCurrentUpgradeLevel() < 2 
+							&& itemCount[Structure_StarPort] > 0
+							&& money > 1000) {
+							if (pBuilder->getHealth() < pBuilder->getMaxHealth() && !pBuilder->isRepairing()) {
+								doRepair(pBuilder);
+								logDebug("PROACTIVE: Repairing CY before upgrade (level %d, need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel());
 						}
 						else if (!pBuilder->isUpgrading() && pBuilder->getHealth() >= pBuilder->getMaxHealth()) {
 							doUpgrade(pBuilder);
 							logDebug("PROACTIVE: Upgrading CY to level %d (need level 2 for rocket turrets)", pBuilder->getCurrentUpgradeLevel() + 1);
+							}
+							// else: already upgrading, just wait
 						}
-						// else: already upgrading, just wait
-					}
-					else if (itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
-						itemID = Structure_Radar;
-					}
-							else if (pBuilder->isAvailableToBuild(Structure_LightFactory)
-								&& itemCount[Structure_LightFactory] == 0 && money > 500) {
-								itemID = Structure_LightFactory; // Essential for basic units
-							}
-							else if (pBuilder->isAvailableToBuild(Structure_HeavyFactory)
-								&& itemCount[Structure_HeavyFactory] == 0 && money > 1000) {
-								itemID = Structure_HeavyFactory; // First heavy factory
-								logDebug("Build first Heavy Factory... money: %d", money);
-							}							
-							else if (itemCount[Structure_RepairYard] == 0 && pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 1000) {
-								itemID = Structure_RepairYard; // Essential for unit maintenance
-							}
-							else if (pBuilder->isAvailableToBuild(Structure_Refinery)
-								&& money < 4000
-								&& itemCount[Unit_Harvester] < harvesterLimit) {
-								itemID = Structure_Refinery;
-							itemCount[Unit_Harvester]++;
-													}
+						else if (!skipRemainingStructureLogic
+							&& itemCount[Structure_Radar] == 0 && pBuilder->isAvailableToBuild(Structure_Radar) && money > 500) {
+							itemID = Structure_Radar;
+						}
+								else if (!skipRemainingStructureLogic
+									&& pBuilder->isAvailableToBuild(Structure_LightFactory)
+									&& itemCount[Structure_LightFactory] == 0 && money > 500) {
+									itemID = Structure_LightFactory; // Essential for basic units
+								}
+								else if (!skipRemainingStructureLogic
+									&& pBuilder->isAvailableToBuild(Structure_HeavyFactory)
+									&& itemCount[Structure_HeavyFactory] == 0 && money > 1000) {
+									itemID = Structure_HeavyFactory; // First heavy factory
+									logDebug("Build first Heavy Factory... money: %d", money);
+								}							
+								else if (!skipRemainingStructureLogic
+									&& itemCount[Structure_RepairYard] == 0 && pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 1000) {
+									itemID = Structure_RepairYard; // Essential for unit maintenance
+								}
+								else if (!skipRemainingStructureLogic
+									&& pBuilder->isAvailableToBuild(Structure_Refinery)
+									&& money < 4000
+									&& itemCount[Unit_Harvester] < harvesterLimit) {
+									itemID = Structure_Refinery;
+								itemCount[Unit_Harvester]++;
+														}
 					// Note: CY upgrade is done proactively (after Starport, before Heavy Factory) and reactively (ornithopter counter)
 					// Rocket turrets: 2 insurance turrets built after CY level 2, then scaled up reactively if needed
 						else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
@@ -1789,11 +1876,12 @@ void QuantBot::build(int militaryValue) {
 						// Tech 4: No prerequisites (just money and need)
 						// Tech 5-6: Require Repair Yard
 						// Tech 7+: Require Repair Yard + IX
-						else if (money > 3000 && pBuilder->isAvailableToBuild(Structure_HeavyFactory)
-							&& (activeHeavyFactoryCount >= itemCount[Structure_HeavyFactory] || itemCount[Structure_HeavyFactory] < money / 4000)) {
-							
-							int techLevel = currentGame ? currentGame->techLevel : 8;
-							bool prerequisitesMet = false;
+							else if (!skipRemainingStructureLogic
+								&& money > 3000 && pBuilder->isAvailableToBuild(Structure_HeavyFactory)
+								&& (activeHeavyFactoryCount >= itemCount[Structure_HeavyFactory] || itemCount[Structure_HeavyFactory] < money / 4000)) {
+								
+								int techLevel = currentGame ? currentGame->techLevel : 8;
+								bool prerequisitesMet = false;
 							
 							if (techLevel <= 4) {
 								// Tech 4: Can build additional Heavy Factories without prerequisites
@@ -1808,42 +1896,47 @@ void QuantBot::build(int militaryValue) {
 								prerequisitesMet = (itemCount[Structure_RepairYard] >= 1 && itemCount[Structure_IX] >= 1);
 							}
 							
-							if (prerequisitesMet) {
-								itemID = Structure_HeavyFactory;
-								logDebug("PRIORITY Heavy Factory - active: %d  total: %d  money: %d  capacity_limit: %d  tech: %d", 
-									activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory), money, money / 4000, techLevel);
+								if (prerequisitesMet) {
+									itemID = Structure_HeavyFactory;
+									logDebug("PRIORITY Heavy Factory - active: %d  total: %d  money: %d  capacity_limit: %d  tech: %d", 
+										activeHeavyFactoryCount, getHouse()->getNumItems(Structure_HeavyFactory), money, money / 4000, techLevel);
+								}
 							}
-						}
-						// If we need more refinerys for our harvesters or we don't have a heavy factory
-						else if (((itemCount[Structure_Refinery] * 3.5_fix < itemCount[Unit_Harvester])
-						|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
-							&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
-							itemID = Structure_Refinery;
-							itemCount[Unit_Harvester]++;
-			
-						}
-							else if (pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 2000
-								&& itemCount[Structure_RepairYard] * 6000 < militaryValue) {
-								// If we have a lot of troops get some repair facilities (1 per 6000 military value)
-								itemID = Structure_RepairYard;
-								logDebug("Build Repair Yard: have %d, need %d (military: %d)", itemCount[Structure_RepairYard], (militaryValue / 6000) + 1, militaryValue);
-
+							// If we need more refinerys for our harvesters or we don't have a heavy factory
+							else if (!skipRemainingStructureLogic
+								&& ((itemCount[Structure_Refinery] * 3.5_fix < itemCount[Unit_Harvester])
+							|| (currentGame && currentGame->techLevel < 4 && itemCount[Unit_Harvester] < harvesterLimit))
+								&& pBuilder->isAvailableToBuild(Structure_Refinery)) {
+								itemID = Structure_Refinery;
+								itemCount[Unit_Harvester]++;
+				
 							}
-							else if (money > 3000 && pBuilder->isAvailableToBuild(Structure_HighTechFactory)
-								&& itemCount[Structure_HighTechFactory] > 0 && activeHighTechFactoryCount >= itemCount[Structure_HighTechFactory]) {
-								// Build additional high tech factory if all existing ones are busy
-								itemID = Structure_HighTechFactory;
-							}
-							else if (getHouse()->getStoredCredits() + 1000 > (itemCount[Structure_Refinery] + itemCount[Structure_Silo]) * 1000 && pBuilder->isAvailableToBuild(Structure_Silo)) {
-								// We are running out of spice storage capacity
-								itemID = Structure_Silo;
-							}
-							else if (money > 5000
-								&& pBuilder->isAvailableToBuild(Structure_Palace)
-								&& (itemCount[Structure_Palace] == 0 || !getGameInitSettings().getGameOptions().onlyOnePalace)
-								&& itemCount[Structure_HeavyFactory] > 0
-								&& itemCount[Structure_LightFactory] > 0) {
-								// Build palace after having basic military infrastructure
+								else if (!skipRemainingStructureLogic
+									&& pBuilder->isAvailableToBuild(Structure_RepairYard) && money > 2000
+									&& itemCount[Structure_RepairYard] * 6000 < militaryValue) {
+									// If we have a lot of troops get some repair facilities (1 per 6000 military value)
+									itemID = Structure_RepairYard;
+									logDebug("Build Repair Yard: have %d, need %d (military: %d)", itemCount[Structure_RepairYard], (militaryValue / 6000) + 1, militaryValue);
+	
+								}
+								else if (!skipRemainingStructureLogic
+									&& money > 3000 && pBuilder->isAvailableToBuild(Structure_HighTechFactory)
+									&& itemCount[Structure_HighTechFactory] > 0 && activeHighTechFactoryCount >= itemCount[Structure_HighTechFactory]) {
+									// Build additional high tech factory if all existing ones are busy
+									itemID = Structure_HighTechFactory;
+								}
+								else if (!skipRemainingStructureLogic
+									&& getHouse()->getStoredCredits() + 1000 > (itemCount[Structure_Refinery] + itemCount[Structure_Silo]) * 1000 && pBuilder->isAvailableToBuild(Structure_Silo)) {
+									// We are running out of spice storage capacity
+									itemID = Structure_Silo;
+								}
+								else if (!skipRemainingStructureLogic
+									&& money > 5000
+									&& pBuilder->isAvailableToBuild(Structure_Palace)
+									&& (itemCount[Structure_Palace] == 0 || !getGameInitSettings().getGameOptions().onlyOnePalace)
+									&& itemCount[Structure_HeavyFactory] > 0
+									&& itemCount[Structure_LightFactory] > 0) {
+									// Build palace after having basic military infrastructure
 								// Allow multiple palaces if game mode permits
 								itemID = Structure_Palace;
 							}
@@ -1938,15 +2031,205 @@ void QuantBot::scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits)
 	}
 }
 
+bool QuantBot::tryLaunchOrnithopterStrike(const QuantBotConfig::DifficultySettings& diffSettings,
+                                          const QuantBotConfig& config) {
+    if (!diffSettings.ornithopterAttackEnabled) {
+        ornithopterStrikeTeam.reset();
+        return false;
+    }
+
+    const Map& map = getMap();
+    const int maxDim = std::max(map.getSizeX(), map.getSizeY());
+
+    int effectiveThreshold = diffSettings.ornithopterAttackThreshold;
+    if (maxDim > 64) {
+        if (maxDim >= 128) {
+            effectiveThreshold *= 3;
+        } else {
+            effectiveThreshold *= 2;
+        }
+    }
+    if (effectiveThreshold <= 0) {
+        effectiveThreshold = 1;
+    }
+
+    std::vector<const UnitBase*> availableOrnithopters;
+    std::set<Uint32> currentMemberIds;
+
+    for (const UnitBase* pUnit : getUnitList()) {
+        if (pUnit->getOwner() != getHouse()
+            || pUnit->getItemID() != Unit_Ornithopter
+            || !pUnit->isActive()
+            || pUnit->isBadlyDamaged()
+            || !pUnit->isRespondable()) {
+            continue;
+        }
+
+        availableOrnithopters.push_back(pUnit);
+        currentMemberIds.insert(pUnit->getObjectID());
+    }
+
+    const int totalOrnithopters = getHouse()->getNumItems(Unit_Ornithopter);
+    const int readyOrnithopters = static_cast<int>(availableOrnithopters.size());
+    const bool noFriendlyStructures = (getHouse()->getNumStructures() == 0);
+    const bool forceLastStandStrike = noFriendlyStructures && readyOrnithopters > 0;
+    const int appliedThreshold = forceLastStandStrike ? std::max(readyOrnithopters, 1) : effectiveThreshold;
+
+    if (!forceLastStandStrike && readyOrnithopters < effectiveThreshold) {
+        ornithopterStrikeTeam.reset();
+        return false;
+    }
+
+    if (!ornithopterStrikeTeam.memberIds.empty()) {
+        for (auto it = ornithopterStrikeTeam.memberIds.begin(); it != ornithopterStrikeTeam.memberIds.end();) {
+            if (currentMemberIds.count(*it) == 0U) {
+                it = ornithopterStrikeTeam.memberIds.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    if (ornithopterStrikeTeam.isActive()) {
+        ornithopterStrikeTeam.minMembers = appliedThreshold;
+        if (static_cast<int>(ornithopterStrikeTeam.memberIds.size()) < ornithopterStrikeTeam.minMembers) {
+            ornithopterStrikeTeam.reset();
+        }
+    }
+
+    auto ensureOrders = [&](const ObjectBase* target) -> bool {
+        if (target == nullptr) {
+            return false;
+        }
+
+        bool issued = false;
+        const Uint32 targetId = target->getObjectID();
+
+        for (const UnitBase* pUnit : availableOrnithopters) {
+            const Uint32 unitId = pUnit->getObjectID();
+            ornithopterStrikeTeam.memberIds.insert(unitId);
+
+            if (!pUnit->canAttack(target)) {
+                continue;
+            }
+
+            const ObjectBase* currentTarget = pUnit->hasATarget() ? pUnit->getTarget() : nullptr;
+            const bool needsNewTarget = (currentTarget == nullptr) || (currentTarget->getObjectID() != targetId);
+            const bool needsMode = pUnit->getAttackMode() != HUNT;
+
+            if (needsMode) {
+                doSetAttackMode(pUnit, HUNT);
+                issued = true;
+            }
+
+            if (needsNewTarget) {
+                doAttackObject(pUnit, target, true);
+                issued = true;
+            }
+        }
+
+        return issued;
+    };
+
+    if (ornithopterStrikeTeam.isActive()) {
+        const ObjectBase* existingTarget = currentGame->getObjectManager().getObject(ornithopterStrikeTeam.targetId);
+        if (existingTarget == nullptr || !existingTarget->isActive()) {
+            ornithopterStrikeTeam.reset();
+        } else {
+            return ensureOrders(existingTarget);
+        }
+    }
+
+    const int myTeam = getHouse()->getTeamID();
+    const House* myHouse = getHouse();
+
+    const ObjectBase* teamTarget = nullptr;
+    double bestTargetScore = -1.0;
+
+    auto evaluateCandidate = [&](const ObjectBase* candidate, const QuantBotConfig::TargetPriority& priority) {
+        if (!candidate || !candidate->isActive()) {
+            return;
+        }
+
+        const House* owner = candidate->getOwner();
+        if (!owner || owner->getTeamID() == myTeam) {
+            return;
+        }
+
+        if (!candidate->isVisible(myTeam)) {
+            return;
+        }
+
+        const int weight = priority.build + priority.target;
+        if (weight <= 0) {
+            return;
+        }
+
+        double candidateScore = -1.0;
+        for (const UnitBase* pOrnithopter : availableOrnithopters) {
+            if (!pOrnithopter->canAttack(candidate)) {
+                continue;
+            }
+
+            FixPoint distanceFP = blockDistance(pOrnithopter->getLocation(), candidate->getLocation());
+            const double score = static_cast<double>(weight) / (distanceFP.toDouble() + 1.0);
+            if (score > candidateScore) {
+                candidateScore = score;
+            }
+        }
+
+        if (candidateScore <= 0.0) {
+            return;
+        }
+
+        if (candidateScore > bestTargetScore) {
+            bestTargetScore = candidateScore;
+            teamTarget = candidate;
+        }
+    };
+
+    for (const StructureBase* pStructure : getStructureList()) {
+        evaluateCandidate(pStructure, config.getStructurePriority(pStructure->getItemID()));
+    }
+
+    for (const UnitBase* pEnemy : getUnitList()) {
+        if (pEnemy->getOwner() == myHouse) {
+            continue;
+        }
+        evaluateCandidate(pEnemy, config.getUnitPriority(pEnemy->getItemID()));
+    }
+
+    if (teamTarget == nullptr) {
+        ornithopterStrikeTeam.reset();
+        return false;
+    }
+
+    ornithopterStrikeTeam.reset();
+    ornithopterStrikeTeam.setTarget(teamTarget->getObjectID(), appliedThreshold);
+    const bool launched = ensureOrders(teamTarget);
+
+    if (launched) {
+        if (forceLastStandStrike) {
+            logDebug("Ornithopter strike launched despite threshold (last structure destroyed): ready=%d total=%d forcedThreshold=%d",
+                     readyOrnithopters, totalOrnithopters, appliedThreshold);
+        } else {
+            logDebug("Ornithopter strike launched: %d units (effective threshold %d)",
+                     totalOrnithopters, effectiveThreshold);
+        }
+    }
+
+    return launched;
+}
+
 
 void QuantBot::attack(int militaryValue) {
 
-	// Get config for this difficulty
-	const QuantBotConfig& config = getQuantBotConfig();
-	const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
+    // Get config for this difficulty
+    const QuantBotConfig& config = getQuantBotConfig();
+    const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
 
-	// Reset attack timer using config value
-	attackTimer = MILLI2CYCLES(config.attackTimerMs);
+    // Reset attack timer using config value
+    attackTimer = MILLI2CYCLES(config.attackTimerMs);
 
 	// Check if this difficulty is allowed to attack at all
 	if (!diffSettings.attackEnabled) {
@@ -1954,41 +2237,7 @@ void QuantBot::attack(int militaryValue) {
 		return;
 	}
 
-	// Ornithopter attack loop - check if enabled and threshold met
-	int ornithopterCount = getHouse()->getNumItems(Unit_Ornithopter);
-	if (diffSettings.ornithopterAttackEnabled && ornithopterCount > diffSettings.ornithopterAttackThreshold) {
-		Coord squadRallyPoint = findSquadRallyLocation();
-		const StructureBase* closestEnemyStructure = nullptr;
-		FixPoint closestDistance = FixPt_MAX;
-
-		// Find closest enemy structure to squad rally point
-		for (const StructureBase* pStructure : getStructureList()) {
-			if (pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
-				FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
-				if (distance < closestDistance) {
-					closestDistance = distance;
-					closestEnemyStructure = pStructure;
-				}
-			}
-		}
-
-		// If we found an enemy structure, send ornithopters to attack it
-		if (closestEnemyStructure != nullptr) {
-			for (const UnitBase* pUnit : getUnitList()) {
-				if (pUnit->getOwner() == getHouse() 
-					&& pUnit->getItemID() == Unit_Ornithopter
-					&& pUnit->isActive()
-					&& !pUnit->isBadlyDamaged()) {
-					doAttackObject(pUnit, closestEnemyStructure, true);
-				}
-			}
-			logDebug("Ornithopter attack: %d ornithopters sent (threshold: %d)", ornithopterCount, diffSettings.ornithopterAttackThreshold);
-		}
-	} else if (!diffSettings.ornithopterAttackEnabled) {
-		logDebug("Ornithopter attacks disabled for difficulty %d", static_cast<int>(difficulty));
-	} else if (ornithopterCount <= diffSettings.ornithopterAttackThreshold) {
-		logDebug("Ornithopter attack delayed: have %d, need >%d", ornithopterCount, diffSettings.ornithopterAttackThreshold);
-	}
+    tryLaunchOrnithopterStrike(diffSettings, config);
 
 	// Main attack loop - check military strength threshold from config
 	FixPoint attackThreshold = FixPoint(static_cast<int>(config.attackThresholdPercent * 100)) / 100;
@@ -2220,7 +2469,11 @@ void QuantBot::retreatAllUnits() {
         if (getHouse() == nullptr) {
             return;
         }
-        
+
+        const QuantBotConfig& config = getQuantBotConfig();
+        const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
+        tryLaunchOrnithopterStrike(diffSettings, config);
+
         Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
 
         for (const UnitBase* pUnit : getUnitList()) {
@@ -2284,153 +2537,22 @@ void QuantBot::retreatAllUnits() {
                 } break;
 
                 case Unit_Ornithopter: {
-                    const UnitBase* pOrnithopter = pUnit;
-                    
-                    // Check if ornithopter attacks are enabled for this difficulty
-                    const QuantBotConfig& config = getQuantBotConfig();
-                    const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
-                    
                     if (!diffSettings.ornithopterAttackEnabled) {
-                        // Ornithopter attacks disabled - only patrol defensively
-                        if (!pOrnithopter->hasATarget() && !pOrnithopter->wasForced()) {
+                        if (!pUnit->hasATarget() && !pUnit->wasForced()) {
                             Coord ownBaseCentre = findBaseCentre(getHouse()->getHouseID());
-                            if (ownBaseCentre.isValid() && ownBaseCentre != pOrnithopter->getGuardPoint()) {
-                                const_cast<UnitBase*>(pOrnithopter)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
+                            if (ownBaseCentre.isValid() && ownBaseCentre != pUnit->getGuardPoint()) {
+                                const_cast<UnitBase*>(pUnit)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
                             }
                         }
-                        break; // Exit early, don't execute attack logic below
-                    }
-                    
-                    // Calculate current military value for ornithopter attack decisions
-                    int militaryValue = 0;
-                    if (currentGame && getHouse()) {
-                        for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
-                            if (i != Unit_Carryall && i != Unit_Harvester && i != Unit_MCV && i != Unit_Sandworm) {
-                                militaryValue += getHouse()->getNumItems(i) * currentGame->objectData.data[i][getHouse()->getHouseID()].price;
+                    } else {
+                        if (!pUnit->hasATarget() && !pUnit->wasForced()) {
+                            Coord rally = findSquadRallyLocation();
+                            if (rally.isValid() && rally != pUnit->getGuardPoint()) {
+                                const_cast<UnitBase*>(pUnit)->setGuardPoint(rally.x, rally.y);
                             }
                         }
                     }
-                    
-                    // We have enough ornithopters, they should attack enemy structures
-                    // Safety: Check if unit has no target, or target is null, or target is not visible
-                    bool needsNewTarget = !pOrnithopter->hasATarget() 
-                        || pOrnithopter->getTarget() == nullptr 
-                        || !pOrnithopter->getTarget()->isVisible(getHouse()->getTeamID());
-                    
-                    if (needsNewTarget) {
-                        // Find closest enemy structure to squad rally point
-                        Coord squadRallyPoint = findSquadRallyLocation();
-                        const StructureBase* primaryTarget = nullptr;
-                        FixPoint closestDistance = FixPt_MAX;
-
-                        for (const StructureBase* pStructure : getStructureList()) {
-                            if (pStructure && pStructure->getOwner() != nullptr 
-                                && pStructure->getOwner()->getTeamID() != getHouse()->getTeamID()) {
-                                FixPoint distance = blockDistance(squadRallyPoint, pStructure->getLocation());
-                                if (distance < closestDistance) {
-                                    closestDistance = distance;
-                                    primaryTarget = pStructure;
-                                }
-                            }
-                        }
-
-                        if (primaryTarget != nullptr && primaryTarget->getOwner() != nullptr) {
-                            // Count rocket turrets belonging to the same player as our target
-                            int targetPlayerRocketTurrets = 0;
-                            for (const StructureBase* pStructure : getStructureList()) {
-                                if (pStructure && pStructure->getOwner() != nullptr 
-                                    && pStructure->getOwner()->getHouseID() == primaryTarget->getOwner()->getHouseID()
-                                    && pStructure->getItemID() == Structure_RocketTurret) {
-                                    targetPlayerRocketTurrets++;
-                                }
-                            }
-                            
-                            // Only attack if we have enough ornithopters for this specific player's defenses
-                            // Minimum ornithopters based on difficulty, plus extra for enemy rocket turrets
-                            int minOrnithopters = 1; // Easy
-                            if (difficulty == Difficulty::Medium) {
-                                minOrnithopters = 2;
-                            } else if (difficulty == Difficulty::Hard) {
-                                minOrnithopters = 3;
-                            } else if (difficulty == Difficulty::Brutal) {
-                                minOrnithopters = 4;
-                            }
-                            
-                            int requiredOrnithopters = std::max(minOrnithopters, targetPlayerRocketTurrets + 1);
-                            
-                            // Calculate current ornithopter percentage of total military units
-                            int totalMilitaryUnits = 0;
-                            int ornithopterCount = getHouse()->getNumItems(Unit_Ornithopter);
-                            
-                            // Count all military units (excluding harvesters, MCVs, carryalls)
-                            for (Uint32 i = Unit_FirstID; i <= Unit_LastID; i++) {
-                                if (i != Unit_Carryall && i != Unit_Harvester && i != Unit_MCV && i != Unit_Sandworm) {
-                                    totalMilitaryUnits += getHouse()->getNumItems(i);
-                                }
-                            }
-                            
-                            // Calculate ornithopter percentage
-                            FixPoint ornithopterPercentage = 0;
-                            if (totalMilitaryUnits > 0) {
-                                ornithopterPercentage = FixPoint(ornithopterCount) / FixPoint(totalMilitaryUnits);
-                            }
-                            
-                            // New condition: attack if ornithopters > 20% of troops AND military value >= 40% of limit
-                            bool hasEnoughOrnithoptersVsTurrets = (ornithopterCount >= requiredOrnithopters);
-                            bool hasHighOrnithopterRatio = (ornithopterPercentage > 0.20_fix) && (militaryValue >= militaryValueLimit * 0.40_fix);
-                            
-                            if (hasEnoughOrnithoptersVsTurrets) {
-                                logDebug("Ornithopter attack: sufficient vs turrets - ornis: %d >= required: %d", ornithopterCount, requiredOrnithopters);
-                            } else if (hasHighOrnithopterRatio) {
-                                logDebug("Ornithopter attack: high ratio condition - orni%%: %.1f%% (>20%%), mval: %d/%d (%.1f%% >= 40%%)", 
-                                    ornithopterPercentage.toFloat() * 100.0f, militaryValue, militaryValueLimit, 
-                                    (FixPoint(militaryValue) / FixPoint(militaryValueLimit)).toFloat() * 100.0f);
-                            }
-                            
-                            if (hasEnoughOrnithoptersVsTurrets || hasHighOrnithopterRatio) {
-                                // Check if any rocket turrets are in range of the nearest enemy building
-                                const StructureBase* rocketTurretTarget = nullptr;
-                                int rocketTurretRange = 0;
-                                if (currentGame) {
-                                    rocketTurretRange = currentGame->objectData.data[Structure_RocketTurret][getHouse()->getHouseID()].weaponrange;
-                                }
-                                
-                                for (const StructureBase* pTurret : getStructureList()) {
-                                    if (pTurret && pTurret->getOwner() != nullptr
-                                        && pTurret->getOwner()->getTeamID() != getHouse()->getTeamID() 
-                                        && pTurret->getItemID() == Structure_RocketTurret) {
-                                        FixPoint distanceToNearestBuilding = blockDistance(pTurret->getLocation(), primaryTarget->getLocation());
-                                        if (distanceToNearestBuilding <= rocketTurretRange) {
-                                            rocketTurretTarget = pTurret;
-                                            break; // Prioritize first rocket turret found in range
-                                        }
-                                    }
-                                }
-
-                                // Choose target: prioritize rocket turrets in range, otherwise use nearest building
-                                const StructureBase* finalTarget = rocketTurretTarget ? rocketTurretTarget : primaryTarget;
-                                doAttackObject(pOrnithopter, finalTarget, true);
-                            } else {
-                                // Not enough ornithopters to attack this specific player - patrol defensively
-                                if (!pOrnithopter->hasATarget() && !pOrnithopter->wasForced()) {
-                                    Coord ownBaseCentre = findBaseCentre(getHouse()->getHouseID());
-                                    if (ownBaseCentre.isValid() && ownBaseCentre != pOrnithopter->getGuardPoint()) {
-                                        const_cast<UnitBase*>(pOrnithopter)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
-                                    }
-                                }
-                            }
-                        } else {
-                            // No enemy structures found at all - patrol defensively
-                            if (!pOrnithopter->hasATarget() && !pOrnithopter->wasForced()) {
-                                Coord ownBaseCentre = findBaseCentre(getHouse()->getHouseID());
-                                if (ownBaseCentre.isValid() && ownBaseCentre != pOrnithopter->getGuardPoint()) {
-                                    const_cast<UnitBase*>(pOrnithopter)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
-                                }
-                            }
-						}
-					}
-				// Note: Defensive behavior (patrolling own base) is handled above in the various else clauses
-			} break;
+                } break;
 
                 default: {
 

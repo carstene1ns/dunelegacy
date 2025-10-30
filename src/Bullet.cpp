@@ -26,7 +26,6 @@
 #include <Map.h>
 #include <House.h>
 #include <Explosion.h>
-#include <units/AirUnit.h>
 
 #include <misc/draw_util.h>
 #include <misc/exceptions.h>
@@ -163,7 +162,7 @@ void Bullet::init()
         case Bullet_TurretRocket: {
             damageRadius = TILESIZE/2;
             speed = 20;
-            detonationTimer = 312;  // Explode after 312 cycles (5 seconds at 16ms/cycle) to give more chase time
+            detonationTimer = -1;
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
         } break;
@@ -372,27 +371,14 @@ void Bullet::update()
         if(detonationTimer > 0) {
             detonationTimer--;
         }
-        
-        // FIX: Check detonation timer for TurretRockets outside "reached destination" block
-        // This ensures turret rockets explode after their timer expires even if they never reach the target
-        // NOTE: Only applies to TurretRocket - launchers (Bullet_Rocket) use the old logic
-        if(bulletID == Bullet_TurretRocket && detonationTimer == 0) {
-            destroy();
-            return;
-        }
-        
-        // FIX: Add proximity fuse for TurretRocket vs FLYING units ONLY
-        // For ground units, turret rockets use the normal 4-pixel explosion (same as launchers)
-        if(bulletID == Bullet_TurretRocket && target.getObjPointer()) {
+
+        // Hybrid air proximity fuse: when chasing flying units, arm a short timer once close enough
+        if(bulletID == Bullet_TurretRocket && detonationTimer < 0 && target.getObjPointer()) {
             ObjectBase* pTarget = target.getObjPointer();
-            if(pTarget && pTarget->isActive() && pTarget->isAFlyingUnit()) {
-                const Coord bulletPos = Coord(lround(realX), lround(realY));
-                const FixPoint distance = distanceFrom(bulletPos, pTarget->getCenterPoint());
-                // Detonate if within damage radius (proximity fuse)
-                // Damage radius is TILESIZE/2 (16px), so detonate when within that range
-                if(distance <= TILESIZE/2) {
-                    destroy();
-                    return;
+            if(pTarget && pTarget->isAFlyingUnit()) {
+                const FixPoint distanceToTarget = distanceFrom(Coord(lround(realX), lround(realY)), pTarget->getCenterPoint());
+                if(distanceToTarget <= 24) {
+                    detonationTimer = 5;
                 }
             }
         }
@@ -431,10 +417,10 @@ void Bullet::update()
             return;
         } else if(oldDistanceToDestination < newDistanceToDestination || newDistanceToDestination < 4)  {
 
-            if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) {
+            if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
                 if(detonationTimer == 0) {
                     destroy();
-                return;
+                    return;
                 }
             } else {
                 realX = destination.x;
@@ -516,4 +502,3 @@ void Bullet::destroy()
     bulletList.remove(this);
     delete this;
 }
-

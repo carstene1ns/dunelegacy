@@ -20,8 +20,10 @@
 
 #include <players/Player.h>
 #include <units/MCV.h>
+#include <players/QuantBotConfig.h>
 
 #include <DataTypes.h>
+#include <set>
 
 class QuantBot : public Player
 {
@@ -55,6 +57,27 @@ public:
 
 private:
 
+    struct OrnithopterStrikeTeam {
+        int minMembers = 0;
+        Uint32 targetId = 0;
+        std::set<Uint32> memberIds;
+
+        bool isActive() const {
+            return targetId != 0 && !memberIds.empty();
+        }
+
+        void reset() {
+            minMembers = 0;
+            targetId = 0;
+            memberIds.clear();
+        }
+
+        void setTarget(Uint32 newTargetId, int requiredMembers) {
+            targetId = newTargetId;
+            minMembers = requiredMembers;
+        }
+    };
+
     Difficulty difficulty;  ///< difficulty level
     GameMode  gameMode;     ///< game mode (custom or campaign)
     Sint32  buildTimer;     ///< When to build the next structure/unit
@@ -69,6 +92,7 @@ private:
     bool campaignAIAttackFlag = false;
     Coord squadRallyLocation = Coord::Invalid();
     Coord squadRetreatLocation = Coord::Invalid();
+    bool heavyFactoryRushActive = false;
 
     void scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits = std::numeric_limits<int>::max());
 
@@ -82,7 +106,11 @@ private:
     Coord findSquadRallyLocation();
     Coord findSquadRetreatLocation();
 
+    bool tryLaunchOrnithopterStrike(const QuantBotConfig::DifficultySettings& diffSettings,
+                                    const QuantBotConfig& config);
+
     std::list<Coord> placeLocations;    ///< Where to place structures
+    OrnithopterStrikeTeam ornithopterStrikeTeam;
 
     void checkAllUnits();
     void retreatAllUnits();

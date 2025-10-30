@@ -19,13 +19,22 @@
 #define QUANTBOTCONFIG_H
 
 #include <DataTypes.h>
+#include <data.h>
+
+#include <map>
 #include <string>
+#include <unordered_map>
 
 /**
  * Configuration structure for QuantBot AI behavior.
  * All settings can be customized via "QuantBot Config.ini" in the user config directory.
  */
 struct QuantBotConfig {
+
+    struct TargetPriority {
+        int build = 0;
+        int target = 0;
+    };
     
     // === Difficulty-specific settings ===
     struct DifficultySettings {
@@ -80,6 +89,12 @@ struct QuantBotConfig {
     int attackTimerMs;              // Time between attack checks (milliseconds)
     float attackThresholdPercent;   // Don't attack until military reaches this % of limit (0.0-1.0)
     int minMoneyForProduction;      // Minimum money needed to queue production
+
+    // Priority tables (configurable)
+    const TargetPriority& getStructurePriority(int structureID) const;
+    const TargetPriority& getUnitPriority(int unitID) const;
+    const TargetPriority* findStructurePriority(const std::string& name) const;
+    const TargetPriority* findUnitPriority(const std::string& name) const;
     
     // Constructor with default values
     QuantBotConfig();
@@ -100,6 +115,23 @@ struct QuantBotConfig {
     // Logging and verification
     void logSettings() const;
     std::string getConfigHash() const;  // For multiplayer consistency check
+
+    static std::string normalizeKey(const std::string& value);
+
+private:
+    void registerStructurePriority(int structureID, const std::string& name, int build, int target);
+    void registerUnitPriority(int unitID, const std::string& name, int build, int target);
+
+    std::map<std::string, TargetPriority> structurePriorities;
+    std::map<std::string, TargetPriority> unitPriorities;
+
+    std::unordered_map<std::string, std::string> normalizedStructureNames;
+    std::unordered_map<std::string, std::string> normalizedUnitNames;
+
+    std::unordered_map<int, std::string> structureIdToName;
+    std::unordered_map<int, std::string> unitIdToName;
+
+    mutable TargetPriority defaultPriority;
 };
 
 // Global instance (initialized on first use)
@@ -113,4 +145,3 @@ std::string getObjectDataFilepath();
 std::string getObjectDataHash();
 
 #endif // QUANTBOTCONFIG_H
-

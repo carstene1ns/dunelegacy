@@ -256,6 +256,17 @@ void ObjectBase::handleDamage(int damage, Uint32 damagerID, House* damagerOwner)
         musicPlayer->changeMusic(MUSIC_ATTACK);
     }
 
+    if (damagerOwner != nullptr && damage != 0) {
+        ObjectBase* pDamager = currentGame->getObjectManager().getObject(damagerID);
+        if (pDamager != nullptr) {
+            int appliedDamage = damage;
+            if (damagerOwner == getOwner()) {
+                appliedDamage *= -1;
+            }
+            damagerOwner->informHasDamaged(pDamager->getItemID(), appliedDamage);
+        }
+    }
+
     getOwner()->noteDamageLocation(this, damage, damagerID);
 }
 

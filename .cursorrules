@@ -2,10 +2,22 @@
 
 ## Project Overview
 This is Dune Legacy, a modernized clone of Westwood Studios' "Dune 2" real-time strategy game.
-- Version: 0.98.4
+
+### Current Development Setup (Dual Version for Regression Testing)
+- **Current Version (0.98.6)**: `/Users/stefanvanderwel/development/dune/dunelegacy/`
+- **Reference Version (0.97.5)**: `/Users/stefanvanderwel/development/dune/dunelegacy-code-0.97.5/`
+- **Purpose**: Compare versions to identify and fix regressions introduced via vibe coding
 - Platform: Cross-platform (Windows, macOS, Linux)
 - Language: C++17
 - Graphics: SDL2, SDL2_mixer, SDL2_ttf
+
+### Version Comparison Guidelines
+When reviewing code or fixing bugs:
+1. **Check both versions** - Compare implementations between 0.98.6 and 0.97.5
+2. **Identify regressions** - Look for functionality that worked in 0.97.5 but is broken in 0.98.6
+3. **Understand changes** - Review what changed between versions and why
+4. **Preserve working code** - Don't modify code that was working correctly in 0.97.5
+5. **Reference paths clearly** - Always specify which version when discussing code
 
 ## Development Environment
 

@@ -24,10 +24,13 @@
 #include <data.h>
 #include <globals.h>
 
+#include <algorithm>
+#include <cctype>
 #include <climits>
 #include <cstdint>
 #include <fstream>
 #include <functional>
+#include <unordered_set>
 
 // Constructor with default values
 QuantBotConfig::QuantBotConfig() {
@@ -139,9 +142,52 @@ QuantBotConfig::QuantBotConfig() {
     // Mercenary - Balanced across all unit types
     unitRatios.mercenary.tank = 0.30f;
     unitRatios.mercenary.siegeTank = 0.30f;
-    unitRatios.mercenary.launcher = 0.30f;
+   unitRatios.mercenary.launcher = 0.30f;
     unitRatios.mercenary.special = 0.05f;
     unitRatios.mercenary.ornithopter = 0.10f;
+
+    // === TARGET PRIORITY TABLES (defaults mirror original game weights) ===
+    registerStructurePriority(Structure_Slab1, "Slab1", 0, 5);
+    registerStructurePriority(Structure_Slab4, "Slab4", 0, 10);
+    registerStructurePriority(Structure_Palace, "Palace", 0, 400);
+    registerStructurePriority(Structure_LightFactory, "LightFactory", 0, 200);
+    registerStructurePriority(Structure_HeavyFactory, "HeavyFactory", 0, 600);
+    registerStructurePriority(Structure_HighTechFactory, "HighTechFactory", 0, 200);
+    registerStructurePriority(Structure_IX, "IX", 0, 100);
+    registerStructurePriority(Structure_WOR, "WOR", 0, 175);
+    registerStructurePriority(Structure_ConstructionYard, "ConstructionYard", 0, 300);
+    registerStructurePriority(Structure_WindTrap, "WindTrap", 0, 300);
+    registerStructurePriority(Structure_Barracks, "Barracks", 0, 100);
+    registerStructurePriority(Structure_StarPort, "StarPort", 0, 250);
+    registerStructurePriority(Structure_Refinery, "Refinery", 0, 300);
+    registerStructurePriority(Structure_RepairYard, "RepairYard", 0, 600);
+    registerStructurePriority(Structure_Wall, "Wall", 0, 30);
+    registerStructurePriority(Structure_GunTurret, "GunTurret", 75, 150);
+    registerStructurePriority(Structure_RocketTurret, "RocketTurret", 100, 75);
+    registerStructurePriority(Structure_Silo, "Silo", 0, 150);
+    registerStructurePriority(Structure_Radar, "Radar", 0, 275);
+
+    registerUnitPriority(Unit_Carryall, "Carryall", 20, 16);
+    registerUnitPriority(Unit_Devastator, "Devastator", 175, 180);
+    registerUnitPriority(Unit_Deviator, "Deviator", 50, 175);
+    registerUnitPriority(Unit_Frigate, "Frigate", 0, 0);
+    registerUnitPriority(Unit_Harvester, "Harvester", 10, 150);
+    registerUnitPriority(Unit_Soldier, "Soldier", 10, 10);
+    registerUnitPriority(Unit_Launcher, "Launcher", 100, 150);
+    registerUnitPriority(Unit_MCV, "MCV", 10, 150);
+    registerUnitPriority(Unit_Ornithopter, "Ornithopter", 75, 30);
+    registerUnitPriority(Unit_Quad, "Quad", 60, 60);
+    registerUnitPriority(Unit_Saboteur, "Saboteur", 0, 700);
+    registerUnitPriority(Unit_Sandworm, "Sandworm", 0, 0);
+    registerUnitPriority(Unit_SiegeTank, "SiegeTank", 130, 150);
+    registerUnitPriority(Unit_SonicTank, "SonicTank", 80, 110);
+    registerUnitPriority(Unit_Tank, "Tank", 80, 100);
+    registerUnitPriority(Unit_Trike, "Trike", 50, 50);
+    registerUnitPriority(Unit_RaiderTrike, "RaiderTrike", 55, 60);
+    registerUnitPriority(Unit_Trooper, "Trooper", 20, 30);
+    registerUnitPriority(Unit_Special, "Special", 0, 0);
+    registerUnitPriority(Unit_Infantry, "Infantry", 20, 20);
+    registerUnitPriority(Unit_Troopers, "Troopers", 50, 50);
     
     // === GENERAL AI BEHAVIOR ===
     attackTimerMs = 15000;                      // 15 seconds between attacks
@@ -201,6 +247,97 @@ static void loadUnitRatios(const INIFile& iniFile, const std::string& section,
     ratios.ornithopter = static_cast<float>(iniFile.getDoubleValue(section, prefix + "_Ornithopter", ratios.ornithopter));
 }
 
+std::string QuantBotConfig::normalizeKey(const std::string& value) {
+    std::string result = value;
+    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
+        return static_cast<char>(std::toupper(c));
+    });
+    return result;
+}
+
+void QuantBotConfig::registerStructurePriority(int structureID, const std::string& name, int build, int target) {
+    structurePriorities[name] = TargetPriority{build, target};
+    normalizedStructureNames[normalizeKey(name)] = name;
+    if (structureID >= Structure_FirstID && structureID <= Structure_LastID) {
+        structureIdToName[structureID] = name;
+    }
+}
+
+void QuantBotConfig::registerUnitPriority(int unitID, const std::string& name, int build, int target) {
+    unitPriorities[name] = TargetPriority{build, target};
+    normalizedUnitNames[normalizeKey(name)] = name;
+    if (unitID >= Unit_FirstID && unitID <= Unit_LastID) {
+        unitIdToName[unitID] = name;
+    }
+}
+
+static void savePriorities(INIFile& iniFile,
+                           const std::string& section,
+                           const std::map<std::string, QuantBotConfig::TargetPriority>& priorities) {
+    for (const auto& entry : priorities) {
+        const std::string& key = entry.first;
+        const auto& values = entry.second;
+        iniFile.setIntValue(section, key + "_Build", values.build);
+        iniFile.setIntValue(section, key + "_Target", values.target);
+    }
+}
+
+static void loadPriorities(const INIFile& iniFile,
+                           const std::string& section,
+                           std::map<std::string, QuantBotConfig::TargetPriority>& priorities,
+                           std::unordered_map<std::string, std::string>& lookup,
+                           bool& changed) {
+    std::unordered_set<std::string> seenNames;
+
+    if (!iniFile.hasSection(section)) {
+        changed = true;
+        return;
+    }
+
+    for (auto it = iniFile.begin(section); it != iniFile.end(section); ++it) {
+        std::string keyName = it->getKeyName();
+        int value = it->getIntValue(0);
+
+        const size_t sep = keyName.find_last_of('_');
+        if (sep == std::string::npos) {
+            continue;
+        }
+
+        std::string entryName = keyName.substr(0, sep);
+        std::string entryField = keyName.substr(sep + 1);
+
+        std::string normalizedName = QuantBotConfig::normalizeKey(entryName);
+        auto lookupIt = lookup.find(normalizedName);
+        std::string displayName;
+
+        if (lookupIt != lookup.end()) {
+            displayName = lookupIt->second;
+        } else {
+            displayName = entryName;
+            lookup[normalizedName] = displayName;
+            priorities[displayName] = QuantBotConfig::TargetPriority{};
+            changed = true;
+        }
+
+        seenNames.insert(displayName);
+        auto& priority = priorities[displayName];
+
+        std::string normalizedField = QuantBotConfig::normalizeKey(entryField);
+        if (normalizedField == "BUILD") {
+            priority.build = value;
+        } else if (normalizedField == "TARGET") {
+            priority.target = value;
+        }
+    }
+
+    for (const auto& entry : priorities) {
+        if (seenNames.find(entry.first) == seenNames.end()) {
+            changed = true;
+            break;
+        }
+    }
+}
+
 bool QuantBotConfig::save(const std::string& filepath) const {
     try {
         INIFile iniFile(true, "QuantBot AI Configuration");
@@ -224,6 +361,10 @@ bool QuantBotConfig::save(const std::string& filepath) const {
         iniFile.setIntValue("General Behavior", "AttackTimerMs", attackTimerMs);
         iniFile.setDoubleValue("General Behavior", "AttackThresholdPercent", attackThresholdPercent);
         iniFile.setIntValue("General Behavior", "MinMoneyForProduction", minMoneyForProduction);
+
+        // === TARGET PRIORITIES ===
+        savePriorities(iniFile, "Structure Priorities", structurePriorities);
+        savePriorities(iniFile, "Unit Priorities", unitPriorities);
         
         // Save to file
         if (!iniFile.saveChangesTo(filepath)) {
@@ -270,6 +411,16 @@ bool QuantBotConfig::load(const std::string& filepath) {
         attackTimerMs = iniFile.getIntValue("General Behavior", "AttackTimerMs", attackTimerMs);
         attackThresholdPercent = static_cast<float>(iniFile.getDoubleValue("General Behavior", "AttackThresholdPercent", attackThresholdPercent));
         minMoneyForProduction = iniFile.getIntValue("General Behavior", "MinMoneyForProduction", minMoneyForProduction);
+
+        bool needsSave = false;
+
+        // === LOAD TARGET PRIORITIES ===
+        loadPriorities(iniFile, "Structure Priorities", structurePriorities, normalizedStructureNames, needsSave);
+        loadPriorities(iniFile, "Unit Priorities", unitPriorities, normalizedUnitNames, needsSave);
+
+        if (needsSave) {
+            save(filepath);
+        }
         
         SDL_Log("QuantBot config loaded from: %s", filepath.c_str());
         return true;
@@ -314,6 +465,60 @@ const QuantBotConfig::UnitRatios& QuantBotConfig::getRatios(int houseID) const {
         case HOUSE_MERCENARY: return unitRatios.mercenary;
         default: return unitRatios.mercenary;
     }
+}
+
+const QuantBotConfig::TargetPriority& QuantBotConfig::getStructurePriority(int structureID) const {
+    auto it = structureIdToName.find(structureID);
+    if (it != structureIdToName.end()) {
+        auto priIt = structurePriorities.find(it->second);
+        if (priIt != structurePriorities.end()) {
+            return priIt->second;
+        }
+    }
+    return defaultPriority;
+}
+
+const QuantBotConfig::TargetPriority& QuantBotConfig::getUnitPriority(int unitID) const {
+    auto it = unitIdToName.find(unitID);
+    if (it != unitIdToName.end()) {
+        auto priIt = unitPriorities.find(it->second);
+        if (priIt != unitPriorities.end()) {
+            return priIt->second;
+        }
+    }
+    return defaultPriority;
+}
+
+const QuantBotConfig::TargetPriority* QuantBotConfig::findStructurePriority(const std::string& name) const {
+    std::string normalized = normalizeKey(name);
+    auto lookupIt = normalizedStructureNames.find(normalized);
+    if (lookupIt != normalizedStructureNames.end()) {
+        auto priIt = structurePriorities.find(lookupIt->second);
+        if (priIt != structurePriorities.end()) {
+            return &priIt->second;
+        }
+    }
+    auto directIt = structurePriorities.find(name);
+    if (directIt != structurePriorities.end()) {
+        return &directIt->second;
+    }
+    return nullptr;
+}
+
+const QuantBotConfig::TargetPriority* QuantBotConfig::findUnitPriority(const std::string& name) const {
+    std::string normalized = normalizeKey(name);
+    auto lookupIt = normalizedUnitNames.find(normalized);
+    if (lookupIt != normalizedUnitNames.end()) {
+        auto priIt = unitPriorities.find(lookupIt->second);
+        if (priIt != unitPriorities.end()) {
+            return &priIt->second;
+        }
+    }
+    auto directIt = unitPriorities.find(name);
+    if (directIt != unitPriorities.end()) {
+        return &directIt->second;
+    }
+    return nullptr;
 }
 
 // Global instance
@@ -410,6 +615,18 @@ void QuantBotConfig::logSettings() const {
     SDL_Log("AttackThresholdPercent: %.2f", attackThresholdPercent);
     SDL_Log("MinMoneyForProduction: %d", minMoneyForProduction);
     SDL_Log("%s", "");
+
+    SDL_Log("=== STRUCTURE PRIORITIES ===");
+    for (const auto& entry : structurePriorities) {
+        SDL_Log("%s: build=%d target=%d", entry.first.c_str(), entry.second.build, entry.second.target);
+    }
+    SDL_Log("%s", "");
+
+    SDL_Log("=== UNIT PRIORITIES ===");
+    for (const auto& entry : unitPriorities) {
+        SDL_Log("%s: build=%d target=%d", entry.first.c_str(), entry.second.build, entry.second.target);
+    }
+    SDL_Log("%s", "");
     
     SDL_Log("=== UNIT RATIOS (same for all difficulties) ===");
     SDL_Log("Atreides:  Tank=%.2f Siege=%.2f Launcher=%.2f Special=%.2f Orni=%.2f",
@@ -475,7 +692,21 @@ std::string QuantBotConfig::getConfigHash() const {
     addRatios("Fre", unitRatios.fremen);
     addRatios("Sar", unitRatios.sardaukar);
     addRatios("Mer", unitRatios.mercenary);
-    
+
+    for (const auto& entry : structurePriorities) {
+        configStr += "SP";
+        configStr += entry.first;
+        configStr += std::to_string(entry.second.build);
+        configStr += std::to_string(entry.second.target);
+    }
+
+    for (const auto& entry : unitPriorities) {
+        configStr += "UP";
+        configStr += entry.first;
+        configStr += std::to_string(entry.second.build);
+        configStr += std::to_string(entry.second.target);
+    }
+
     // General behavior
     configStr += std::to_string(attackTimerMs);
     configStr += std::to_string(attackThresholdPercent);
@@ -494,4 +725,3 @@ std::string QuantBotConfig::getConfigHash() const {
     snprintf(hashStr, sizeof(hashStr), "%016llx", (unsigned long long)hash);
     return std::string(hashStr);
 }
-

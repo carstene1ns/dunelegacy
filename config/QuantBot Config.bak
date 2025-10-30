@@ -80,8 +80,8 @@ Easy_MilitaryValueLimitLargeMap=20000
 
 # === MEDIUM - Ground units attack, ornithopters defend only ===
 Medium_AttackEnabled=1
-Medium_OrnithopterAttackEnabled=0
-Medium_OrnithopterAttackThreshold=999
+Medium_OrnithopterAttackEnabled=1
+Medium_OrnithopterAttackThreshold=1
 # Campaign: 2 harvesters per refinery, 1.5x initial military (minimum 4000 at mission 21+)
 Medium_HarvesterLimitMultiplier=2
 Medium_MilitaryValueMultiplier=1.5
@@ -96,7 +96,7 @@ Medium_MilitaryValueLimitLargeMap=35000
 # === HARD - Full aggression ===
 Hard_AttackEnabled=1
 Hard_OrnithopterAttackEnabled=1
-Hard_OrnithopterAttackThreshold=1
+Hard_OrnithopterAttackThreshold=2
 # Campaign: 2 harvesters per refinery, 2.0x initial military (fixed 10000 at mission 21+)
 Hard_HarvesterLimitMultiplier=2
 Hard_MilitaryValueMultiplier=2.0
@@ -188,6 +188,99 @@ Mercenary_Special=0.05
 Mercenary_Ornithopter=0.10
 
 # ============================================================================
+# TARGET PRIORITIES
+# ============================================================================
+# These weights mirror the original game. Higher numbers make a target more attractive.
+# Scores are computed as (Build + Target) / distance.
+# This is being used for Ornithopter targeting initially and may be extended
+# to ground force target selection as well, it could also be considered for
+# building prioritisation
+
+[Structure Priorities]
+Slab1_Build=0
+Slab1_Target=5
+Slab4_Build=0
+Slab4_Target=10
+Palace_Build=0
+Palace_Target=400
+LightFactory_Build=0
+LightFactory_Target=200
+HeavyFactory_Build=0
+HeavyFactory_Target=600
+HighTechFactory_Build=0
+HighTechFactory_Target=200
+IX_Build=0
+IX_Target=100
+WOR_Build=0
+WOR_Target=175
+ConstructionYard_Build=0
+ConstructionYard_Target=300
+WindTrap_Build=0
+WindTrap_Target=300
+Barracks_Build=0
+Barracks_Target=100
+StarPort_Build=0
+StarPort_Target=250
+Refinery_Build=0
+Refinery_Target=300
+RepairYard_Build=0
+RepairYard_Target=600
+Wall_Build=0
+Wall_Target=30
+GunTurret_Build=75
+GunTurret_Target=150
+RocketTurret_Build=100
+RocketTurret_Target=75
+Silo_Build=0
+Silo_Target=150
+Radar_Build=0
+Radar_Target=275
+
+[Unit Priorities]
+Carryall_Build=20
+Carryall_Target=16
+Devastator_Build=175
+Devastator_Target=180
+Deviator_Build=50
+Deviator_Target=175
+Frigate_Build=0
+Frigate_Target=0
+Harvester_Build=10
+Harvester_Target=150
+Soldier_Build=10
+Soldier_Target=10
+Launcher_Build=100
+Launcher_Target=150
+MCV_Build=10
+MCV_Target=150
+Ornithopter_Build=75
+Ornithopter_Target=30
+Quad_Build=60
+Quad_Target=60
+Saboteur_Build=0
+Saboteur_Target=700
+Sandworm_Build=0
+Sandworm_Target=0
+SiegeTank_Build=130
+SiegeTank_Target=150
+SonicTank_Build=80
+SonicTank_Target=110
+Tank_Build=80
+Tank_Target=100
+Trike_Build=50
+Trike_Target=50
+RaiderTrike_Build=55
+RaiderTrike_Target=60
+Trooper_Build=20
+Trooper_Target=30
+Special_Build=0
+Special_Target=0
+Infantry_Build=20
+Infantry_Target=20
+Troopers_Build=50
+Troopers_Target=50
+
+# ============================================================================
 # GENERAL AI BEHAVIOR
 # ============================================================================
 #
@@ -201,4 +294,3 @@ Mercenary_Ornithopter=0.10
 AttackTimerMs=15000
 AttackThresholdPercent=0.30
 MinMoneyForProduction=500
-

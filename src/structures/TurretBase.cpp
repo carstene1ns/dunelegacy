@@ -27,6 +27,12 @@
 
 #include <players/HumanPlayer.h>
 
+namespace {
+const FixPoint kRocketTurretFireTolerance = 15.0_fix / 45.0_fix; // ~15 degrees in turret-angle units
+const FixPoint kHalfCircle = 4_fix;  // 8 directions => half-circle is 4 units
+const FixPoint kFullCircle = 8_fix;
+}
+
 TurretBase::TurretBase(House* newOwner) : StructureBase(newOwner)
 {
     TurretBase::init();
@@ -101,14 +107,21 @@ void TurretBase::updateStructureSpecificStuff() {
                 }
             }
 
-            // FIX: Allow ±1 angle tolerance for firing to handle fast-moving targets
-            // Calculate angular difference considering wrap-around (0 and 7 are adjacent)
-            int angleDiff = abs(drawnAngle - wantedAngle);
-            if(angleDiff > NUM_ANGLES/2) {
-                angleDiff = NUM_ANGLES - angleDiff;
+            bool shouldFire = false;
+            if(bulletType == Bullet_TurretRocket) {
+                FixPoint desiredAngle = FixPoint(wantedAngle);
+                FixPoint angleDelta = FixPoint::abs(angle - desiredAngle);
+                if(angleDelta > kHalfCircle) {
+                    angleDelta = kFullCircle - angleDelta;
+                }
+                if(angleDelta <= kRocketTurretFireTolerance) {
+                    shouldFire = true;
+                }
+            } else if(drawnAngle == wantedAngle) {
+                shouldFire = true;
             }
-            
-            if(angleDiff <= 1) {
+
+            if(shouldFire) {
                 attack();
             }
 
