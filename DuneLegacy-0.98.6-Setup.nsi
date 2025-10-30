@@ -8,7 +8,7 @@
 ;General
 
   Name "Dune Legacy"
-  OutFile "build\installer\Dune Legacy 0.98.6.3 Setup.exe"
+  OutFile "build\installer\Dune Legacy 0.98.6.4 Setup.exe"
   Unicode True
 
   ;Default installation folder
@@ -71,21 +71,21 @@ Section "Dune Legacy" GameFiles
 
   ; Maps
   SetOutPath "$INSTDIR\maps\singleplayer"
-  File "data\maps\singleplayer\*.*"
+  File "bin\Release-x64\maps\singleplayer\*.*"
 
   SetOutPath "$INSTDIR\maps\multiplayer"
-  File "data\maps\multiplayer\*.ini"
+  File "bin\Release-x64\maps\multiplayer\*.ini"
 
   ; Locale files
   SetOutPath "$INSTDIR\locale"
-  File "data\locale\*.po"
+  File "bin\Release-x64\locale\*.po"
 
   ; Config template files
   SetOutPath "$INSTDIR\config"
-  File "config\Dune Legacy.ini"
-  File "config\ObjectData.ini"
-  File "config\QuantBot Config.ini"
-  File "config\README.md"
+  File "bin\Release-x64\config\Dune Legacy.ini"
+  File "bin\Release-x64\config\ObjectData.ini"
+  File "bin\Release-x64\config\QuantBot Config.ini"
+  File "bin\Release-x64\config\README.md"
 
   ; Store installation folder
   WriteRegStr HKCU "Software\Dune Legacy" "" $INSTDIR
