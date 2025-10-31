@@ -49,6 +49,21 @@ Bullet::Bullet(Uint32 shooterID, Coord* newRealLocation, Coord* newRealDestinati
 
     Bullet::init();
 
+    if(bulletID == Bullet_TurretRocket) {
+        const ObjectBase* pInitialTarget = target.getObjPointer();
+        if(pInitialTarget && pInitialTarget->isAFlyingUnit()) {
+            detonationTimer = 120;
+        } else {
+            detonationTimer = 60;
+        }
+    } else if((bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_SmallRocket)
+              && detonationTimer > 0) {
+        const ObjectBase* pInitialTarget = target.getObjPointer();
+        if(pInitialTarget && pInitialTarget->isAFlyingUnit()) {
+            detonationTimer *= 2;
+        }
+    }
+
     destination = *newRealDestination;
 
     if(bulletID == Bullet_Sonic) {
@@ -137,7 +152,7 @@ void Bullet::init()
     switch(bulletID) {
         case Bullet_DRocket: {
             damageRadius = TILESIZE/2;
-            speed = 20;
+            speed = 25.6_fix;
             detonationTimer = 19;
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
@@ -145,7 +160,7 @@ void Bullet::init()
 
         case Bullet_LargeRocket: {
             damageRadius = TILESIZE;
-            speed = 20;
+            speed = 32.0_fix;
             detonationTimer = -1;
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_LargeRocket, houseID);
@@ -153,7 +168,7 @@ void Bullet::init()
 
         case Bullet_Rocket: {
             damageRadius = TILESIZE/2;
-            speed = 17.5_fix;
+            speed = 25.6_fix;
             detonationTimer = 22;
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
@@ -161,8 +176,8 @@ void Bullet::init()
 
         case Bullet_TurretRocket: {
             damageRadius = TILESIZE/2;
-            speed = 20;
-            detonationTimer = -1;
+            speed = 20.48_fix;
+            detonationTimer = 60;
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_MediumRocket, houseID);
         } break;
@@ -205,7 +220,7 @@ void Bullet::init()
 
         case Bullet_SmallRocket: {
             damageRadius = TILESIZE/2;
-            speed = 20;
+            speed = 23.04_fix;
             detonationTimer = 7;
             numFrames = 16;
             graphic = pGFXManager->getObjPic(ObjPic_Bullet_SmallRocket, houseID);
@@ -372,15 +387,9 @@ void Bullet::update()
             detonationTimer--;
         }
 
-        // Hybrid air proximity fuse: when chasing flying units, arm a short timer once close enough
-        if(bulletID == Bullet_TurretRocket && detonationTimer < 0 && target.getObjPointer()) {
-            ObjectBase* pTarget = target.getObjPointer();
-            if(pTarget && pTarget->isAFlyingUnit()) {
-                const FixPoint distanceToTarget = distanceFrom(Coord(lround(realX), lround(realY)), pTarget->getCenterPoint());
-                if(distanceToTarget <= 24) {
-                    detonationTimer = 5;
-                }
-            }
+        if(bulletID == Bullet_TurretRocket && detonationTimer == 0) {
+            destroy();
+            return;
         }
 
         if(bulletID == Bullet_Sonic) {
@@ -415,7 +424,9 @@ void Bullet::update()
                     && ((bulletID != Bullet_ShellTurret) || (currentGameMap->getTile(location)->getGroundObject()->getOwner() != owner))) {
             destroy();
             return;
-        } else if(oldDistanceToDestination < newDistanceToDestination || newDistanceToDestination < 4)  {
+        }
+
+        if(oldDistanceToDestination < newDistanceToDestination || newDistanceToDestination < 4)  {
 
             if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
                 if(detonationTimer == 0) {

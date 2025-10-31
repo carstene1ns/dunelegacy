@@ -43,8 +43,8 @@ void RocketTurret::init() {
     owner->incrementStructures(itemID);
 
     attackSound = Sound_Rocket;
-    // Use Bullet_TurretRocket with speed 20
-    // Ornithopters slowed to 18.0, so turret rockets (speed 20) can catch them
+    // Use Bullet_TurretRocket with Dynasty speed (20.48)
+    // Ornithopters run at 19.2, so turret rockets stay faster
     // Added safety detonation timer to Bullet_TurretRocket as backup
     bulletType = Bullet_TurretRocket;
 
