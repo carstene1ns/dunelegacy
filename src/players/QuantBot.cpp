@@ -40,6 +40,7 @@
 #include <units/Devastator.h>
 
 #include <vector>
+#include <limits>
 #include <units/Carryall.h>
 
 #include <algorithm>
@@ -125,14 +126,15 @@
 
 
 
-QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Difficulty difficulty)
-	: Player(associatedHouse, playername), difficulty(difficulty) {
+QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Difficulty difficulty, bool supportModeEnabled)
+	: Player(associatedHouse, playername), difficulty(difficulty), supportMode(supportModeEnabled) {
 
 	// MULTIPLAYER FIX: Use deterministic stagger based on house ID instead of random
 	// This prevents desync issues in multiplayer games
 	buildTimer = (getHouse()->getHouseID() % 4) * 50;  // 0-150 cycles stagger
 
-    attackTimer = MILLI2CYCLES(150000);
+    const QuantBotConfig& config = getQuantBotConfig();
+    attackTimer = MILLI2CYCLES(config.attackTimerMs);
     retreatTimer = MILLI2CYCLES(60000); //turning off
 
 	// Different AI logic for Campaign. Assumption is if player is loading they are playing a campaign game
@@ -142,7 +144,6 @@ QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Diffic
 	else {
 		gameMode = GameMode::Custom;
 	}
-
 
 	if (gameMode == GameMode::Campaign) {
 		// Wait a while if it is a campaign game
@@ -165,6 +166,11 @@ QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Diffic
 		}
 
 		}
+	}
+
+	if (supportMode) {
+		gameMode = GameMode::Custom;
+		attackTimer = std::numeric_limits<Sint32>::max();
 	}
 }
 
@@ -200,6 +206,19 @@ QuantBot::QuantBot(InputStream& stream, House* associatedHouse) : Player(stream,
 		Sint32 y = stream.readSint32();
 
         placeLocations.emplace_back(x, y);
+    }
+
+    try {
+        supportMode = stream.readBool();
+    } catch(const InputStream::eof&) {
+        supportMode = false;
+    } catch(const InputStream::error&) {
+        supportMode = false;
+    }
+
+    if (supportMode) {
+        gameMode = GameMode::Custom;
+        attackTimer = std::numeric_limits<Sint32>::max();
     }
 }
 
@@ -239,18 +258,25 @@ void QuantBot::save(OutputStream& stream) const {
 	stream.writeSint32(squadRetreatLocation.y);
 
 	stream.writeUint32(placeLocations.size());
-	for (const Coord& placeLocation : placeLocations) {
-		stream.writeSint32(placeLocation.x);
-		stream.writeSint32(placeLocation.y);
+    for (const Coord& placeLocation : placeLocations) {
+        stream.writeSint32(placeLocation.x);
+        stream.writeSint32(placeLocation.y);
+    }
+
+    stream.writeBool(supportMode);
 }
 
-	}
-
-	
+    
 void QuantBot::update() {
 	// Safety check: if our house is null (e.g., during game cleanup), don't update
 	if (getHouse() == nullptr) {
 		return;
+	}
+
+	if (!supportMode && getPlayerclass().rfind("qBotSupport", 0) == 0) {
+		supportMode = true;
+		gameMode = GameMode::Custom;
+		attackTimer = std::numeric_limits<Sint32>::max();
 	}
 	
 	if (getGameCycleCount() == 0) {
@@ -526,12 +552,14 @@ void QuantBot::update() {
 		buildTimer -= AIUPDATEINTERVAL;
 	}
 
-	if (attackTimer <= 0) {
-		attack(militaryValue);
-	}
-
-	else {
-		attackTimer -= AIUPDATEINTERVAL;
+	if (!supportMode) {
+		if (attackTimer <= 0) {
+			attack(militaryValue);
+		} else {
+			attackTimer -= AIUPDATEINTERVAL;
+		}
+	} else {
+		attackTimer = std::numeric_limits<Sint32>::max();
 	}
 }
 
@@ -590,7 +618,7 @@ void QuantBot::onDamage(const ObjectBase* pObject, int damage, Uint32 damagerID)
         }
 
 	}
-	else if (pObject->isAGroundUnit()) {
+	else if (!supportMode && pObject->isAGroundUnit()) {
 		const GroundUnit* pGroundUnit = static_cast<const GroundUnit*>(pObject);
 
 		Coord squadCenterLocation = findSquadCenter(pGroundUnit->getOwner()->getHouseID());
@@ -1107,18 +1135,24 @@ void QuantBot::build(int militaryValue) {
 	}
 
 	int money = getHouse()->getCredits();
+	bool emitStatsLog = false;
 
-	if (militaryValue > 0 || getHouse()->getNumStructures() > 0) {
-		if (gameMode == GameMode::Custom) {
-			logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d remaining spice: %d hvstr: %d/%d",
-				attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
-				getHouse()->getKillValue(), getHouse()->getLossValue(), lastCalculatedSpice, getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
-		} else {
-			logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
-				attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
-				getHouse()->getKillValue(), getHouse()->getLossValue(), getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
-		}
-	}
+    if (!supportMode && (militaryValue > 0 || getHouse()->getNumStructures() > 0)) {
+        const Uint32 currentCycle = getGameCycleCount();
+        if(currentCycle - lastStatsLogCycle >= MILLI2CYCLES(30000)) {
+			emitStatsLog = true;
+            if (gameMode == GameMode::Custom) {
+                logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d remaining spice: %d hvstr: %d/%d",
+                    attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
+                    getHouse()->getKillValue(), getHouse()->getLossValue(), lastCalculatedSpice, getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
+            } else {
+                logDebug("Stats: %d  crdt: %d  mVal: %d/%d  built: %d  kill: %d  loss: %d hvstr: %d/%d",
+                    attackTimer, getHouse()->getCredits(), militaryValue, militaryValueLimit, getHouse()->getUnitBuiltValue(),
+                    getHouse()->getKillValue(), getHouse()->getLossValue(), getHouse()->getNumItems(Unit_Harvester), harvesterLimit);
+            }
+            lastStatsLogCycle = currentCycle;
+        }
+    }
 
 
 	// Second attempt at unit prioritisation
@@ -1166,8 +1200,6 @@ void QuantBot::build(int militaryValue) {
 		dlrTotal = 0;
 	}
 
-	logDebug("Dmg: %d DLR: %f", totalDamage, dlrTotal.toFloat());
-
 	/// Calculate ratios of launcher, special and light tanks. Remainder will be tank
 	FixPoint launcherPercent = dlrLauncher / dlrTotal;
 	FixPoint specialPercent = dlrSpecial / dlrTotal;
@@ -1193,25 +1225,29 @@ void QuantBot::build(int militaryValue) {
 		specialPercent = FixPoint(static_cast<int>(ratios.special * 100)) / 100;
 		ornithopterPercent = FixPoint(static_cast<int>(ratios.ornithopter * 100)) / 100;
 		
-		logDebug("Using config unit ratios for house %d difficulty %d - Tank: %.2f, Siege: %.2f, Launcher: %.2f, Special: %.2f, Orni: %.2f",
-			houseID, static_cast<int>(difficulty), ratios.tank, ratios.siegeTank, ratios.launcher, ratios.special, ratios.ornithopter);
+		if (emitStatsLog) {
+			logDebug("Using config unit ratios for house %d difficulty %d - Tank: %.2f, Siege: %.2f, Launcher: %.2f, Special: %.2f, Orni: %.2f",
+				houseID, static_cast<int>(difficulty), ratios.tank, ratios.siegeTank, ratios.launcher, ratios.special, ratios.ornithopter);
+		}
 	}
 
 	// lets analyse damage inflicted
 
-	logDebug("  Tank: %d/%d %f Siege: %d/%d %f Special: %d/%d %f Launch: %d/%d %f Orni: %d/%d %f",
-		getHouse()->getNumItemDamageInflicted(Unit_Tank), getHouse()->getNumLostItems(Unit_Tank) * 300, tankPercent.toDouble(),
-		getHouse()->getNumItemDamageInflicted(Unit_SiegeTank), getHouse()->getNumLostItems(Unit_SiegeTank) * 600, siegePercent.toDouble(),
-		getHouse()->getNumItemDamageInflicted(Unit_SonicTank) + getHouse()->getNumItemDamageInflicted(Unit_Devastator) + getHouse()->getNumItemDamageInflicted(Unit_Deviator),
-		getHouse()->getNumLostItems(Unit_SonicTank) * 600 + getHouse()->getNumLostItems(Unit_Devastator) * 800 + getHouse()->getNumLostItems(Unit_Deviator) * 750,
-		specialPercent.toDouble(),
-		getHouse()->getNumItemDamageInflicted(Unit_Launcher), getHouse()->getNumLostItems(Unit_Launcher) * 450, launcherPercent.toDouble(),
-		getHouse()->getNumItemDamageInflicted(Unit_Ornithopter), getHouse()->getNumLostItems(Unit_Ornithopter) * data[Unit_Ornithopter][houseID].price, ornithopterPercent.toDouble()
-	);
-	
+	if (emitStatsLog) {
+		logDebug("Dmg: %d DLR: %f", totalDamage, dlrTotal.toFloat());
+
+		logDebug("  Tank: %d/%d %f Siege: %d/%d %f Special: %d/%d %f Launch: %d/%d %f Orni: %d/%d %f",
+			getHouse()->getNumItemDamageInflicted(Unit_Tank), getHouse()->getNumLostItems(Unit_Tank) * 300, tankPercent.toDouble(),
+			getHouse()->getNumItemDamageInflicted(Unit_SiegeTank), getHouse()->getNumLostItems(Unit_SiegeTank) * 600, siegePercent.toDouble(),
+			getHouse()->getNumItemDamageInflicted(Unit_SonicTank) + getHouse()->getNumItemDamageInflicted(Unit_Devastator) + getHouse()->getNumItemDamageInflicted(Unit_Deviator),
+			getHouse()->getNumLostItems(Unit_SonicTank) * 600 + getHouse()->getNumLostItems(Unit_Devastator) * 800 + getHouse()->getNumLostItems(Unit_Deviator) * 750,
+			specialPercent.toDouble(),
+			getHouse()->getNumItemDamageInflicted(Unit_Launcher), getHouse()->getNumLostItems(Unit_Launcher) * 450, launcherPercent.toDouble(),
+			getHouse()->getNumItemDamageInflicted(Unit_Ornithopter), getHouse()->getNumLostItems(Unit_Ornithopter) * data[Unit_Ornithopter][houseID].price, ornithopterPercent.toDouble()
+		);
+	}
+
 	// End of adaptive unit prioritisation algorithm
-
-
 	for (const StructureBase* pStructure : getStructureList()) {
 		if (pStructure->getOwner() == getHouse()) {
 			if ((pStructure->isRepairing() == false)
@@ -1651,8 +1687,8 @@ void QuantBot::build(int militaryValue) {
 									heavyFactoryRushActive = false;
 								}
 
-								if ((money > 10000 && itemCount[Structure_HeavyFactory] == 0)
-									|| (heavyFactoryRushActive && itemCount[Structure_HeavyFactory] == 0)) {
+                                if (!supportMode && ((money > 10000 && itemCount[Structure_HeavyFactory] == 0)
+                                    || (heavyFactoryRushActive && itemCount[Structure_HeavyFactory] == 0))) {
 
 									heavyFactoryRushActive = true;
 
@@ -1855,10 +1891,12 @@ void QuantBot::build(int militaryValue) {
 														}
 					// Note: CY upgrade is done proactively (after Starport, before Heavy Factory) and reactively (ornithopter counter)
 					// Rocket turrets: 2 insurance turrets built after CY level 2, then scaled up reactively if needed
-						else if (itemCount[Structure_HighTechFactory] == 0 && money > 1000) {
-								if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
-									itemID = Structure_HighTechFactory;
-								}
+                        else if (itemCount[Structure_HighTechFactory] == 0
+                                 && itemCount[Structure_HeavyFactory] > 0
+                                 && money > 1000) {
+                                if (pBuilder->isAvailableToBuild(Structure_HighTechFactory)) {
+                                    itemID = Structure_HighTechFactory;
+                                }
 							}
 							// If we need more refinerys for our harvesters or we don't have a heavy factory
 							else if (((itemCount[Structure_Refinery] * 3 < itemCount[Unit_Harvester])
@@ -1995,6 +2033,9 @@ void QuantBot::build(int militaryValue) {
 
 
 void QuantBot::scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits) {
+	if (supportMode) {
+		return;
+	}
 	for (const UnitBase* pUnit : getUnitList()) {
 		if (pUnit->isRespondable() && (pUnit->getOwner() == getHouse())) {
 			if (!pUnit->hasATarget() && !pUnit->wasForced()) {
@@ -2223,6 +2264,10 @@ bool QuantBot::tryLaunchOrnithopterStrike(const QuantBotConfig::DifficultySettin
 
 
 void QuantBot::attack(int militaryValue) {
+	if (supportMode) {
+		attackTimer = std::numeric_limits<Sint32>::max();
+		return;
+	}
 
     // Get config for this difficulty
     const QuantBotConfig& config = getQuantBotConfig();
@@ -2472,9 +2517,11 @@ void QuantBot::retreatAllUnits() {
 
         const QuantBotConfig& config = getQuantBotConfig();
         const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
-        tryLaunchOrnithopterStrike(diffSettings, config);
-
-        Coord squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
+        Coord squadCenterLocation = Coord::Invalid();
+        if(!supportMode) {
+            tryLaunchOrnithopterStrike(diffSettings, config);
+            squadCenterLocation = findSquadCenter(getHouse()->getHouseID());
+        }
 
         for (const UnitBase* pUnit : getUnitList()) {
             // Safety check: skip null units (can happen during unit destruction)
@@ -2544,7 +2591,7 @@ void QuantBot::retreatAllUnits() {
                                 const_cast<UnitBase*>(pUnit)->setGuardPoint(ownBaseCentre.x, ownBaseCentre.y);
                             }
                         }
-                    } else {
+                    } else if(!supportMode) {
                         if (!pUnit->hasATarget() && !pUnit->wasForced()) {
                             Coord rally = findSquadRallyLocation();
                             if (rally.isValid() && rally != pUnit->getGuardPoint()) {
@@ -2555,6 +2602,9 @@ void QuantBot::retreatAllUnits() {
                 } break;
 
                 default: {
+                    if (supportMode) {
+                        break;
+                    }
 
                     int squadRadius = lround(FixPoint::sqrt(getHouse()->getNumUnits()
                         - getHouse()->getNumItems(Unit_Harvester)

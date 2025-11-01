@@ -299,7 +299,19 @@ CustomGamePlayers::CustomGamePlayers(const GameInitSettings& newGameInitSettings
             curHouseInfo.player1DropDown.setSelectedItem(0);
             curHouseInfo.player1DropDown.addEntry(_("closed"), PLAYER_CLOSED);
             for(unsigned int k = 1; k < PlayerFactory::getList().size(); k++) {
-                curHouseInfo.player1DropDown.addEntry(PlayerFactory::getByIndex(k)->getName(), k);
+                const PlayerFactory::PlayerData* playerData = PlayerFactory::getByIndex(k);
+                if(playerData == nullptr) {
+                    continue;
+                }
+                const std::string& playerClass = playerData->getPlayerClass();
+                if(playerClass.rfind("qBotSupport", 0) == 0 &&
+                   playerClass != "qBotSupportEasy" &&
+                   playerClass != "qBotSupportMedium" &&
+                   playerClass != "qBotSupportHard" &&
+                   playerClass != "qBotSupportBrutal") {
+                    continue;
+                }
+                curHouseInfo.player1DropDown.addEntry(playerData->getName(), k);
             }
             curHouseInfo.player1DropDown.setEnabled(bServer);
         }
@@ -354,7 +366,19 @@ CustomGamePlayers::CustomGamePlayers(const GameInitSettings& newGameInitSettings
             curHouseInfo.player2DropDown.setSelectedItem(0);
             curHouseInfo.player2DropDown.addEntry(_("closed"), PLAYER_CLOSED);
             for(unsigned int k = 1; k < PlayerFactory::getList().size(); k++) {
-                curHouseInfo.player2DropDown.addEntry(PlayerFactory::getByIndex(k)->getName(), k);
+                const PlayerFactory::PlayerData* playerData = PlayerFactory::getByIndex(k);
+                if(playerData == nullptr) {
+                    continue;
+                }
+                const std::string& playerClass = playerData->getPlayerClass();
+                if(playerClass.rfind("qBotSupport", 0) == 0 &&
+                   playerClass != "qBotSupportEasy" &&
+                   playerClass != "qBotSupportMedium" &&
+                   playerClass != "qBotSupportHard" &&
+                   playerClass != "qBotSupportBrutal") {
+                    continue;
+                }
+                curHouseInfo.player2DropDown.addEntry(playerData->getName(), k);
             }
             curHouseInfo.player2DropDown.setEnabled(bServer);
         }
@@ -1158,7 +1182,19 @@ void CustomGamePlayers::onPeerDisconnected(const std::string& playername, bool b
                 if(gameInitSettings.getGameType() != GameType::LoadMultiplayer) {
                     curDropDownBox.addEntry(_("closed"), PLAYER_CLOSED);
                     for(unsigned int k = 1; k < PlayerFactory::getList().size(); k++) {
-                        curDropDownBox.addEntry(PlayerFactory::getByIndex(k)->getName(), k);
+                        const PlayerFactory::PlayerData* playerData = PlayerFactory::getByIndex(k);
+                        if(playerData == nullptr) {
+                            continue;
+                        }
+                        const std::string& playerClass = playerData->getPlayerClass();
+                        if(playerClass.rfind("qBotSupport", 0) == 0 &&
+                           playerClass != "qBotSupportEasy" &&
+                           playerClass != "qBotSupportMedium" &&
+                           playerClass != "qBotSupportHard" &&
+                           playerClass != "qBotSupportBrutal") {
+                            continue;
+                        }
+                        curDropDownBox.addEntry(playerData->getName(), k);
                     }
                 }
 
@@ -1230,7 +1266,19 @@ void CustomGamePlayers::setPlayer2Slot(const std::string& playername, int slot) 
                 if(gameInitSettings.getGameType() != GameType::LoadMultiplayer) {
                     curDropDownBox.addEntry(_("closed"), PLAYER_CLOSED);
                     for(unsigned int k = 1; k < PlayerFactory::getList().size(); k++) {
-                        curDropDownBox.addEntry(PlayerFactory::getByIndex(k)->getName(), k);
+                        const PlayerFactory::PlayerData* playerData = PlayerFactory::getByIndex(k);
+                        if(playerData == nullptr) {
+                            continue;
+                        }
+                        const std::string& playerClass = playerData->getPlayerClass();
+                        if(playerClass.rfind("qBotSupport", 0) == 0 &&
+                           playerClass != "qBotSupportEasy" &&
+                           playerClass != "qBotSupportMedium" &&
+                           playerClass != "qBotSupportHard" &&
+                           playerClass != "qBotSupportBrutal") {
+                            continue;
+                        }
+                        curDropDownBox.addEntry(playerData->getName(), k);
                     }
                 }
 

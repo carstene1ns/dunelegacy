@@ -24,6 +24,100 @@
 #include <structures/StructureBase.h>
 #include <structures/Palace.h>
 
+namespace {
+struct CursorCache {
+    SDL_Cursor* normal = nullptr;
+    SDL_Cursor* move = nullptr;
+    SDL_Cursor* attack = nullptr;
+    SDL_Cursor* capture = nullptr;
+    SDL_Cursor* carryallDrop = nullptr;
+
+    ~CursorCache() {
+        if(normal) {
+            SDL_FreeCursor(normal);
+            normal = nullptr;
+        }
+        if(move) {
+            SDL_FreeCursor(move);
+            move = nullptr;
+        }
+        if(attack) {
+            SDL_FreeCursor(attack);
+            attack = nullptr;
+        }
+        if(capture) {
+            SDL_FreeCursor(capture);
+            capture = nullptr;
+        }
+        if(carryallDrop) {
+            SDL_FreeCursor(carryallDrop);
+            carryallDrop = nullptr;
+        }
+    }
+};
+
+CursorCache& getCursorCache() {
+    static CursorCache cache;
+    return cache;
+}
+
+inline Uint32 getPixelValue(SDL_Surface* surface, int x, int y) {
+    const Uint8* p = static_cast<const Uint8*>(surface->pixels) + y * surface->pitch + x * surface->format->BytesPerPixel;
+    switch(surface->format->BytesPerPixel) {
+        case 1:
+            return *p;
+        case 2:
+            return *reinterpret_cast<const Uint16*>(p);
+        case 3:
+            #if SDL_BYTEORDER == SDL_BIG_ENDIAN
+                return p[0] << 16 | p[1] << 8 | p[2];
+            #else
+                return p[0] | (p[1] << 8) | (p[2] << 16);
+            #endif
+        case 4:
+            return *reinterpret_cast<const Uint32*>(p);
+        default:
+            return 0;
+    }
+}
+
+SDL_Point findTopLeftOpaquePixel(SDL_Surface* surface) {
+    SDL_Point hotspot{surface->w / 2, surface->h / 2};
+
+    Uint32 colorKey = 0;
+    const bool hasColorKey = SDL_GetColorKey(surface, &colorKey) == 0;
+
+    const bool needsLock = SDL_MUSTLOCK(surface);
+    if(needsLock) {
+        if(SDL_LockSurface(surface) != 0) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "CursorManager: Failed to lock cursor surface: %s", SDL_GetError());
+            return hotspot;
+        }
+    }
+
+    for(int y = 0; y < surface->h; ++y) {
+        for(int x = 0; x < surface->w; ++x) {
+            Uint32 pixel = getPixelValue(surface, x, y);
+            if(!hasColorKey || pixel != colorKey) {
+                hotspot.x = x;
+                hotspot.y = y;
+                if(needsLock) {
+                    SDL_UnlockSurface(surface);
+                }
+                SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "CursorManager: detected arrow hotspot at (%d,%d)", hotspot.x, hotspot.y);
+                return hotspot;
+            }
+        }
+    }
+
+    if(needsLock) {
+        SDL_UnlockSurface(surface);
+    }
+
+    return hotspot;
+}
+}
+
 CursorManager::CursorManager() : 
     normalCursor(nullptr),
     moveCursor(nullptr),
@@ -42,73 +136,55 @@ void CursorManager::initialize() {
         return;
     }
 
-    // Create hardware cursors from existing UI graphics
-    SDL_Surface* normalSurface = pGFXManager->getUIGraphicSurface(UI_CursorNormal);
-    SDL_Surface* moveSurface = pGFXManager->getUIGraphicSurface(UI_CursorMove_Zoomlevel0);
-    SDL_Surface* attackSurface = pGFXManager->getUIGraphicSurface(UI_CursorAttack_Zoomlevel0);
-    SDL_Surface* captureSurface = pGFXManager->getUIGraphicSurface(UI_CursorCapture_Zoomlevel0);
-    SDL_Surface* carryallDropSurface = pGFXManager->getUIGraphicSurface(UI_CursorCarryallDrop_Zoomlevel0);
+    auto& cache = getCursorCache();
 
-    // Create hardware cursors with center hot spots
-    if (normalSurface) {
-        normalCursor = SDL_CreateColorCursor(normalSurface, normalSurface->w / 2, normalSurface->h / 2);
+    if(cache.normal == nullptr) {
+        SDL_Surface* normalSurface = pGFXManager->getUIGraphicSurface(UI_CursorNormal);
+        SDL_Surface* moveSurface = pGFXManager->getUIGraphicSurface(UI_CursorMove_Zoomlevel0);
+        SDL_Surface* attackSurface = pGFXManager->getUIGraphicSurface(UI_CursorAttack_Zoomlevel0);
+        SDL_Surface* captureSurface = pGFXManager->getUIGraphicSurface(UI_CursorCapture_Zoomlevel0);
+        SDL_Surface* carryallDropSurface = pGFXManager->getUIGraphicSurface(UI_CursorCarryallDrop_Zoomlevel0);
+
+        if (normalSurface) {
+            SDL_Point hotspot = findTopLeftOpaquePixel(normalSurface);
+            cache.normal = SDL_CreateColorCursor(normalSurface, hotspot.x, hotspot.y);
+        }
+        if (moveSurface) {
+            cache.move = SDL_CreateColorCursor(moveSurface, moveSurface->w / 2, moveSurface->h / 2);
+        }
+        if (attackSurface) {
+            cache.attack = SDL_CreateColorCursor(attackSurface, attackSurface->w / 2, attackSurface->h / 2);
+        }
+        if (captureSurface) {
+            cache.capture = SDL_CreateColorCursor(captureSurface, captureSurface->w / 2, captureSurface->h / 2);
+        }
+        if (carryallDropSurface) {
+            cache.carryallDrop = SDL_CreateColorCursor(carryallDropSurface, carryallDropSurface->w / 2, carryallDropSurface->h / 2);
+        }
     }
-    
-    if (moveSurface) {
-        moveCursor = SDL_CreateColorCursor(moveSurface, moveSurface->w / 2, moveSurface->h / 2);
-    }
-    
-    if (attackSurface) {
-        attackCursor = SDL_CreateColorCursor(attackSurface, attackSurface->w / 2, attackSurface->h / 2);
-    }
-    
-    if (captureSurface) {
-        captureCursor = SDL_CreateColorCursor(captureSurface, captureSurface->w / 2, captureSurface->h / 2);
-    }
-    
-    if (carryallDropSurface) {
-        carryallDropCursor = SDL_CreateColorCursor(carryallDropSurface, carryallDropSurface->w / 2, carryallDropSurface->h / 2);
-    }
+
+    normalCursor = cache.normal;
+    moveCursor = cache.move;
+    attackCursor = cache.attack;
+    captureCursor = cache.capture;
+    carryallDropCursor = cache.carryallDrop;
 
     // Set default cursor
     if (normalCursor) {
         SDL_SetCursor(normalCursor);
+        SDL_ShowCursor(SDL_ENABLE);
     }
 
     initialized = true;
 }
 
 void CursorManager::cleanup() {
-    if (!initialized) {
-        return;
-    }
-
-    if (normalCursor) {
-        SDL_FreeCursor(normalCursor);
-        normalCursor = nullptr;
-    }
-    
-    if (moveCursor) {
-        SDL_FreeCursor(moveCursor);
-        moveCursor = nullptr;
-    }
-    
-    if (attackCursor) {
-        SDL_FreeCursor(attackCursor);
-        attackCursor = nullptr;
-    }
-    
-    if (captureCursor) {
-        SDL_FreeCursor(captureCursor);
-        captureCursor = nullptr;
-    }
-    
-    if (carryallDropCursor) {
-        SDL_FreeCursor(carryallDropCursor);
-        carryallDropCursor = nullptr;
-    }
-
     initialized = false;
+    normalCursor = nullptr;
+    moveCursor = nullptr;
+    attackCursor = nullptr;
+    captureCursor = nullptr;
+    carryallDropCursor = nullptr;
 }
 
 void CursorManager::setCursorMode(int mode) {

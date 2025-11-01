@@ -41,7 +41,7 @@ public:
         Campaign = 5
     };
 
-    QuantBot(House* associatedHouse, const std::string& playername, Difficulty difficulty);
+    QuantBot(House* associatedHouse, const std::string& playername, Difficulty difficulty, bool supportModeEnabled = false);
     QuantBot(InputStream& stream, House* associatedHouse);
     void init();
     ~QuantBot();
@@ -93,6 +93,8 @@ private:
     Coord squadRallyLocation = Coord::Invalid();
     Coord squadRetreatLocation = Coord::Invalid();
     bool heavyFactoryRushActive = false;
+    bool supportMode = false;
+    Uint32 lastStatsLogCycle = 0;
 
     void scrambleUnitsAndDefend(const ObjectBase* pIntruder, int numUnits = std::numeric_limits<int>::max());
 

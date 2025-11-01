@@ -27,11 +27,24 @@
 
 static const int houseOrder[] = { HOUSE_ATREIDES, HOUSE_ORDOS, HOUSE_HARKONNEN, HOUSE_MERCENARY, HOUSE_FREMEN, HOUSE_SARDAUKAR };
 
+namespace {
+const char* const kSupportPlayerClasses[] = {
+    "",
+    "qBotSupportEasy",
+    "qBotSupportMedium",
+    "qBotSupportHard",
+    "qBotSupportBrutal"
+};
+
+constexpr int kSupportOptionCount = sizeof(kSupportPlayerClasses) / sizeof(kSupportPlayerClasses[0]);
+}
+
 SinglePlayerSkirmishMenu::SinglePlayerSkirmishMenu() : MenuBase()
 {
     currentHouseChoiceScrollPos = 0;
     selectedButton = 1;
     mission = 1;
+    supportBotIndex = 0;
 
     // set up window
     SDL_Texture *pBackground = pGFXManager->getUIGraphic(UI_MenuBackground);
@@ -61,7 +74,19 @@ SinglePlayerSkirmishMenu::SinglePlayerSkirmishMenu() : MenuBase()
     menuButtonsVBox.addWidget(&startButton);
     startButton.setActive();
 
-    menuButtonsVBox.addWidget(VSpacer::create(79));
+    menuButtonsVBox.addWidget(VSpacer::create(8));
+
+    supportBotDropDown.addEntry(_("AI Support: None"), 0);
+    supportBotDropDown.addEntry(_("AI Support: Easy"), 1);
+    supportBotDropDown.addEntry(_("AI Support: Medium"), 2);
+    supportBotDropDown.addEntry(_("AI Support: Hard"), 3);
+    supportBotDropDown.addEntry(_("AI Support: Brutal"), 4);
+    supportBotDropDown.setSelectedItem(0);
+    supportBotDropDown.setOnSelectionChange(std::bind(&SinglePlayerSkirmishMenu::onSupportBotSelectionChanged, this, std::placeholders::_1));
+    menuButtonsVBox.addWidget(&supportBotDropDown);
+    updateSupportBotLabel();
+
+    menuButtonsVBox.addWidget(VSpacer::create(39));
 
     backButton.setText(_("Back"));
     backButton.setOnClick(std::bind(&SinglePlayerSkirmishMenu::onCancel, this));
@@ -152,24 +177,40 @@ SinglePlayerSkirmishMenu::~SinglePlayerSkirmishMenu()
 
 void SinglePlayerSkirmishMenu::onStart()
 {
-    HOUSETYPE houseChoice = (HOUSETYPE) houseOrder[currentHouseChoiceScrollPos + selectedButton];
+    HOUSETYPE houseChoice = static_cast<HOUSETYPE>(houseOrder[currentHouseChoiceScrollPos + selectedButton]);
+
+    supportBotIndex = supportBotDropDown.getSelectedEntryIntData();
+    if(supportBotIndex < 0 || supportBotIndex >= kSupportOptionCount) {
+        supportBotIndex = 0;
+    }
+
+    const bool supportSelected = (supportBotIndex > 0);
+    const char* supportPlayerClass = supportSelected ? kSupportPlayerClasses[supportBotIndex] : nullptr;
 
     GameInitSettings init(houseChoice, mission, settings.gameOptions);
+    if(supportSelected) {
+        init.setMultiplePlayersPerHouse(true);
+    }
 
     for(int houseID = 0; houseID < NUM_HOUSES; houseID++) {
         if(houseID == houseChoice) {
-            GameInitSettings::HouseInfo humanHouseInfo(houseChoice, 1);
-            humanHouseInfo.addPlayerInfo( GameInitSettings::PlayerInfo(settings.general.playerName, HUMANPLAYERCLASS) );
+            GameInitSettings::HouseInfo humanHouseInfo(static_cast<HOUSETYPE>(houseID), 1);
+            humanHouseInfo.addPlayerInfo(GameInitSettings::PlayerInfo(settings.general.playerName, HUMANPLAYERCLASS));
+
+            if(supportSelected && supportPlayerClass != nullptr && *supportPlayerClass != '\0') {
+                std::string allyName = getHouseNameByNumber(static_cast<HOUSETYPE>(houseID)) + " " + _("(AI Support)");
+                humanHouseInfo.addPlayerInfo(GameInitSettings::PlayerInfo(allyName, supportPlayerClass));
+            }
+
             init.addHouseInfo(humanHouseInfo);
         } else {
-            GameInitSettings::HouseInfo aiHouseInfo((HOUSETYPE) houseID, 2);
-            aiHouseInfo.addPlayerInfo( GameInitSettings::PlayerInfo(getHouseNameByNumber( (HOUSETYPE) houseID), settings.ai.campaignAI) );
+            GameInitSettings::HouseInfo aiHouseInfo(static_cast<HOUSETYPE>(houseID), 2);
+            aiHouseInfo.addPlayerInfo(GameInitSettings::PlayerInfo(getHouseNameByNumber(static_cast<HOUSETYPE>(houseID)), settings.ai.campaignAI));
             init.addHouseInfo(aiHouseInfo);
         }
     }
 
     startSinglePlayerGame(init);
-
     quit();
 }
 
@@ -237,6 +278,22 @@ void SinglePlayerSkirmishMenu::onMissionDecrement()
         mission = 22;
     }
     missionCounter.setCount(mission);
+}
+
+void SinglePlayerSkirmishMenu::updateSupportBotLabel()
+{
+    if(supportBotIndex < 0 || supportBotIndex >= kSupportOptionCount) {
+        supportBotIndex = 0;
+    }
+    if(supportBotDropDown.getNumEntries() > supportBotIndex) {
+        supportBotDropDown.setSelectedItem(supportBotIndex);
+    }
+}
+
+void SinglePlayerSkirmishMenu::onSupportBotSelectionChanged(bool /*interactive*/)
+{
+    int entry = supportBotDropDown.getSelectedEntryIntData();
+    supportBotIndex = (entry >= 0 && entry < kSupportOptionCount) ? entry : 0;
 }
 
 void SinglePlayerSkirmishMenu::updateHouseChoice()

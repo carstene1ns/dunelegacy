@@ -28,6 +28,7 @@
 #include <structures/BuilderBase.h>
 #include <structures/StarPort.h>
 #include <structures/ConstructionYard.h>
+#include <structures/Palace.h>
 #include <units/UnitBase.h>
 #include <units/MCV.h>
 #include <units/Harvester.h>
@@ -338,6 +339,40 @@ void AIPlayer::build() {
     for(const StructureBase* pStructure : getStructureList()) {
         //if this players structure, and its a heavy factory, build something
         if(pStructure->getOwner() == getHouse()) {
+
+            if(pStructure->getItemID() == Structure_Palace) {
+                const Palace* pPalace = static_cast<const Palace*>(pStructure);
+                if(pPalace->isSpecialWeaponReady()) {
+                    const HOUSETYPE palaceHouse = static_cast<HOUSETYPE>(pPalace->getOriginalHouseID());
+                    if(palaceHouse == HOUSE_HARKONNEN || palaceHouse == HOUSE_SARDAUKAR) {
+                        const House* pBestHouse = nullptr;
+                        for(int i = 0; i < NUM_HOUSES; i++) {
+                            const House* pHouse = getHouse(i);
+                            if(!pHouse || pHouse->getTeamID() == getHouse()->getTeamID()) {
+                                continue;
+                            }
+
+                            if(!pBestHouse) {
+                                pBestHouse = pHouse;
+                            } else if(pHouse->getNumStructures() > pBestHouse->getNumStructures()) {
+                                pBestHouse = pHouse;
+                            } else if(pBestHouse->getNumStructures() == 0 && (pHouse->getNumUnits() > pBestHouse->getNumUnits())) {
+                                pBestHouse = pHouse;
+                            }
+                        }
+
+                        if(pBestHouse) {
+                            Coord target = pBestHouse->getNumStructures() > 0 ? pBestHouse->getCenterOfMainBase() : pBestHouse->getStrongestUnitPosition();
+                            if(target.isValid()) {
+                                doLaunchDeathhand(pPalace, target.x, target.y);
+                            }
+                        }
+                    } else {
+                        doSpecialWeapon(pPalace);
+                    }
+                }
+                continue;
+            }
 
             if((pStructure->isRepairing() == false) && (pStructure->getHealth() < pStructure->getMaxHealth())) {
                 doRepair(pStructure);

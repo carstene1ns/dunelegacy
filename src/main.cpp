@@ -45,6 +45,9 @@
 #include <misc/exceptions.h>
 #include <misc/format.h>
 #include <misc/SDL2pp.h>
+#include <misc/md5.h>
+
+#include <players/QuantBotConfig.h>
 
 #include <CrashHandler.h>
 #include <SoundPlayer.h>
@@ -58,6 +61,7 @@
 #include <iostream>
 #include <typeinfo>
 #include <future>
+#include <array>
 #include <ctime>
 //#include <sys/types.h>
 //#include <sys/stat.h>
@@ -197,7 +201,7 @@ void setVideoMode(int displayIndex)
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetTextureScaleMode(screenTexture, SDL_ScaleModeNearest);
 
-    SDL_ShowCursor(SDL_DISABLE);
+    SDL_ShowCursor(SDL_ENABLE);
 }
 
 void toogleFullscreen()
@@ -281,6 +285,67 @@ std::string getObjectDataTemplateFilepath()
     return getDuneLegacyDataDir() + "/config/ObjectData.bak";
 }
 
+static std::string getQuantBotTemplateFilepath()
+{
+    return getDuneLegacyDataDir() + "/config/QuantBot Config.bak";
+}
+
+static bool computeFileDigest(const std::string& filepath, std::array<unsigned char, 16>& digest)
+{
+    if(md5_file(filepath.c_str(), digest.data()) != 0) {
+        return false;
+    }
+    return true;
+}
+
+static bool areConfigFilesOutOfSync(bool& objectDataOutOfSync, bool& quantBotOutOfSync)
+{
+    objectDataOutOfSync = false;
+    quantBotOutOfSync = false;
+
+    const std::string objectTemplate = getObjectDataTemplateFilepath();
+    const std::string objectUser = getObjectDataConfigFilepath();
+
+    if(!existsFile(objectTemplate)) {
+        SDL_Log("Warning: Template ObjectData.bak missing at %s", objectTemplate.c_str());
+        objectDataOutOfSync = true;
+    } else if(!existsFile(objectUser)) {
+        SDL_Log("ObjectData.ini missing at %s", objectUser.c_str());
+        objectDataOutOfSync = true;
+    } else {
+        std::array<unsigned char, 16> templateDigest{};
+        std::array<unsigned char, 16> userDigest{};
+        if(!computeFileDigest(objectTemplate, templateDigest) || !computeFileDigest(objectUser, userDigest)) {
+            SDL_Log("Warning: Unable to compare ObjectData configuration files.");
+            objectDataOutOfSync = true;
+        } else if(templateDigest != userDigest) {
+            objectDataOutOfSync = true;
+        }
+    }
+
+    const std::string quantTemplate = getQuantBotTemplateFilepath();
+    const std::string quantUser = getQuantBotConfigFilepath();
+
+    if(!existsFile(quantTemplate)) {
+        SDL_Log("Warning: Template QuantBot Config.bak missing at %s", quantTemplate.c_str());
+        quantBotOutOfSync = true;
+    } else if(!existsFile(quantUser)) {
+        SDL_Log("QuantBot Config.ini missing at %s", quantUser.c_str());
+        quantBotOutOfSync = true;
+    } else {
+        std::array<unsigned char, 16> templateDigest{};
+        std::array<unsigned char, 16> userDigest{};
+        if(!computeFileDigest(quantTemplate, templateDigest) || !computeFileDigest(quantUser, userDigest)) {
+            SDL_Log("Warning: Unable to compare QuantBot configuration files.");
+            quantBotOutOfSync = true;
+        } else if(templateDigest != userDigest) {
+            quantBotOutOfSync = true;
+        }
+    }
+
+    return objectDataOutOfSync || quantBotOutOfSync;
+}
+
 std::string getDefaultPlayerName() {
     char playername[MAX_PLAYERNAMELENGHT+1] = "Player";
 
@@ -333,9 +398,7 @@ bool restoreDefaultConfigs() {
     // Restore QuantBot Config.ini
     {
         try {
-            char tmp[FILENAME_MAX];
-            fnkdat("config/QuantBot Config.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT);
-            std::string userPath(tmp);
+            std::string userPath = getQuantBotConfigFilepath();
             SDL_Log("Restoring QuantBot Config.ini to: %s", userPath.c_str());
             
             auto templateFile = pFileManager->openFile("config/QuantBot Config.bak");
@@ -359,6 +422,64 @@ bool restoreDefaultConfigs() {
     
     SDL_Log("====================================================");
     return success;
+}
+
+static bool promptToRestoreOutOfSyncConfigurations()
+{
+    bool objectDataOutOfSync = false;
+    bool quantBotOutOfSync = false;
+
+    if(!areConfigFilesOutOfSync(objectDataOutOfSync, quantBotOutOfSync)) {
+        return false;
+    }
+
+    std::string message = "Your game and AI configuration files are not in line with the latest app version.\n"
+                          "This can cause instability or multiplayer desyncs.\n\n"
+                          "Out of sync:\n";
+    if(objectDataOutOfSync) {
+        message += " • ObjectData.ini\n";
+    }
+    if(quantBotOutOfSync) {
+        message += " • QuantBot Config.ini\n";
+    }
+    message += "\nRestore the default configuration now? The game will restart afterwards.";
+
+    SDL_MessageBoxButtonData buttons[] = {
+        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" },
+        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" }
+    };
+
+    SDL_MessageBoxData messageBoxData = {};
+    messageBoxData.flags = SDL_MESSAGEBOX_WARNING;
+    messageBoxData.window = window;
+    messageBoxData.title = "Dune Legacy";
+    messageBoxData.message = message.c_str();
+    messageBoxData.numbuttons = static_cast<int>(sizeof(buttons) / sizeof(buttons[0]));
+    messageBoxData.buttons = buttons;
+    messageBoxData.colorScheme = nullptr;
+
+    int buttonId = -1;
+    if(SDL_ShowMessageBox(&messageBoxData, &buttonId) < 0) {
+        SDL_Log("Warning: SDL_ShowMessageBox failed while prompting for configuration restore: %s", SDL_GetError());
+        return false;
+    }
+
+    if(buttonId != 1) {
+        SDL_Log("Player opted to keep existing configuration files.");
+        return false;
+    }
+
+    SDL_Log("Player confirmed configuration restore. Copying default files.");
+    const bool restored = restoreDefaultConfigs();
+
+    const Uint32 promptFlag = restored ? SDL_MESSAGEBOX_INFORMATION : SDL_MESSAGEBOX_ERROR;
+    const char* promptText = restored
+        ? "Configuration restored. Please restart Dune Legacy."
+        : "Configuration could not be restored automatically. Please check your installation.";
+
+    SDL_ShowSimpleMessageBox(promptFlag, "Dune Legacy", promptText, window);
+
+    return true;
 }
 
 void createDefaultConfigFile(const std::string& configfilepath, const std::string& language) {
@@ -837,9 +958,7 @@ int main(int argc, char *argv[]) {
 
             // Check and copy QuantBot Config.ini  
             {
-                char tmp[FILENAME_MAX];
-                fnkdat("config/QuantBot Config.ini", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT);
-                std::string userQuantBotPath(tmp);
+                std::string userQuantBotPath = getQuantBotConfigFilepath();
                 if (!existsFile(userQuantBotPath)) {
                     SDL_Log("QuantBot Config.ini not found in user directory, copying template...");
                     try {
@@ -858,86 +977,96 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            // now we can finish loading texts
-            pTextManager->loadData();
+            bool abortIteration = false;
 
-            palette = LoadPalette_RW(pFileManager->openFile("IBM.PAL").get());
-
-            SDL_Log("Setting video mode...");
-            setVideoMode(currentDisplayIndex);
-            
-            // Give the renderer time to fully initialize
-            SDL_Delay(100);
-            
-            SDL_RendererInfo rendererInfo;
-            SDL_GetRendererInfo(renderer, &rendererInfo);
-            SDL_Log("Renderer: %s (max texture size: %dx%d)", rendererInfo.name, rendererInfo.max_texture_width, rendererInfo.max_texture_height);
-
-            // Verify renderer is valid before proceeding
-            if(renderer == nullptr) {
-                SDL_Log("Error: Renderer is null after setVideoMode!");
-                THROW(std::runtime_error, "Failed to create renderer during video mode initialization");
+            if(promptToRestoreOutOfSyncConfigurations()) {
+                SDL_Log("Default configuration restored. Exiting to allow restart.");
+                bExitGame = true;
+                abortIteration = true;
             }
 
-            SDL_Log("Loading fonts...");
-            pFontManager = std::make_unique<FontManager>();
+            if(!abortIteration) {
+                // now we can finish loading texts
+                pTextManager->loadData();
 
-            SDL_Log("Loading graphics and sounds...");
+                palette = LoadPalette_RW(pFileManager->openFile("IBM.PAL").get());
 
-#ifdef HAS_ASYNC
-            auto gfxManagerFut = std::async(std::launch::async, []() { return std::make_unique<GFXManager>(); } );
-            auto sfxManagerFut = std::async(std::launch::async, []() { return std::make_unique<SFXManager>(); } );
+                SDL_Log("Setting video mode...");
+                setVideoMode(currentDisplayIndex);
+                
+                // Give the renderer time to fully initialize
+                SDL_Delay(100);
+                
+                SDL_RendererInfo rendererInfo;
+                SDL_GetRendererInfo(renderer, &rendererInfo);
+                SDL_Log("Renderer: %s (max texture size: %dx%d)", rendererInfo.name, rendererInfo.max_texture_width, rendererInfo.max_texture_height);
 
-            pGFXManager = gfxManagerFut.get();
-            pSFXManager = sfxManagerFut.get();
-#else
-            // g++ does not provide std::launch::async on all platforms
-            pGFXManager = std::make_unique<GFXManager>();
-            pSFXManager = std::make_unique<SFXManager>();
-#endif
-
-            GUIStyle::setGUIStyle(std::make_unique<DuneStyle>());
-
-            if(bFirstInit == true) {
-                SDL_Log("Starting sound player...");
-                soundPlayer = std::make_unique<SoundPlayer>();
-
-                if(settings.audio.musicType == "directory") {
-                    SDL_Log("Starting directory music player...");
-                    musicPlayer = std::make_unique<DirectoryPlayer>();
-                } else if(settings.audio.musicType == "adl") {
-                    SDL_Log("Starting ADL music player...");
-                    musicPlayer = std::make_unique<ADLPlayer>();
-                } else if(settings.audio.musicType == "xmi") {
-                    SDL_Log("Starting XMI music player...");
-                    musicPlayer = std::make_unique<XMIPlayer>();
-                } else {
-                    THROW(std::runtime_error, "Invalid music type: '%'", settings.audio.musicType);
+                // Verify renderer is valid before proceeding
+                if(renderer == nullptr) {
+                    SDL_Log("Error: Renderer is null after setVideoMode!");
+                    THROW(std::runtime_error, "Failed to create renderer during video mode initialization");
                 }
 
-                //musicPlayer->changeMusic(MUSIC_INTRO);
-            }
+                SDL_Log("Loading fonts...");
+                pFontManager = std::make_unique<FontManager>();
 
-            // Playing intro
-            if(((bFirstGamestart == true) || (settings.general.playIntro == true)) && (bFirstInit==true)) {
-                SDL_Log("Playing intro...");
-                Intro().run();
-            }
+                SDL_Log("Loading graphics and sounds...");
 
-            bFirstInit = false;
+#ifdef HAS_ASYNC
+                auto gfxManagerFut = std::async(std::launch::async, []() { return std::make_unique<GFXManager>(); } );
+                auto sfxManagerFut = std::async(std::launch::async, []() { return std::make_unique<SFXManager>(); } );
 
-            // Re-enable cursor for main menu (fixes Windows cursor visibility issue)
-            SDL_ShowCursor(SDL_ENABLE);
+                pGFXManager = gfxManagerFut.get();
+                pSFXManager = sfxManagerFut.get();
+#else
+                // g++ does not provide std::launch::async on all platforms
+                pGFXManager = std::make_unique<GFXManager>();
+                pSFXManager = std::make_unique<SFXManager>();
+#endif
 
-            SDL_Log("Starting main menu...");
-            { // Scope
-                int menuResult = MainMenu().showMenu();
-                if (menuResult == MENU_QUIT_DEFAULT) {
-                    bExitGame = true;
-                } else if (menuResult == MENU_QUIT_REINITIALIZE) {
-                    // Reinitialize video mode and continue the loop
-                    SDL_Log("Reinitializing video mode...");
-                    // The loop will continue and reinitialize everything
+                GUIStyle::setGUIStyle(std::make_unique<DuneStyle>());
+
+                if(bFirstInit == true) {
+                    SDL_Log("Starting sound player...");
+                    soundPlayer = std::make_unique<SoundPlayer>();
+
+                    if(settings.audio.musicType == "directory") {
+                        SDL_Log("Starting directory music player...");
+                        musicPlayer = std::make_unique<DirectoryPlayer>();
+                    } else if(settings.audio.musicType == "adl") {
+                        SDL_Log("Starting ADL music player...");
+                        musicPlayer = std::make_unique<ADLPlayer>();
+                    } else if(settings.audio.musicType == "xmi") {
+                        SDL_Log("Starting XMI music player...");
+                        musicPlayer = std::make_unique<XMIPlayer>();
+                    } else {
+                        THROW(std::runtime_error, "Invalid music type: '%'", settings.audio.musicType);
+                    }
+
+                    //musicPlayer->changeMusic(MUSIC_INTRO);
+                }
+
+                // Playing intro
+                if(((bFirstGamestart == true) || (settings.general.playIntro == true)) && (bFirstInit==true)) {
+                    SDL_Log("Playing intro...");
+                    Intro().run();
+                }
+
+                bFirstInit = false;
+
+                // Re-enable cursor for main menu (fixes Windows cursor visibility issue)
+                SDL_ShowCursor(SDL_ENABLE);
+
+                SDL_Log("Starting main menu...");
+                { // Scope
+                    int menuResult = MainMenu().showMenu();
+                    if (menuResult == MENU_QUIT_DEFAULT) {
+                        bExitGame = true;
+                    } else if (menuResult == MENU_QUIT_REINITIALIZE) {
+                        // Reinitialize video mode and continue the loop
+                        SDL_Log("Reinitializing video mode...");
+                        // The loop will continue and reinitialize everything
+                    }
                 }
             }
 

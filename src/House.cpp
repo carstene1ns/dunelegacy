@@ -38,6 +38,9 @@
 #include <structures/Refinery.h>
 #include <structures/ConstructionYard.h>
 #include <units/Carryall.h>
+
+#include <limits>
+#include <vector>
 #include <units/Harvester.h>
 
 #include <misc/exceptions.h>
@@ -843,20 +846,53 @@ UnitBase* House::placeUnit(int itemID, int xPos, int yPos, bool byScenario) {
     \return the coordinate of the center in tile coordinates
 */
 Coord House::getCenterOfMainBase() const {
-    Coord center;
-    int numStructures = 0;
+    struct StructureCenter {
+        const StructureBase* structure;
+        Coord centerPx;
+    };
+
+    std::vector<StructureCenter> ownedStructures;
+    ownedStructures.reserve(structureList.size());
+
+    long long sumX = 0;
+    long long sumY = 0;
+
     for(const StructureBase* pStructure : structureList) {
-        if(pStructure->getOwner() == this) {
-            center += pStructure->getLocation();
-            numStructures++;
+        if(pStructure->getOwner() != this) {
+            continue;
+        }
+
+        Coord centerPx = pStructure->getCenterPoint();
+        ownedStructures.push_back({pStructure, centerPx});
+        sumX += centerPx.x;
+        sumY += centerPx.y;
+    }
+
+    if(ownedStructures.empty()) {
+        return Coord::Invalid();
+    }
+
+    const double avgX = static_cast<double>(sumX) / ownedStructures.size();
+    const double avgY = static_cast<double>(sumY) / ownedStructures.size();
+
+    const StructureCenter* best = &ownedStructures.front();
+    double bestDistSq = std::numeric_limits<double>::max();
+
+    for(const auto& entry : ownedStructures) {
+        const double dx = static_cast<double>(entry.centerPx.x) - avgX;
+        const double dy = static_cast<double>(entry.centerPx.y) - avgY;
+        const double distSq = dx*dx + dy*dy;
+
+        if(distSq < bestDistSq) {
+            bestDistSq = distSq;
+            best = &entry;
         }
     }
 
-    if(numStructures == 0) {
-        return Coord::Invalid();
-    } else {
-        return center / numStructures;
-    }
+    const Coord structureLocation = best->structure->getLocation();
+    const Coord structureSize = best->structure->getStructureSize();
+
+    return structureLocation + Coord(structureSize.x / 2, structureSize.y / 2);
 }
 
 

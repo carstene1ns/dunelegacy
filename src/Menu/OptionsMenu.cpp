@@ -109,10 +109,28 @@ OptionsMenu::OptionsMenu() : MenuBase()
 
     generalHBox.addWidget(Spacer::create(), 0.5);
     generalHBox.addWidget(Label::create(_("Campaign AI")), 190);
+    int visibleIndex = 0;
+    int selectedVisibleIndex = -1;
     for(unsigned int i=1; i<PlayerFactory::getList().size(); i++) {
-        aiDropDownBox.addEntry(PlayerFactory::getByIndex(i)->getName(), i);
+        const PlayerFactory::PlayerData* playerData = PlayerFactory::getByIndex(i);
+        if(playerData == nullptr) {
+            continue;
+        }
+        const std::string& playerClass = playerData->getPlayerClass();
+        if(playerClass.rfind("qBotSupport", 0) == 0) {
+            continue;
+        }
+        aiDropDownBox.addEntry(playerData->getName(), i);
+        if(playerClass == settings.ai.campaignAI) {
+            selectedVisibleIndex = visibleIndex;
+        }
+        visibleIndex++;
     }
-    aiDropDownBox.setSelectedItem(PlayerFactory::getIndexByPlayerClass(settings.ai.campaignAI) - 1);
+    if(selectedVisibleIndex >= 0) {
+        aiDropDownBox.setSelectedItem(selectedVisibleIndex);
+    } else if(visibleIndex > 0) {
+        aiDropDownBox.setSelectedItem(0);
+    }
     aiDropDownBox.setOnSelectionChange(std::bind(&OptionsMenu::onChangeOption, this, std::placeholders::_1));
     generalHBox.addWidget(&aiDropDownBox, 140);
     generalHBox.addWidget(Spacer::create(), 20);

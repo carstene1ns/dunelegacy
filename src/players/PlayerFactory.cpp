@@ -57,6 +57,31 @@ void PlayerFactory::registerAllPlayers() {
         [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Brutal); },
         [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); });
 
+    playerDataList.emplace_back(  "qBotSupportDefend",
+                                            "AI Support (Defend)",
+        [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Defend, true); },
+        [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); });
+
+    playerDataList.emplace_back(  "qBotSupportEasy",
+                                            "AI Support (Easy)",
+        [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Easy, true); },
+        [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); });
+
+    playerDataList.emplace_back(  "qBotSupportMedium",
+                                            "AI Support (Medium)",
+        [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Medium, true); },
+        [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); });
+
+    playerDataList.emplace_back(  "qBotSupportHard",
+                                            "AI Support (Hard)",
+        [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Hard, true); },
+        [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); });
+
+    playerDataList.emplace_back(  "qBotSupportBrutal",
+                                            "AI Support (Brutal)",
+        [](House* house, const std::string& playername) { return std::make_unique<QuantBot>(house, playername, QuantBot::Difficulty::Brutal, true); },
+        [](InputStream& inputStream, House* house) { return std::make_unique<QuantBot>(inputStream, house); });
+
     playerDataList.emplace_back(  "SmartBot",
                                             "SmartBot",
         [](House* house, const std::string& playername) { return std::make_unique<SmartBot>(house, playername, SmartBot::Difficulty::Normal); },

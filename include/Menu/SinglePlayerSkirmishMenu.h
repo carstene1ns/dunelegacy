@@ -23,6 +23,7 @@
 #include <GUI/StaticContainer.h>
 #include <GUI/VBox.h>
 #include <GUI/TextButton.h>
+#include <GUI/DropDownBox.h>
 #include <GUI/PictureButton.h>
 #include <GUI/InvisibleButton.h>
 #include <GUI/Spacer.h>
@@ -50,6 +51,8 @@ private:
     void onMissionDecrement();
 
     void updateHouseChoice();
+    void updateSupportBotLabel();
+    void onSupportBotSelectionChanged(bool interactive);
 
     InvisibleButton house1Button;
     PictureLabel    house1Picture;
@@ -73,6 +76,7 @@ private:
     VBox            menuButtonsVBox;
 
     TextButton      startButton;
+    DropDownBox     supportBotDropDown;
     TextButton      backButton;
 
     PictureLabel    heraldPicture;
@@ -82,6 +86,7 @@ private:
     int currentHouseChoiceScrollPos;
     int selectedButton;
     int mission;
+    int supportBotIndex;
 };
 
 #endif //SINGLEPLAYERSKIRMISHMENU_H
