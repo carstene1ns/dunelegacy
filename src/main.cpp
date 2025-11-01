@@ -346,6 +346,49 @@ static bool areConfigFilesOutOfSync(bool& objectDataOutOfSync, bool& quantBotOut
     return objectDataOutOfSync || quantBotOutOfSync;
 }
 
+static bool copyTemplateFile(const std::string& templateRelativePath, const std::string& destinationPath)
+{
+    try {
+        auto rwSource = pFileManager->openFile(templateRelativePath);
+        if(!rwSource) {
+            SDL_Log("copyTemplateFile: failed to open template '%s'", templateRelativePath.c_str());
+            return false;
+        }
+
+        auto rwDest = sdl2::RWops_ptr{ SDL_RWFromFile(destinationPath.c_str(), "wb") };
+        if(!rwDest) {
+            SDL_Log("copyTemplateFile: failed to open destination '%s': %s", destinationPath.c_str(), SDL_GetError());
+            return false;
+        }
+
+        SDL_ClearError();
+        std::array<char, 4096> buffer{};
+
+        while(true) {
+            size_t bytesRead = SDL_RWread(rwSource.get(), buffer.data(), 1, buffer.size());
+            if(bytesRead == 0) {
+                const char* err = SDL_GetError();
+                if(err != nullptr && err[0] != '\0') {
+                    SDL_Log("copyTemplateFile: read error on '%s': %s", templateRelativePath.c_str(), err);
+                    return false;
+                }
+                break; // EOF
+            }
+
+            size_t bytesWritten = SDL_RWwrite(rwDest.get(), buffer.data(), 1, bytesRead);
+            if(bytesWritten != bytesRead) {
+                SDL_Log("copyTemplateFile: write error on '%s': %s", destinationPath.c_str(), SDL_GetError());
+                return false;
+            }
+        }
+
+        return true;
+    } catch(const std::exception& ex) {
+        SDL_Log("copyTemplateFile: exception while copying '%s' -> '%s': %s", templateRelativePath.c_str(), destinationPath.c_str(), ex.what());
+        return false;
+    }
+}
+
 std::string getDefaultPlayerName() {
     char playername[MAX_PLAYERNAMELENGHT+1] = "Player";
 
@@ -376,17 +419,10 @@ bool restoreDefaultConfigs() {
             std::string userPath = getObjectDataConfigFilepath();
             SDL_Log("Restoring ObjectData.ini to: %s", userPath.c_str());
             
-            auto templateFile = pFileManager->openFile("config/ObjectData.bak");
-            if (templateFile) {
-                INIFile templateINI(templateFile.get());
-                if (templateINI.saveChangesTo(userPath)) {
-                    SDL_Log("  ✓ ObjectData.ini restored successfully");
-                } else {
-                    SDL_Log("  ✗ Failed to restore ObjectData.ini");
-                    success = false;
-                }
+            if (copyTemplateFile("config/ObjectData.bak", userPath)) {
+                SDL_Log("  ✓ ObjectData.ini restored successfully");
             } else {
-                SDL_Log("  ✗ Template file ObjectData.bak not found");
+                SDL_Log("  ✗ Failed to restore ObjectData.ini");
                 success = false;
             }
         } catch (std::exception& e) {
@@ -401,17 +437,10 @@ bool restoreDefaultConfigs() {
             std::string userPath = getQuantBotConfigFilepath();
             SDL_Log("Restoring QuantBot Config.ini to: %s", userPath.c_str());
             
-            auto templateFile = pFileManager->openFile("config/QuantBot Config.bak");
-            if (templateFile) {
-                INIFile templateINI(templateFile.get());
-                if (templateINI.saveChangesTo(userPath)) {
-                    SDL_Log("  ✓ QuantBot Config.ini restored successfully");
-                } else {
-                    SDL_Log("  ✗ Failed to restore QuantBot Config.ini");
-                    success = false;
-                }
+            if (copyTemplateFile("config/QuantBot Config.bak", userPath)) {
+                SDL_Log("  ✓ QuantBot Config.ini restored successfully");
             } else {
-                SDL_Log("  ✗ Template file QuantBot Config.bak not found");
+                SDL_Log("  ✗ Failed to restore QuantBot Config.ini");
                 success = false;
             }
         } catch (std::exception& e) {
@@ -941,14 +970,10 @@ int main(int argc, char *argv[]) {
                 if (!existsFile(userObjectDataPath)) {
                     SDL_Log("ObjectData.ini not found in user directory, copying template...");
                     try {
-                        auto templateFile = pFileManager->openFile("config/ObjectData.bak");
-                        if (templateFile) {
-                            INIFile templateINI(templateFile.get());
-                            if (templateINI.saveChangesTo(userObjectDataPath)) {
-                                SDL_Log("ObjectData.ini created successfully at: %s", userObjectDataPath.c_str());
-                            } else {
-                                SDL_Log("Warning: Failed to create ObjectData.ini");
-                            }
+                        if (copyTemplateFile("config/ObjectData.bak", userObjectDataPath)) {
+                            SDL_Log("ObjectData.ini created successfully at: %s", userObjectDataPath.c_str());
+                        } else {
+                            SDL_Log("Warning: Failed to create ObjectData.ini");
                         }
                     } catch (std::exception& e) {
                         SDL_Log("Warning: Could not copy ObjectData.bak template: %s", e.what());
@@ -962,14 +987,10 @@ int main(int argc, char *argv[]) {
                 if (!existsFile(userQuantBotPath)) {
                     SDL_Log("QuantBot Config.ini not found in user directory, copying template...");
                     try {
-                        auto templateFile = pFileManager->openFile("config/QuantBot Config.bak");
-                        if (templateFile) {
-                            INIFile templateINI(templateFile.get());
-                            if (templateINI.saveChangesTo(userQuantBotPath)) {
-                                SDL_Log("QuantBot Config.ini created successfully at: %s", userQuantBotPath.c_str());
-                            } else {
-                                SDL_Log("Warning: Failed to create QuantBot Config.ini");
-                            }
+                        if (copyTemplateFile("config/QuantBot Config.bak", userQuantBotPath)) {
+                            SDL_Log("QuantBot Config.ini created successfully at: %s", userQuantBotPath.c_str());
+                        } else {
+                            SDL_Log("Warning: Failed to create QuantBot Config.ini");
                         }
                     } catch (std::exception& e) {
                         SDL_Log("Warning: Could not copy QuantBot Config.bak template: %s", e.what());
