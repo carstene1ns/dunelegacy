@@ -281,6 +281,11 @@ public:
     void selectAll(const std::set<Uint32>& aList);
 
     /**
+        Selects all currently active ornithopters owned by the local house.
+    */
+    void selectAllOrnithopters();
+
+    /**
         This method unselects all units/structures in the list aList.
         \param aList the list containing all the units/structures to be unselected
     */

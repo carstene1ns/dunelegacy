@@ -929,6 +929,11 @@ void UnitBase::doSetAttackMode(ATTACKMODE newAttackMode) {
             doMove2Pos(location, false);
         }
     }
+    
+    // When setting HUNT mode, immediately trigger target search
+    if(attackMode == HUNT && !target && pendingTargetRequest == TargetRequestKind::None) {
+        enqueueTargetRequest(TargetRequestKind::Acquire);
+    }
 }
 
 void UnitBase::handleDamage(int damage, Uint32 damagerID, House* damagerOwner) {
@@ -1236,8 +1241,12 @@ void UnitBase::targeting() {
                (attackMode == GUARD || attackMode == AREAGUARD || attackMode == HUNT) &&
                !isInWeaponRange(target.getObjPointer())) {
                 enqueueTargetRequest(TargetRequestKind::Refresh);
-            } else if(!target && !attackPos && !moving && !justStoppedMoving && !forced) {
-                enqueueTargetRequest(TargetRequestKind::Acquire);
+            } else if(!target && !attackPos && !forced) {
+                // For HUNT mode, allow target search even while moving (critical for air units)
+                // For other modes, only search when not moving
+                if(attackMode == HUNT || (!moving && !justStoppedMoving)) {
+                    enqueueTargetRequest(TargetRequestKind::Acquire);
+                }
             }
         }
     }
@@ -1284,17 +1293,24 @@ void UnitBase::resolvePendingTargetRequest() {
     }
 
     if(request == TargetRequestKind::Acquire) {
-        if(!target && !attackPos && !moving && !justStoppedMoving && !forced) {
+        // For HUNT mode, allow target search even while moving (critical for air units)
+        // For other modes, only search when not moving
+        if(!target && !attackPos && !forced && (attackMode == HUNT || (!moving && !justStoppedMoving))) {
             const ObjectBase* pNewTarget = findTarget();
 
-            if(pNewTarget != nullptr && isInGuardRange(pNewTarget)) {
-                if(attackMode == AMBUSH) {
-                    doSetAttackMode(HUNT);
+            if(pNewTarget != nullptr) {
+                // In HUNT mode, attack targets regardless of guard range
+                // For other modes, only attack if in guard range
+                if(attackMode == HUNT || isInGuardRange(pNewTarget)) {
+                    if(attackMode == AMBUSH) {
+                        doSetAttackMode(HUNT);
+                    }
+                    doAttackObject(pNewTarget, false);
+                } else if(attackMode != HUNT) {
+                    // Only switch to AMBUSH for non-HUNT modes if target out of range
+                    setGuardPoint(location);
+                    doSetAttackMode(AMBUSH);
                 }
-                doAttackObject(pNewTarget, false);
-            } else if(attackMode == HUNT) {
-                setGuardPoint(location);
-                doSetAttackMode(AMBUSH);
             }
 
             findTargetTimer = MILLI2CYCLES(2*1000);

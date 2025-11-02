@@ -24,8 +24,97 @@
 #include <House.h>
 #include <Game.h>
 #include <SoundPlayer.h>
+#include <structures/StructureBase.h>
+#include <players/QuantBotConfig.h>
+#include <sand.h>
+#include <Definitions.h>
+
+#include <fstream>
+#include <mutex>
+#include <sstream>
+#include <ctime>
+#include <iomanip>
+#include <chrono>
+#include <iterator>
 
 #define ORNITHOPTER_FRAMETIME 3
+
+namespace {
+
+bool isHumanControlledHouse(const House* house) {
+    if(house == nullptr) {
+        return false;
+    }
+
+    for(const auto& playerPtr : house->getPlayerList()) {
+        if(playerPtr && playerPtr->getPlayerclass() == HUMANPLAYERCLASS) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void appendOrnithopterHuntLog(const std::string& message) {
+    static std::mutex logMutex;
+    static std::once_flag initFlag;
+    static std::string logPath;
+
+    // Lazily determine log file location and clear it once per run.
+    auto initLogPath = []() {
+        std::string configPath = getQuantBotConfigFilepath();
+        if(configPath.empty()) {
+            return std::string();
+        }
+
+        // Get the directory containing the config folder, not the config folder itself
+        const std::string::size_type slashPos = configPath.find_last_of("/\\");
+        if(slashPos == std::string::npos) {
+            return std::string();
+        }
+        std::string directory = configPath.substr(0, slashPos);
+        
+        // Get parent directory (one level up from config/)
+        const std::string::size_type parentSlashPos = directory.find_last_of("/\\");
+        if(parentSlashPos != std::string::npos) {
+            directory = directory.substr(0, parentSlashPos);
+        }
+        
+        std::string path = directory + "/ornithopter-hunt.log";
+
+        std::ofstream clearStream(path, std::ios::trunc);
+        if(clearStream) {
+            auto now = std::chrono::system_clock::now();
+            std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
+            clearStream << "=== Ornithopter hunt diagnostics started "
+                        << std::put_time(std::localtime(&nowTime), "%Y-%m-%d %H:%M:%S")
+                        << " ===\n";
+        }
+
+        return path;
+    };
+
+    std::call_once(initFlag, [&]() { logPath = initLogPath(); });
+
+    if(logPath.empty() || message.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> guard(logMutex);
+    std::ofstream stream(logPath, std::ios::app);
+    if(!stream) {
+        return;
+    }
+
+    auto now = std::chrono::system_clock::now();
+    std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
+
+    stream << std::put_time(std::localtime(&nowTime), "%H:%M:%S")
+           << " [cycle " << (currentGame ? currentGame->getGameCycleCount() : 0) << "] "
+           << message << '\n';
+}
+
+} // namespace
 
 Ornithopter::Ornithopter(House* newOwner) : AirUnit(newOwner) {
 
@@ -57,6 +146,12 @@ void Ornithopter::init() {
     bulletType = Bullet_SmallRocket;
 
     currentMaxSpeed = currentGame->objectData.data[itemID][originalHouseID].maxspeed;
+
+    static bool loggedInit = false;
+    if(!loggedInit) {
+        appendOrnithopterHuntLog("Ornithopter hunt logger initialized");
+        loggedInit = true;
+    }
 }
 
 Ornithopter::~Ornithopter() = default;
@@ -133,3 +228,86 @@ bool Ornithopter::attack() {
     return bAttacked;
 }
 
+const ObjectBase* Ornithopter::findTarget() const {
+    appendOrnithopterHuntLog("Ornithopter::findTarget() CALLED - this function IS running");
+    const ATTACKMODE mode = getAttackMode();
+    if(mode != HUNT || !isHumanControlledHouse(owner)) {
+        appendOrnithopterHuntLog("Skipping QuantBot path - mode or house check");
+        return ObjectBase::findTarget();
+    }
+
+    const QuantBotConfig& config = getQuantBotConfig();
+    const int myTeam = owner->getTeamID();
+
+    const ObjectBase* bestTarget = nullptr;
+    double bestScore = -1.0;
+    int evaluatedStructures = 0;
+    int evaluatedUnits = 0;
+    int viableCandidates = 0;
+
+    auto evaluateCandidate = [&](const ObjectBase* candidate, const QuantBotConfig::TargetPriority& priority, bool isStructure) {
+        if(candidate == nullptr || !candidate->isActive()) {
+            return;
+        }
+
+        const House* candidateOwner = candidate->getOwner();
+        if(candidateOwner == nullptr || candidateOwner->getTeamID() == myTeam) {
+            return;
+        }
+
+        if(!candidate->isVisible(myTeam) || !canAttack(candidate)) {
+            return;
+        }
+
+        const int weight = priority.build + priority.target;
+        if(weight <= 0) {
+            return;
+        }
+
+        FixPoint dist = blockDistance(getLocation(), candidate->getLocation());
+        const double score = static_cast<double>(weight) / (dist.toDouble() + 1.0);
+
+        viableCandidates++;
+        if(score > bestScore) {
+            bestScore = score;
+            bestTarget = candidate;
+        }
+
+        if(isStructure) {
+            evaluatedStructures++;
+        } else {
+            evaluatedUnits++;
+        }
+    };
+
+    for(const StructureBase* pStructure : structureList) {
+        evaluateCandidate(pStructure, config.getStructurePriority(pStructure->getItemID()), true);
+    }
+
+    for(const UnitBase* pUnit : unitList) {
+        if(pUnit->getOwner() == owner) {
+            continue;
+        }
+        evaluateCandidate(pUnit, config.getUnitPriority(pUnit->getItemID()), false);
+    }
+
+    if(bestTarget != nullptr) {
+        std::ostringstream stream;
+        stream << "Acquired target objectId=" << bestTarget->getObjectID()
+               << " itemID=" << bestTarget->getItemID()
+               << " score=" << std::fixed << std::setprecision(3) << bestScore
+               << " scanned(structures=" << evaluatedStructures
+               << ", units=" << evaluatedUnits
+               << ", viable=" << viableCandidates << ')';
+        appendOrnithopterHuntLog(stream.str());
+        return bestTarget;
+    }
+
+    std::ostringstream stream;
+    stream << "No viable target found. Scanned structures=" << evaluatedStructures
+           << " units=" << evaluatedUnits
+           << " viableCandidates=" << viableCandidates;
+    appendOrnithopterHuntLog(stream.str());
+
+    return ObjectBase::findTarget();
+}

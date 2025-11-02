@@ -39,6 +39,8 @@ public:
 
     void playAttackSound() override;
 
+    const ObjectBase* findTarget() const override;
+
 protected:
     virtual FixPoint getDestinationAngle() const override;
 

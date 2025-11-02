@@ -2009,6 +2009,42 @@ void Game::selectAll(const std::set<Uint32>& aList)
     }
 }
 
+void Game::selectAllOrnithopters()
+{
+    std::set<Uint32> ornithopterIDs;
+    Coord summedPosition;
+
+    for(UnitBase* pUnit : unitList) {
+        if((pUnit->getOwner() == pLocalHouse) &&
+           (pUnit->getItemID() == Unit_Ornithopter) &&
+           pUnit->isRespondable()) {
+            ornithopterIDs.insert(pUnit->getObjectID());
+            summedPosition += pUnit->getLocation();
+        }
+    }
+
+    if(ornithopterIDs.empty()) {
+        return;
+    }
+
+    unselectAll(selectedList);
+    selectedList.clear();
+
+    for(Uint32 objectID : ornithopterIDs) {
+        ObjectBase* pObject = objectManager.getObject(objectID);
+        if(pObject != nullptr) {
+            pObject->setSelected(true);
+            selectedList.insert(objectID);
+        }
+    }
+
+    selectionChanged();
+    currentCursorMode = CursorMode_Normal;
+
+    Coord averagePosition = summedPosition / static_cast<int>(ornithopterIDs.size());
+    screenborder->setNewScreenCenter(averagePosition * TILESIZE);
+}
+
 
 void Game::unselectAll(const std::set<Uint32>& aList)
 {
@@ -2373,6 +2409,12 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
 
         case SDLK_F12: {
             bShowFPS = !bShowFPS;
+        } break;
+
+        case SDLK_o: {
+            if((SDL_GetModState() & (KMOD_CTRL | KMOD_ALT | KMOD_GUI)) == 0) {
+                selectAllOrnithopters();
+            }
         } break;
 
         case SDLK_m: {

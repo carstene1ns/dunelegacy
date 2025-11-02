@@ -30,6 +30,8 @@
 #include <misc/draw_util.h>
 #include <misc/SDL2pp.h>
 
+#include <algorithm>
+
 GameInterface::GameInterface() : Window(0,0,0,0) {
     pObjectContainer = nullptr;
     objectID = NONE_ID;
@@ -74,8 +76,25 @@ GameInterface::GameInterface() : Window(0,0,0,0) {
     topBarHBox.addWidget(Spacer::create());
 
     // add radar
-    windowWidget.addWidget(&radarView,Point(getRendererWidth()-sideBar.getSize().x+SIDEBAR_COLUMN_WIDTH, 0),radarView.getMinimumSize());
+    const Point radarOrigin(getRendererWidth() - sideBar.getSize().x + SIDEBAR_COLUMN_WIDTH, 0);
+    const Point radarSize = radarView.getMinimumSize();
+    windowWidget.addWidget(&radarView, radarOrigin, radarSize);
     radarView.setOnRadarClick(std::bind(&Game::onRadarClick, currentGame, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+    // add ornithopter selection shortcut button just below the radar
+    ornithopterSelectButton.setText(_("Ornithopter"));
+    ornithopterSelectButton.setTooltipText(_("Select all ornithopters (Hotkey: O)"));
+    ornithopterSelectButton.setOnClick(std::bind(&Game::selectAllOrnithopters, currentGame));
+
+    const int ornithopterButtonWidth = sideBar.getSize().x - 25;
+    const int ornithopterButtonHeight = std::max(ornithopterSelectButton.getMinimumSize().y, 36);
+    const Point ornithopterButtonSize(ornithopterButtonWidth, ornithopterButtonHeight);
+    const Point ornithopterButtonPos(
+        getRendererWidth() - sideBar.getSize().x + 24,
+        146
+    );
+    ornithopterSelectButton.resize(ornithopterButtonSize.x, ornithopterButtonSize.y);
+    windowWidget.addWidget(&ornithopterSelectButton, ornithopterButtonPos, ornithopterButtonSize);
 
     // add chat manager
     windowWidget.addWidget(&chatManager, Point(20, 60), Point(getRendererWidth() - sideBar.getSize().x, 360));
@@ -157,8 +176,18 @@ void GameInterface::draw(Point position) {
 }
 
 void GameInterface::updateObjectInterface() {
-    if(currentGame->getSelectedList().size() == 1) {
-        ObjectBase* pObject = currentGame->getObjectManager().getObject( *(currentGame->getSelectedList().begin()));
+    const auto& selection = currentGame->getSelectedList();
+
+    if(selection.empty()) {
+        ornithopterSelectButton.setVisible(true);
+        removeOldContainer();
+        return;
+    }
+
+    ornithopterSelectButton.setVisible(false);
+
+    if(selection.size() == 1) {
+        ObjectBase* pObject = currentGame->getObjectManager().getObject(*selection.begin());
         Uint32 newObjectID = pObject->getObjectID();
 
         if(newObjectID != objectID) {
@@ -180,7 +209,7 @@ void GameInterface::updateObjectInterface() {
                 removeOldContainer();
             }
         }
-    } else if(currentGame->getSelectedList().size() > 1) {
+    } else {
 
         if((pObjectContainer == nullptr) || (objectID != NONE_ID)) {
             // either there was nothing selected before or exactly one unit
@@ -199,8 +228,6 @@ void GameInterface::updateObjectInterface() {
                 removeOldContainer();
             }
         }
-    } else {
-        removeOldContainer();
     }
 }
 

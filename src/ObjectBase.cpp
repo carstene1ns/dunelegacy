@@ -708,9 +708,13 @@ const ObjectBase* ObjectBase::findTarget() const {
         checkRange = getViewRange();
     }
 
-    if(const SpatialGrid* grid = currentGame->getSpatialGrid()) {
-        if(const ObjectBase* target = findTargetViaGrid(*this, *grid, checkRange, huntMode)) {
-            return target;
+    // Special handling for Ornithopter: check if this is an Ornithopter and if so,
+    // skip the spatial grid to let Ornithopter::findTarget() handle QuantBot-style scoring
+    if(getItemID() != Unit_Ornithopter) {
+        if(const SpatialGrid* grid = currentGame->getSpatialGrid()) {
+            if(const ObjectBase* target = findTargetViaGrid(*this, *grid, checkRange, huntMode)) {
+                return target;
+            }
         }
     }
 

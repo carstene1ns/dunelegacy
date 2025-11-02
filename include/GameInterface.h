@@ -22,6 +22,7 @@
 #include <GUI/HBox.h>
 #include <GUI/StaticContainer.h>
 #include <GUI/Spacer.h>
+#include <GUI/TextButton.h>
 #include <GUI/PictureButton.h>
 #include <GUI/PictureLabel.h>
 #include <GUI/dune/ChatManager.h>
@@ -108,5 +109,6 @@ private:
     RadarView           radarView;              ///< This is the minimap/radar in the side bar
 
     ChatManager         chatManager;            ///< Manages chat manages shown overlayed with the main map
+    TextButton          ornithopterSelectButton;///< Button that selects all owned ornithopters
 };
-#endif // GAMEINTERFACE_H
+    #endif // GAMEINTERFACE_H
