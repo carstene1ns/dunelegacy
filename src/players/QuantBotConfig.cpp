@@ -559,15 +559,25 @@ std::string getObjectDataFilepath() {
 std::string getObjectDataHash() {
     std::string filePath = getObjectDataFilepath();
     
-    // Open and read the file
-    std::ifstream file(filePath, std::ios::binary);
+    // Open and read the file (text mode to handle line endings)
+    std::ifstream file(filePath);
     if (!file.is_open()) {
         SDL_Log("Warning: Could not open ObjectData.ini for hashing: %s", filePath.c_str());
         return "ERROR_FILE_NOT_FOUND";
     }
     
-    // Read file contents
-    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    // Read file contents line by line and normalize line endings
+    // This ensures Windows (CRLF) and Mac/Linux (LF) produce the same hash
+    std::string contents;
+    std::string line;
+    while (std::getline(file, line)) {
+        // Remove any trailing \r (in case of CRLF on Windows)
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        contents += line;
+        contents += '\n';  // Use consistent LF line ending
+    }
     file.close();
     
     // Simple but deterministic hash using FNV-1a algorithm (64-bit)
