@@ -23,10 +23,28 @@
 
 extern int currentZoomlevel;
 
+// MULTIPLAYER WARNING: This RNG is NON-DETERMINISTIC! ⚠️
+// 
+// ✅ SAFE to use in:
+//    - UI code (menus, animations)
+//    - Sound/music selection (cosmetic only)
+//    - Network lobby (before game starts)
+//    - Map editor
+// 
+// ❌ NEVER use in gameplay code:
+//    - Unit/structure AI decisions
+//    - Combat calculations
+//    - Pathfinding
+//    - Build timers
+//    - Any logic that affects game state
+// 
+// For gameplay: Use currentGame->randomGen (deterministic, synchronized)
+// For constructors: Use deterministic formulas (houseID, objectID, etc.)
+//
 int getRandomInt() {
     static std::random_device randdev;
     static std::minstd_rand randgen(randdev());
-
+    
     return randgen() - randgen.min();
 }
 

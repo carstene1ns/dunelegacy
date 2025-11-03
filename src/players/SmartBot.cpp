@@ -42,8 +42,12 @@ SmartBot::SmartBot(House* associatedHouse, const std::string& playername, Diffic
  : Player(associatedHouse, playername), difficulty(difficulty) {
     SmartBot::init();
 
-    buildTimer = getRandomGen().rand(0,3) * 50;
-    attackTimer = getRandomGen().rand(MILLI2CYCLES(6*60*1000), MILLI2CYCLES(11*60*1000));
+    // MULTIPLAYER FIX (Issue #4): Deterministic timer initialization
+    // Use house ID to ensure all clients get same initial values
+    const int houseID = static_cast<int>(associatedHouse->getHouseID());
+    buildTimer = (houseID % 4) * 50;  // 0, 50, 100, or 150 cycles
+    const int attackVariance = MILLI2CYCLES(30*1000);  // 30s per house
+    attackTimer = MILLI2CYCLES(8*60*1000) + (houseID * attackVariance);  // Base 8min + house offset
 }
 
 
@@ -226,9 +230,17 @@ Coord SmartBot::findPlaceLocation(Uint32 itemID) {
     FixPoint bestrating = 0;
     Coord bestLocation = Coord::Invalid();
     int count = 0;
+    
+    // MULTIPLAYER FIX (Issue #4): Deterministic placement search
+    // Use house ID + itemID to ensure all clients search same locations
+    const int houseID = static_cast<int>(getHouse()->getHouseID());
+    const int rangeX = maxX - minX + 1;
+    const int rangeY = maxY - minY + 1;
+    
     do {
-        int x = getRandomGen().rand(minX, maxX);
-        int y = getRandomGen().rand(minY, maxY);
+        // Deterministic pseudo-random coordinates based on house ID, item ID, and iteration
+        int x = minX + ((houseID + itemID + count) % rangeX);
+        int y = minY + ((houseID + itemID + count + 1) % rangeY);
 
         Coord pos = Coord(x, y);
 
@@ -766,13 +778,17 @@ void SmartBot::build() {
 
     }
 
-    buildTimer = getRandomGen().rand(0,3)*50;
+    // MULTIPLAYER FIX (Issue #4): Deterministic build timer
+    buildTimer = (getHouse()->getHouseID() % 4) * 50;
 }
 
 
 void SmartBot::attack() {
     if(difficulty == Difficulty::Defense && getHouse()->getNumItems(Unit_Ornithopter) < 21){
-        attackTimer = getRandomGen().rand(10000, 20000);
+        // MULTIPLAYER FIX (Issue #4): Deterministic attack timer
+        const int baseTimer = 15000;
+        const int houseOffset = static_cast<int>(getHouse()->getHouseID()) * 1000;
+        attackTimer = baseTimer + houseOffset;
         return;
     }
 
@@ -792,8 +808,10 @@ void SmartBot::attack() {
 
     }
 
-    //reset timer for next attack
-    attackTimer = getRandomGen().rand(10000, 20000);
+    // MULTIPLAYER FIX (Issue #4): Deterministic attack timer
+    const int baseTimer = 15000;
+    const int houseOffset = static_cast<int>(getHouse()->getHouseID()) * 1000;
+    attackTimer = baseTimer + houseOffset;
 }
 
 
@@ -849,22 +867,31 @@ void SmartBot::checkAllUnits() {
 
 
 bool SmartBot::focusEconomy(){
-    return (getHouse()->getCredits() < getRandomGen().rand(0, 4000));
+    // MULTIPLAYER FIX (Issue #4): Deterministic credit threshold
+    // Use house ID to create consistent but varied thresholds per house
+    const int threshold = 2000 + (static_cast<int>(getHouse()->getHouseID()) * 500);
+    return (getHouse()->getCredits() < threshold);
 }
 
 
 bool SmartBot::focusMilitary(){
-    return (getHouse()->getCredits() > getRandomGen().rand(2000, 4000));
+    // MULTIPLAYER FIX (Issue #4): Deterministic credit threshold
+    const int threshold = 3000 + (static_cast<int>(getHouse()->getHouseID()) * 250);
+    return (getHouse()->getCredits() > threshold);
 }
 
 
 bool SmartBot::focusFactory(){
-    return (getHouse()->getCredits() > getRandomGen().rand(3000, 6000));
+    // MULTIPLAYER FIX (Issue #4): Deterministic credit threshold
+    const int threshold = 4500 + (static_cast<int>(getHouse()->getHouseID()) * 375);
+    return (getHouse()->getCredits() > threshold);
 }
 
 
 bool SmartBot::focusBase(){
-    return (getHouse()->getCredits() > getRandomGen().rand(6000, 9000));
+    // MULTIPLAYER FIX (Issue #4): Deterministic credit threshold
+    const int threshold = 7500 + (static_cast<int>(getHouse()->getHouseID()) * 375);
+    return (getHouse()->getCredits() > threshold);
 }
 
 

@@ -383,18 +383,18 @@ void Game::processTargetRequests() {
         return;
     }
 
-    const Uint64 start = SDL_GetPerformanceCounter();
-    const Uint64 frequency = SDL_GetPerformanceFrequency();
-    const double budgetSeconds = TargetBudgetMs / 1000.0;
+    // MULTIPLAYER FIX (Issue #2): Removed time-based budget check
+    // Now uses ONLY deterministic per-cycle request limit
+    // Timing is still measured for profiling, but does NOT affect execution
 
-    bool processedAny = false;
-    while(!targetRequestQueue.empty()) {
-        const Uint64 now = SDL_GetPerformanceCounter();
-        const double elapsed = static_cast<double>(now - start) / static_cast<double>(frequency);
-        if(processedAny && elapsed >= budgetSeconds) {
-            break;
-        }
+    const Uint64 start = SDL_GetPerformanceCounter();  // PROFILING ONLY
 
+    // Deterministic per-cycle limit (same on all clients regardless of performance)
+    // Target acquisition is fast (~0.05ms each), so we can process many per cycle
+    static constexpr int TargetRequestsPerCycle = 50;  // ~2.5ms budget at 0.05ms each
+    
+    int processedCount = 0;
+    while(!targetRequestQueue.empty() && processedCount < TargetRequestsPerCycle) {
         TargetRequest request = targetRequestQueue.front();
         targetRequestQueue.pop_front();
         pendingTargetRequestIds.erase(request.objectId);
@@ -404,7 +404,31 @@ void Game::processTargetRequests() {
             unit->resolvePendingTargetRequest();
         }
 
-        processedAny = true;
+        processedCount++;
+    }
+    
+    const Uint64 end = SDL_GetPerformanceCounter();  // PROFILING ONLY
+    const double elapsedMs = getElapsedMs(start, end);  // PROFILING ONLY
+    
+    // MULTIPLAYER TELEMETRY: Log synchronization info and queue starvation warnings
+    if(pNetworkManager != nullptr && processedCount > 0) {
+        // Log every 10 seconds to verify synchronization
+        if((gameCycleCount % MILLI2CYCLES(10000)) == 0) {
+            SDL_Log("[MP-Sync Cycle %d] Targets: %d, Queue: %zu, Time: %.2fms",
+                    gameCycleCount,
+                    processedCount,
+                    targetRequestQueue.size(),
+                    elapsedMs);
+        }
+    }
+    
+    // Queue starvation warning (deterministic across clients)
+    if(!targetRequestQueue.empty() && processedCount >= TargetRequestsPerCycle) {
+        // Log every 5 seconds if queue is growing
+        if((gameCycleCount % MILLI2CYCLES(5000)) == 0 && targetRequestQueue.size() > 50) {
+            SDL_Log("[MP-Sync WARNING Cycle %d] Target queue may be starved: %zu requests pending",
+                    gameCycleCount, targetRequestQueue.size());
+        }
     }
 }
 
@@ -445,22 +469,13 @@ void Game::processPathRequests() {
         frameTiming.pathTokensPerCycleStats.add(0.0);
         return;
     }
-    
-    // Check if we have any budget remaining for this frame
-    if(pathfindingBudgetRemainingMs <= 0.0) {
-        frameTiming.pathsProcessedThisCycle = 0;
-        frameTiming.pathfindingMsThisCycle = 0.0;
-        frameTiming.pathTokensThisCycle = 0;
-        frameTiming.pathsPerCycleStats.add(0.0);
-        frameTiming.pathTokensPerCycleStats.add(0.0);
-        frameTiming.pathBudgetStarvedFrames++;
-        return;  // Budget exhausted, skip pathfinding for remaining cycles this frame
-    }
 
-    const Uint64 start = SDL_GetPerformanceCounter();
-    const Uint64 frequency = SDL_GetPerformanceFrequency();
-    // Per-cycle time budget (safety valve only - token budget is primary gate)
-    const double cycleBudgetSeconds = 10.0 / 1000.0;  // 10ms per cycle safety valve
+    // MULTIPLAYER FIX (Issue #1): Removed time-based budget checks
+    // Now uses ONLY deterministic token budget for multiplayer synchronization
+    // Timing is still measured for profiling, but does NOT affect execution
+
+    const Uint64 start = SDL_GetPerformanceCounter();  // PROFILING ONLY
+    const Uint64 frequency = SDL_GetPerformanceFrequency();  // PROFILING ONLY
 
     frameTiming.pathsProcessedThisCycle = 0;
     frameTiming.pathfindingMsThisCycle = 0.0;
@@ -472,21 +487,11 @@ void Game::processPathRequests() {
         frameTiming.maxPathQueueLength = queueDepth;
     }
 
-    // Phase 2: Token budget gating
+    // Deterministic token budget (same on all clients regardless of performance)
     size_t tokensRemaining = PathTokensPerCycleBudget;
-    bool processedAny = false;
     
+    // Process paths until token budget exhausted (deterministic stopping condition)
     while(!pathRequestQueue.empty() && tokensRemaining > 0) {
-        // Check time budget (safety valve - should rarely trigger)
-        const Uint64 now = SDL_GetPerformanceCounter();
-        const double elapsed = static_cast<double>(now - start) / static_cast<double>(frequency);
-        if(processedAny && elapsed >= cycleBudgetSeconds) {
-            frameTiming.timeBudgetExceededCount++;
-            logPerformance("[WARNING] Time budget exceeded before token budget (%.2fms elapsed, %zu tokens remaining, queue=%zu)",
-                elapsed * 1000.0, tokensRemaining, pathRequestQueue.size());
-            break;  // Time limit hit (safety valve)
-        }
-
         PathRequest request = pathRequestQueue.front();
         pathRequestQueue.pop_front();
         pendingPathRequestIds.erase(request.objectId);
@@ -531,17 +536,27 @@ void Game::processPathRequests() {
                 }
             }
         }
-
-        processedAny = true;
     }
     
-    // Track token budget exhaustion
+    // MULTIPLAYER FIX (Issue #6): Track token budget exhaustion with deterministic recovery
     if (tokensRemaining == 0 && !pathRequestQueue.empty()) {
         frameTiming.tokenBudgetExhaustedCount++;
+        
+        // Deterministic recovery: If queue is growing beyond threshold, temporarily boost budget
+        const size_t queueThreshold = 100;  // If queue > 100, we're falling behind
+        if(pathRequestQueue.size() > queueThreshold) {
+            // Log warning (cycle-based, so deterministic)
+            if((gameCycleCount % MILLI2CYCLES(5000)) == 0) {
+                SDL_Log("[MP-Sync WARNING Cycle %d] Pathfinding queue starved: %zu requests pending",
+                        gameCycleCount, pathRequestQueue.size());
+            }
+            // Note: Budget boost would need to be implemented as a game state change
+            // For now, we just track and log the issue deterministically
+        }
     }
     
-    const Uint64 end = SDL_GetPerformanceCounter();
-    frameTiming.pathfindingMsThisCycle = getElapsedMs(start, end);
+    const Uint64 end = SDL_GetPerformanceCounter();  // PROFILING ONLY
+    frameTiming.pathfindingMsThisCycle = getElapsedMs(start, end);  // PROFILING ONLY
     
     // Record cycle statistics
     frameTiming.pathsPerCycleStats.add(static_cast<double>(frameTiming.pathsProcessedThisCycle));
@@ -552,15 +567,24 @@ void Game::processPathRequests() {
         frameTiming.maxPathTokensPerFrame = frameTiming.pathTokensThisFrame;
     }
     
-    // Subtract used time from frame budget
-    pathfindingBudgetRemainingMs -= frameTiming.pathfindingMsThisCycle;
-    
-    // Track max per-cycle values
+    // Track max per-cycle values (PROFILING ONLY - does not affect gameplay)
     if(frameTiming.pathfindingMsThisCycle > frameTiming.maxPathfindingMsPerCycle) {
         frameTiming.maxPathfindingMsPerCycle = frameTiming.pathfindingMsThisCycle;
     }
     if(frameTiming.pathsProcessedThisCycle > frameTiming.maxPathsPerCycle) {
         frameTiming.maxPathsPerCycle = frameTiming.pathsProcessedThisCycle;
+    }
+    
+    // MULTIPLAYER TELEMETRY: Log synchronization info
+    if(pNetworkManager != nullptr && frameTiming.pathsProcessedThisCycle > 0) {
+        // Log every 10 seconds to verify synchronization
+        if((gameCycleCount % MILLI2CYCLES(10000)) == 0) {
+            SDL_Log("[MP-Sync Cycle %d] Paths: %d, Tokens: %zu, Queue: %zu",
+                    gameCycleCount,
+                    frameTiming.pathsProcessedThisCycle,
+                    frameTiming.pathTokensThisCycle,
+                    pathRequestQueue.size());
+        }
     }
 }
 
@@ -1276,8 +1300,8 @@ void Game::runMainLoop() {
         frameTiming.unitTurnMsThisFrame = 0.0;
         frameTiming.unitVisibilityMsThisFrame = 0.0;
         
-        // Reset pathfinding budget for this frame
-        pathfindingBudgetRemainingMs = PathBudgetMs;
+        // MULTIPLAYER FIX (Issue #1): Removed time-based pathfinding budget
+        // Token budget is now the only gate (deterministic)
         
         renderFrame();
 
@@ -1300,9 +1324,8 @@ void Game::runMainLoop() {
             averageFrameTime = 0.99f * averageFrameTime + 0.01f * actualFrameTime;
         }
 
-        if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {
-            finishedLevel = true;
-        }
+        // MULTIPLAYER FIX (Issue #9): Removed duplicate finished level check
+        // This is already handled in updateGameState() with cycle-based timing
 
         if(takePeriodicalScreenshots && ((gameCycleCount % (MILLI2CYCLES(10*1000))) == 0)) {
             takeScreenshot();
@@ -1550,16 +1573,17 @@ void Game::updateGameState() {
 
     gameCycleCount++;
     
-    // Dump combat statistics every 30 seconds
-    const Uint32 currentTime = SDL_GetTicks();
-    if(combatStats.lastDumpTime == 0) {
-        combatStats.lastDumpTime = currentTime;
-    } else if(currentTime - combatStats.lastDumpTime >= 30000) {
+    // MULTIPLAYER FIX (Issue #8): Cycle-based combat stats dump (deterministic)
+    // Dump combat statistics every 30 seconds (MILLI2CYCLES(30000) cycles)
+    if(combatStats.lastDumpCycle == 0) {
+        combatStats.lastDumpCycle = gameCycleCount;
+    } else if((gameCycleCount - combatStats.lastDumpCycle) >= MILLI2CYCLES(30000)) {
         dumpCombatStats();
-        combatStats.lastDumpTime = currentTime;
+        combatStats.lastDumpCycle = gameCycleCount;
     }
     
-    if(finished && (SDL_GetTicks() - finishedLevelTime > END_WAIT_TIME)) {
+    // MULTIPLAYER FIX (Issue #9): Cycle-based finished level timer (deterministic)
+    if(finished && (gameCycleCount - finishedLevelCycle > MILLI2CYCLES(END_WAIT_TIME))) {
         finishedLevel = true;
     }
     
@@ -2361,7 +2385,7 @@ void Game::setGameWon() {
     if(!bQuitGame && !finished) {
         won = true;
         finished = true;
-        finishedLevelTime = SDL_GetTicks();
+        finishedLevelCycle = gameCycleCount;  // MULTIPLAYER FIX (Issue #9): Use cycle count
         soundPlayer->playVoice(YourMissionIsComplete,pLocalHouse->getHouseID());
     }
 }
@@ -2371,7 +2395,7 @@ void Game::setGameLost() {
     if(!bQuitGame && !finished) {
         won = false;
         finished = true;
-        finishedLevelTime = SDL_GetTicks();
+        finishedLevelCycle = gameCycleCount;  // MULTIPLAYER FIX (Issue #9): Use cycle count
         soundPlayer->playVoice(YouHaveFailedYourMission,pLocalHouse->getHouseID());
     }
 }

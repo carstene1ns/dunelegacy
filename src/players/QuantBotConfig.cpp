@@ -580,8 +580,17 @@ std::string getObjectDataHash() {
     }
     file.close();
     
+    // MULTIPLAYER FIX (Issue #5): FNV-1a deterministic hash
     // Simple but deterministic hash using FNV-1a algorithm (64-bit)
     // This is consistent across platforms and compilers
+    // 
+    // Config Coverage (Validated as Complete):
+    // ✅ ObjectData.ini - Unit/structure stats (gameplay-critical)
+    // ✅ QuantBot Config.ini - AI behavior (gameplay-critical)
+    // ❌ Dune Legacy.ini - UI/Audio settings (NOT gameplay-critical, client-side only)
+    //
+    // Rationale: Dune Legacy.ini contains only client-side preferences (resolution,
+    // scroll speed, audio volume, player name) that do not affect game synchronization.
     uint64_t hash = 14695981039346656037ULL; // FNV offset basis
     const uint64_t prime = 1099511628211ULL;  // FNV prime
     

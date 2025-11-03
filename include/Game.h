@@ -708,7 +708,7 @@ public:
         int launcherRocketsKillOrni = 0;      // Launcher rockets that killed ornithopter
         int launcherRocketsExpired = 0;       // Launcher rockets that expired (timer)
         
-        Uint32 lastDumpTime = 0;              // Last time we dumped stats (SDL ticks)
+        Uint32 lastDumpCycle = 0;             // MULTIPLAYER FIX (Issue #8): Cycle-based (was lastDumpTime)
     };
     
     CombatStats combatStats;
@@ -781,7 +781,7 @@ private:
 
     bool    finished = false;                   ///< Is the game finished (won or lost) and we are just waiting for the end message to be shown
     bool    won = false;                        ///< If the game is finished, is it won or lost
-    Uint32  finishedLevelTime = 0;              ///< The time in milliseconds when the level was finished (won or lost)
+    Uint32  finishedLevelCycle = 0;             ///< MULTIPLAYER FIX (Issue #9): Cycle-based (was finishedLevelTime)
     bool    finishedLevel = false;              ///< Set, when the game is really finished and the end message was shown
 
     std::unique_ptr<GameInterface>          pInterface;                             ///< This is the whole interface (top bar and side bar)
@@ -814,10 +814,10 @@ private:
     std::deque<PathRequest> pathRequestQueue;
     std::unordered_set<Uint32> pendingPathRequestIds;
 
-    static constexpr double TargetBudgetMs = 3.0;
-    static constexpr double PathBudgetMs = 6.0;  // Kept as safety valve
+    // MULTIPLAYER FIX (Issue #1, #2): Removed time-based budgets
+    // Now using only deterministic budgets:
     static constexpr std::size_t kPathNodeBudget = 2048;
-    static constexpr size_t PathTokensPerCycleBudget = 20000;  // Phase 2: Deterministic token budget (~4.4ms)
+    static constexpr size_t PathTokensPerCycleBudget = 20000;  // Deterministic token budget
 
     // Game loop methods
     void initializeGameLoop();
@@ -831,7 +831,6 @@ private:
     void processPathRequests();
 
     Uint32 lastTimingLogMs = 0;
-    double pathfindingBudgetRemainingMs = 0.0;  // Per-frame budget tracking
 
     // Performance logging infrastructure
     static std::ofstream performanceLogFile;

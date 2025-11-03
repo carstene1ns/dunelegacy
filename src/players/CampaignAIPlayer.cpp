@@ -304,7 +304,10 @@ void CampaignAIPlayer::updateStructures() {
                         continue;
                     }
 
-                    if((getRandomGen().rand() % 4 == 0) || (buildPriorityIter->second > bestItemPriority)) {
+                    // MULTIPLAYER FIX (Issue #4): Deterministic build selection
+                    // Use house ID + item ID to create deterministic 25% chance
+                    const bool shouldConsider = ((getHouse()->getHouseID() + currentItemID) % 4 == 0);
+                    if(shouldConsider || (buildPriorityIter->second > bestItemPriority)) {
                         // build with 25% chance or if higher priority
                         bestItemID = currentItemID;
                         bestItemPriority = buildPriorityIter->second;
