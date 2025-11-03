@@ -130,6 +130,30 @@
           <br />
 
           <div class="post">
+            <div class="post-title"><h2><a name="2025-11-03-00-00-00">Dune Legacy 0.98.6.6 Released</a></h2></div>
+            <div class="post-date">November 3, 2025</div>
+            <div class="post-body">
+              <p>Dune Legacy 0.98.6.6 is now available! This release focuses on multiplayer stability and performance improvements.</p>
+              <h3>What's New in 0.98.6.6</h3>
+              <ul>
+                <li><b>Fixed Multiplayer Synchronization:</b> Restored network pacing and command synchronization - games no longer hang with "Waiting for other players" overlay</li>
+                <li><b>Deterministic Pathfinding:</b> Replaced time-sliced pathfinding with token-based budget system for consistent performance across all machines in multiplayer</li>
+                <li><b>Multiplayer Pause Support:</b> Players can now pause/resume during multiplayer sessions with synchronized notifications</li>
+                <li><b>Network Improvements:</b> Command buffering continues during wait states, ensuring peers stay synchronized</li>
+                <li><b>Ornithopter Targeting:</b> Changed to match original Dune II behavior for authentic gameplay</li>
+                <li><b>Ornithopter Select Button:</b> Added dedicated button for quick selection of all ornithopters</li>
+              </ul>
+              <h3>Download</h3>
+              <ul>
+                <li><b>Windows:</b> <a href="https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/Dune%20Legacy%200.98.6.6%20Setup.exe/download">Dune Legacy 0.98.6.6 Setup.exe</a></li>
+                <li><b>macOS:</b> <a href="https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.6.6-macOS.dmg/download">DuneLegacy-0.98.6.6-macOS.dmg</a></li>
+              </ul>
+              <p><b>Technical Details:</b> The deterministic pathfinding system uses node-count budgets instead of wall-clock timing, ensuring all clients process the same number of path calculations per game cycle regardless of CPU speed differences. This eliminates a major source of multiplayer desyncs.</p>
+              <p>For full details, see the <a href="dune-legacy-0.98.6.6-released.html">release notes</a>.</p>
+            </div>
+          </div>
+
+          <div class="post">
             <div class="post-title"><h2><a name="2025-10-28-00-00-00">Dune Legacy 0.98.6.4 Released</a></h2></div>
             <div class="post-date">October 28, 2025</div>
             <div class="post-body">

@@ -8,7 +8,7 @@
 ;General
 
   Name "Dune Legacy"
-  OutFile "build\installer\Dune Legacy 0.98.6.5 Setup.exe"
+  OutFile "build\installer\Dune Legacy 0.98.6.6 Setup.exe"
   Unicode True
 
   ;Default installation folder
