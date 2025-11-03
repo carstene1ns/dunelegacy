@@ -134,7 +134,13 @@ QuantBot::QuantBot(House* associatedHouse, const std::string& playername, Diffic
 	buildTimer = (getHouse()->getHouseID() % 4) * 50;  // 0-150 cycles stagger
 
     const QuantBotConfig& config = getQuantBotConfig();
-    attackTimer = MILLI2CYCLES(config.attackTimerMs);
+    
+    // MULTIPLAYER FIX: Add deterministic attack timer variation per house
+    // Spreads attacks across 75 seconds to prevent synchronized mass attacks
+    const int houseID = static_cast<int>(getHouse()->getHouseID());
+    const int attackVariation = (houseID - 3) * MILLI2CYCLES(15000);  // -45s to +30s variation
+    attackTimer = MILLI2CYCLES(config.attackTimerMs) + attackVariation;
+    
     retreatTimer = MILLI2CYCLES(60000); //turning off
 
 	// Different AI logic for Campaign. Assumption is if player is loading they are playing a campaign game
@@ -2304,8 +2310,10 @@ void QuantBot::attack(int militaryValue) {
     const QuantBotConfig& config = getQuantBotConfig();
     const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
 
-    // Reset attack timer using config value
-    attackTimer = MILLI2CYCLES(config.attackTimerMs);
+    // MULTIPLAYER FIX: Reset attack timer with deterministic house-based variation
+    const int houseID = static_cast<int>(getHouse()->getHouseID());
+    const int attackVariation = (houseID - 3) * MILLI2CYCLES(15000);  // -45s to +30s variation
+    attackTimer = MILLI2CYCLES(config.attackTimerMs) + attackVariation;
 
 	// Check if this difficulty is allowed to attack at all
 	if (!diffSettings.attackEnabled) {

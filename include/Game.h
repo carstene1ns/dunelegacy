@@ -817,7 +817,7 @@ private:
     // MULTIPLAYER FIX (Issue #1, #2): Removed time-based budgets
     // Now using only deterministic budgets:
     static constexpr std::size_t kPathNodeBudget = 2048;
-    static constexpr size_t PathTokensPerCycleBudget = 20000;  // Deterministic token budget
+    static constexpr size_t PathTokensPerCycleBudget = 30000;  // Base deterministic token budget (adaptive boost in processPathRequests)
 
     // Game loop methods
     void initializeGameLoop();

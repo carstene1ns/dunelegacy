@@ -487,8 +487,23 @@ void Game::processPathRequests() {
         frameTiming.maxPathQueueLength = queueDepth;
     }
 
-    // Deterministic token budget (same on all clients regardless of performance)
-    size_t tokensRemaining = PathTokensPerCycleBudget;
+    // ADAPTIVE DETERMINISTIC TOKEN BUDGET
+    // Base budget increased from 20k to 30k for heavy scenarios (6 AI players)
+    // Adaptive boost when queue grows (deterministic - same on all clients)
+    size_t baseBudget = 30000;  // Increased from 20000
+    size_t tokensRemaining = baseBudget;
+    
+    // Adaptive boost based on queue depth (deterministic)
+    if(queueDepth > 500) {
+        // Heavy load: 3x boost
+        tokensRemaining = baseBudget * 3;  // 90k tokens
+    } else if(queueDepth > 200) {
+        // Moderate load: 2x boost  
+        tokensRemaining = baseBudget * 2;  // 60k tokens
+    } else if(queueDepth > 100) {
+        // Light load: 1.5x boost
+        tokensRemaining = baseBudget + (baseBudget / 2);  // 45k tokens
+    }
     
     // Process paths until token budget exhausted (deterministic stopping condition)
     while(!pathRequestQueue.empty() && tokensRemaining > 0) {
@@ -575,15 +590,19 @@ void Game::processPathRequests() {
         frameTiming.maxPathsPerCycle = frameTiming.pathsProcessedThisCycle;
     }
     
-    // MULTIPLAYER TELEMETRY: Log synchronization info
+    // MULTIPLAYER TELEMETRY: Log synchronization info with adaptive budget status
     if(pNetworkManager != nullptr && frameTiming.pathsProcessedThisCycle > 0) {
         // Log every 10 seconds to verify synchronization
         if((gameCycleCount % MILLI2CYCLES(10000)) == 0) {
-            SDL_Log("[MP-Sync Cycle %d] Paths: %d, Tokens: %zu, Queue: %zu",
+            const char* budgetMode = (queueDepth > 500) ? " [BOOST:3x]" : 
+                                     (queueDepth > 200) ? " [BOOST:2x]" :
+                                     (queueDepth > 100) ? " [BOOST:1.5x]" : "";
+            SDL_Log("[MP-Sync Cycle %d] Paths: %d, Tokens: %zu, Queue: %zu%s",
                     gameCycleCount,
                     frameTiming.pathsProcessedThisCycle,
                     frameTiming.pathTokensThisCycle,
-                    pathRequestQueue.size());
+                    pathRequestQueue.size(),
+                    budgetMode);
         }
     }
 }
