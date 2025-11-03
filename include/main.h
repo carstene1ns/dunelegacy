@@ -54,6 +54,12 @@ std::string getConfigFilepath();
 std::string getLogFilepath();
 
 /**
+    This function returns the performance logfile path
+    \return the full path to the performance logfile
+*/
+std::string getPerformanceLogFilepath();
+
+/**
     This function returns the user ObjectData.ini config file path
     \return the full path to the ObjectData.ini in user directory
 */

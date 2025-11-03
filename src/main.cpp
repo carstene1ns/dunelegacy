@@ -269,6 +269,17 @@ std::string getLogFilepath()
     return std::string(tmp);
 }
 
+std::string getPerformanceLogFilepath()
+{
+    // determine path to performance logfile
+    char tmp[FILENAME_MAX];
+    if(fnkdat("Dune Legacy-Performance.log", tmp, FILENAME_MAX, FNKDAT_USER | FNKDAT_CREAT) < 0) {
+        THROW(std::runtime_error, "fnkdat() failed for performance log!");
+    }
+
+    return std::string(tmp);
+}
+
 std::string getObjectDataConfigFilepath()
 {
     // User ObjectData.ini is stored in user directory (AppData on Windows, ~/.config on Linux, etc.)

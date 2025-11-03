@@ -16,6 +16,14 @@
  */
 
 #include <Game.h>
+#include <main.h>
+#include <cstdarg>
+#include <ctime>
+#include <chrono>
+
+// Initialize static performance logging members
+std::ofstream Game::performanceLogFile;
+std::mutex Game::performanceLogMutex;
 
 #include <globals.h>
 #include <config.h>
@@ -134,6 +142,9 @@ void Game::queuePathRequest(Uint32 objectId) {
     The destructor frees up all the used memory.
 */
 Game::~Game() {
+    // Close performance log
+    closePerformanceLog();
+    
     // Clean up cursor manager
     cursorManager.cleanup();
 
@@ -175,6 +186,65 @@ Game::~Game() {
     screenborder = nullptr;
 }
 
+void Game::initPerformanceLog() {
+    std::lock_guard<std::mutex> lock(performanceLogMutex);
+    
+    if(performanceLogFile.is_open()) {
+        return;  // Already initialized
+    }
+    
+    std::string logPath = getPerformanceLogFilepath();
+    performanceLogFile.open(logPath, std::ios::out | std::ios::trunc);
+    
+    if(performanceLogFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
+        char timeStr[100];
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", std::localtime(&nowTime));
+        
+        performanceLogFile << "=== Dune Legacy Performance Log Started " << timeStr << " ===" << std::endl;
+        performanceLogFile << "Version: " << VERSION << std::endl;
+        performanceLogFile << "Platform: " << SDL_GetPlatform() << std::endl;
+        performanceLogFile << std::endl;
+        performanceLogFile.flush();
+        SDL_Log("Performance log initialized: %s", logPath.c_str());
+    } else {
+        SDL_Log("Warning: Could not open performance log file: %s", logPath.c_str());
+    }
+}
+
+void Game::closePerformanceLog() {
+    std::lock_guard<std::mutex> lock(performanceLogMutex);
+    
+    if(performanceLogFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
+        char timeStr[100];
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", std::localtime(&nowTime));
+        
+        performanceLogFile << std::endl;
+        performanceLogFile << "=== Performance Log Closed " << timeStr << " ===" << std::endl;
+        performanceLogFile.close();
+    }
+}
+
+void Game::logPerformance(const char* format, ...) {
+    std::lock_guard<std::mutex> lock(performanceLogMutex);
+    
+    if(!performanceLogFile.is_open()) {
+        return;
+    }
+    
+    char buffer[2048];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    
+    performanceLogFile << buffer << std::endl;
+    performanceLogFile.flush();
+}
+
 
 void Game::initGame(const GameInitSettings& newGameInitSettings) {
     gameInitSettings = newGameInitSettings;
@@ -183,6 +253,9 @@ void Game::initGame(const GameInitSettings& newGameInitSettings) {
     pendingTargetRequestIds.clear();
     pathRequestQueue.clear();
     pendingPathRequestIds.clear();
+
+    // Initialize performance logging
+    initPerformanceLog();
 
     // Initialize cursor manager
     cursorManager.initialize();
@@ -335,8 +408,41 @@ void Game::processTargetRequests() {
     }
 }
 
+void Game::recordPathTokens(size_t totalTokens) {
+    const size_t lastIndex = frameTiming.pathTokenHistogram.size() - 1;
+    for(size_t i = 0; i < PathTokenBucketBounds.size(); ++i) {
+        if(totalTokens < PathTokenBucketBounds[i]) {
+            frameTiming.pathTokenHistogram[i]++;
+            return;
+        }
+    }
+    frameTiming.pathTokenHistogram[lastIndex]++;
+}
+
+void Game::recordCompletedPathTokens(size_t totalTokens) {
+    frameTiming.tokensPerCompletedPathStats.add(static_cast<double>(totalTokens));
+    if(totalTokens < frameTiming.minTokensPerCompletedPath) {
+        frameTiming.minTokensPerCompletedPath = totalTokens;
+    }
+    if(totalTokens > frameTiming.maxTokensPerCompletedPath) {
+        frameTiming.maxTokensPerCompletedPath = totalTokens;
+    }
+}
+
+void Game::recordFailedPathTokens(size_t totalTokens) {
+    frameTiming.tokensPerFailedPathStats.add(static_cast<double>(totalTokens));
+    if(totalTokens < frameTiming.minTokensPerFailedPath) {
+        frameTiming.minTokensPerFailedPath = totalTokens;
+    }
+    if(totalTokens > frameTiming.maxTokensPerFailedPath) {
+        frameTiming.maxTokensPerFailedPath = totalTokens;
+    }
+}
+
 void Game::processPathRequests() {
     if(pathRequestQueue.empty()) {
+        frameTiming.pathsPerCycleStats.add(0.0);
+        frameTiming.pathTokensPerCycleStats.add(0.0);
         return;
     }
     
@@ -344,6 +450,10 @@ void Game::processPathRequests() {
     if(pathfindingBudgetRemainingMs <= 0.0) {
         frameTiming.pathsProcessedThisCycle = 0;
         frameTiming.pathfindingMsThisCycle = 0.0;
+        frameTiming.pathTokensThisCycle = 0;
+        frameTiming.pathsPerCycleStats.add(0.0);
+        frameTiming.pathTokensPerCycleStats.add(0.0);
+        frameTiming.pathBudgetStarvedFrames++;
         return;  // Budget exhausted, skip pathfinding for remaining cycles this frame
     }
 
@@ -1198,7 +1308,7 @@ void Game::runMainLoop() {
         
         // DIAGNOSTIC: Log if unusual activity
         if(loopIterations > 10 || cyclesExecuted > 5) {
-            SDL_Log("[DIAGNOSTIC] Frame: %d loop iterations, %d cycles executed, frameTime=%d, bPause=%d, gameCycle=%d", 
+            logPerformance("[DIAGNOSTIC] Frame: %d loop iterations, %d cycles executed, frameTime=%d, bPause=%d, gameCycle=%d", 
                 loopIterations, cyclesExecuted, frameTime, bPause ? 1 : 0, gameCycleCount);
         }
 
@@ -1499,14 +1609,14 @@ void Game::logFrameTiming() {
     const double avgMsPerPath = frameTiming.totalPathsProcessed > 0 ? 
         avgPathfinding / avgPathsPerFrame : 0.0;
 
-    SDL_Log("[Performance] === AVERAGES over %d frames ===", frameTiming.frameCount);
-    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms",
+    logPerformance("[Performance] === AVERAGES over %d frames ===", frameTiming.frameCount);
+    logPerformance("[Performance] FPS: %.1f | Frame: %.2fms",
         avgFps, avgTotal);
-    SDL_Log("[Performance] GameCycles/Frame: min=%d avg=%.1f max=%d",
+    logPerformance("[Performance] GameCycles/Frame: min=%d avg=%.1f max=%d",
         frameTiming.minGameCyclesPerFrame, avgGameCycles, frameTiming.maxGameCyclesPerFrame);
-    SDL_Log("[Performance] AI:         min=%.2fms avg=%.2fms max=%.2fms",
+    logPerformance("[Performance] AI:         min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minAiMs, avgAi, frameTiming.maxAiMs);
-    SDL_Log("[Performance] Units:      min=%.2fms avg=%.2fms max=%.2fms (%d units)",
+    logPerformance("[Performance] Units:      min=%.2fms avg=%.2fms max=%.2fms (%d units)",
         frameTiming.minUnitsMs, avgUnits, frameTiming.maxUnitsMs, frameTiming.unitCount);
     
     // Detailed unit breakdown
@@ -1516,21 +1626,21 @@ void Game::logFrameTiming() {
     const double avgTurn = frameTiming.unitTurnMs / frameTiming.frameCount;
     const double avgVisibility = frameTiming.unitVisibilityMs / frameTiming.frameCount;
     const double unitsTotal = avgTargeting + avgNavigate + avgMove + avgTurn + avgVisibility;
-    SDL_Log("[Performance]   ↳ Targeting:   %.2fms (%.1f%%)", avgTargeting, unitsTotal > 0 ? (avgTargeting/unitsTotal*100) : 0);
-    SDL_Log("[Performance]   ↳ Navigate:    %.2fms (%.1f%%)", avgNavigate, unitsTotal > 0 ? (avgNavigate/unitsTotal*100) : 0);
-    SDL_Log("[Performance]   ↳ Move:        %.2fms (%.1f%%)", avgMove, unitsTotal > 0 ? (avgMove/unitsTotal*100) : 0);
-    SDL_Log("[Performance]   ↳ Turn:        %.2fms (%.1f%%)", avgTurn, unitsTotal > 0 ? (avgTurn/unitsTotal*100) : 0);
-    SDL_Log("[Performance]   ↳ Visibility:  %.2fms (%.1f%%)", avgVisibility, unitsTotal > 0 ? (avgVisibility/unitsTotal*100) : 0);
+    logPerformance("[Performance]   ↳ Targeting:   %.2fms (%.1f%%)", avgTargeting, unitsTotal > 0 ? (avgTargeting/unitsTotal*100) : 0);
+    logPerformance("[Performance]   ↳ Navigate:    %.2fms (%.1f%%)", avgNavigate, unitsTotal > 0 ? (avgNavigate/unitsTotal*100) : 0);
+    logPerformance("[Performance]   ↳ Move:        %.2fms (%.1f%%)", avgMove, unitsTotal > 0 ? (avgMove/unitsTotal*100) : 0);
+    logPerformance("[Performance]   ↳ Turn:        %.2fms (%.1f%%)", avgTurn, unitsTotal > 0 ? (avgTurn/unitsTotal*100) : 0);
+    logPerformance("[Performance]   ↳ Visibility:  %.2fms (%.1f%%)", avgVisibility, unitsTotal > 0 ? (avgVisibility/unitsTotal*100) : 0);
     
-    SDL_Log("[Performance] Structures: min=%.2fms avg=%.2fms max=%.2fms",
+    logPerformance("[Performance] Structures: min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minStructuresMs, avgStructures, frameTiming.maxStructuresMs);
-    SDL_Log("[Performance] Pathfinding: min=%.2fms avg=%.2fms max=%.2fms",
+    logPerformance("[Performance] Pathfinding: min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minPathfindingMs, avgPathfinding, frameTiming.maxPathfindingMs);
-    SDL_Log("[Performance] NetworkWait: min=%.2fms avg=%.2fms max=%.2fms",
+    logPerformance("[Performance] NetworkWait: min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minNetworkWaitMs, avgNetworkWait, frameTiming.maxNetworkWaitMs);
-    SDL_Log("[Performance] Rendering:  min=%.2fms avg=%.2fms max=%.2fms",
+    logPerformance("[Performance] Rendering:  min=%.2fms avg=%.2fms max=%.2fms",
         frameTiming.minRenderingMs, avgRendering, frameTiming.maxRenderingMs);
-    SDL_Log("[Performance] Pathfinding Detail: %.1f paths/frame | %.2f paths/cycle | %.2fms/cycle | %.2fms/path",
+    logPerformance("[Performance] Pathfinding Detail: %.1f paths/frame | %.2f paths/cycle | %.2fms/cycle | %.2fms/path",
         avgPathsPerFrame, avgPathsPerCycle, avgPathfindingPerCycle, avgMsPerPath);
     
     // Turret scan detailed stats
@@ -1538,17 +1648,17 @@ void Game::logFrameTiming() {
     const double avgTurretScanMs = frameTiming.turretScanMs / frameTiming.frameCount;
     const double avgMsPerTurretScan = frameTiming.totalTurretScans > 0 ? 
         frameTiming.turretScanMs / frameTiming.totalTurretScans : 0.0;
-    SDL_Log("[Performance] Turret Scans: %.1f scans/frame | %.2fms total/frame | %.4fms/scan",
+    logPerformance("[Performance] Turret Scans: %.1f scans/frame | %.2fms total/frame | %.4fms/scan",
         avgTurretScans, avgTurretScanMs, avgMsPerTurretScan);
-    SDL_Log("[Performance] Turret Scan Range: min=%.2fms max=%.2fms | Peak: %d scans/frame",
+    logPerformance("[Performance] Turret Scan Range: min=%.2fms max=%.2fms | Peak: %d scans/frame",
         frameTiming.minTurretScanMs, frameTiming.maxTurretScanMs, frameTiming.maxTurretScansPerFrame);
     
-    SDL_Log("[Performance] === PEAKS (worst case) ===");
-    SDL_Log("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | NetworkWait: %.2fms | Rendering: %.2fms",
+    logPerformance("[Performance] === PEAKS (worst case) ===");
+    logPerformance("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | NetworkWait: %.2fms | Rendering: %.2fms",
         maxFps, frameTiming.maxTotalMs,
         frameTiming.maxAiMs, frameTiming.maxUnitsMs, frameTiming.maxStructuresMs, 
         frameTiming.maxPathfindingMs, frameTiming.maxNetworkWaitMs, frameTiming.maxRenderingMs);
-    SDL_Log("[Performance] Pathfinding Peaks: %d paths/frame | %d paths/cycle | %.2fms/cycle",
+    logPerformance("[Performance] Pathfinding Peaks: %d paths/frame | %d paths/cycle | %.2fms/cycle",
         frameTiming.maxPathsPerFrame, frameTiming.maxPathsPerCycle, frameTiming.maxPathfindingMsPerCycle);
 
     // Reset counters

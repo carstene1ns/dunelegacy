@@ -43,6 +43,10 @@
 #include <utility>
 #include <deque>
 #include <unordered_set>
+#include <fstream>
+#include <mutex>
+#include <cmath>
+#include <array>
 
 // forward declarations
 class ObjectBase;
@@ -543,6 +547,45 @@ public:
     
     std::set<Uint8> pausedPlayers;  ///< Set of player IDs that are currently paused
 
+    // Running statistics for confidence intervals (Welford's algorithm)
+    struct RunningStats {
+        uint64_t sampleCount = 0;
+        double mean = 0.0;
+        double m2 = 0.0;  // Sum of squared differences from mean
+
+        void reset() {
+            sampleCount = 0;
+            mean = 0.0;
+            m2 = 0.0;
+        }
+
+        void add(double value) {
+            ++sampleCount;
+            double delta = value - mean;
+            mean += delta / static_cast<double>(sampleCount);
+            double delta2 = value - mean;
+            m2 += delta * delta2;
+        }
+
+        double variance() const {
+            return (sampleCount > 1) ? (m2 / static_cast<double>(sampleCount - 1)) : 0.0;
+        }
+
+        double standardError() const {
+            if(sampleCount <= 1) {
+                return 0.0;
+            }
+            return std::sqrt(variance() / static_cast<double>(sampleCount));
+        }
+
+        double ci95() const {
+            if(sampleCount <= 1) {
+                return 0.0;
+            }
+            return 1.96 * standardError();  // 95% confidence interval
+        }
+    };
+
     // Performance timing system (public for access from objects like turrets)
     struct FrameTiming {
         double aiMs = 0.0;
@@ -560,8 +603,28 @@ public:
         int pathsProcessedThisCycle = 0;
         int totalPathsProcessedThisFrame = 0;
         int totalPathsProcessed = 0;
+        int pathsFailedThisFrame = 0;
+        int totalPathsFailed = 0;
         double pathfindingMsThisCycle = 0.0;
         double pathfindingMsThisFrame = 0.0;
+        
+        // Phase 1: Token/node tracking
+        size_t pathTokensThisCycle = 0;
+        size_t pathTokensThisFrame = 0;
+        size_t totalPathTokens = 0;
+        size_t maxPathTokensPerCycle = 0;
+        size_t maxPathTokensPerFrame = 0;
+        RunningStats pathsPerCycleStats;
+        RunningStats pathTokensPerCycleStats;
+        RunningStats tokensPerCompletedPathStats;
+        RunningStats tokensPerFailedPathStats;
+        size_t minTokensPerCompletedPath = SIZE_MAX;
+        size_t maxTokensPerCompletedPath = 0;
+        size_t minTokensPerFailedPath = SIZE_MAX;
+        size_t maxTokensPerFailedPath = 0;
+        std::array<uint64_t, 7> pathTokenHistogram{};  // Buckets for token distribution
+        int maxPathQueueLength = 0;
+        int pathBudgetStarvedFrames = 0;
         
         // Turret target scan detailed stats
         int turretScansThisFrame = 0;
@@ -760,6 +823,17 @@ private:
     Uint32 lastTimingLogMs = 0;
     double pathfindingBudgetRemainingMs = 0.0;  // Per-frame budget tracking
 
+    // Performance logging infrastructure
+    static std::ofstream performanceLogFile;
+    static std::mutex performanceLogMutex;
+    static constexpr std::array<size_t, 6> PathTokenBucketBounds{{512, 1024, 2048, 4096, 8192, 16384}};
+
+    void initPerformanceLog();
+    void closePerformanceLog();
+    void logPerformance(const char* format, ...);
+    void recordPathTokens(size_t totalTokens);
+    void recordCompletedPathTokens(size_t totalTokens);
+    void recordFailedPathTokens(size_t totalTokens);
     void logFrameTiming();
 };
 
