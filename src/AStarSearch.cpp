@@ -32,6 +32,7 @@ AStarSearch::AStarSearch(Map* pMap, UnitBase* pUnit, Coord start, Coord destinat
 
     sizeX = pMap->getSizeX();
     sizeY = pMap->getSizeY();
+    numNodesChecked = 0;
 
     mapData = static_cast<TileData*>(calloc(sizeX*sizeY, sizeof(TileData)));
     if(mapData == nullptr) {
@@ -49,7 +50,6 @@ AStarSearch::AStarSearch(Map* pMap, UnitBase* pUnit, Coord start, Coord destinat
 
         std::vector<short> depthCheckCount(std::min(sizeX, sizeY));
 
-        int numNodesChecked = 0;
         while(openList.empty() == false) {
             Coord currentCoord = extractMin();
 

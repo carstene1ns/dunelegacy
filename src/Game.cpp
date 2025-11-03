@@ -459,17 +459,32 @@ void Game::processPathRequests() {
 
     const Uint64 start = SDL_GetPerformanceCounter();
     const Uint64 frequency = SDL_GetPerformanceFrequency();
-    const double budgetSeconds = pathfindingBudgetRemainingMs / 1000.0;
+    // Per-cycle time budget (safety valve only - token budget is primary gate)
+    const double cycleBudgetSeconds = 10.0 / 1000.0;  // 10ms per cycle safety valve
 
     frameTiming.pathsProcessedThisCycle = 0;
     frameTiming.pathfindingMsThisCycle = 0.0;
+    frameTiming.pathTokensThisCycle = 0;
 
+    // Track queue depth
+    const int queueDepth = static_cast<int>(pathRequestQueue.size());
+    if(queueDepth > frameTiming.maxPathQueueLength) {
+        frameTiming.maxPathQueueLength = queueDepth;
+    }
+
+    // Phase 2: Token budget gating
+    size_t tokensRemaining = PathTokensPerCycleBudget;
     bool processedAny = false;
-    while(!pathRequestQueue.empty()) {
+    
+    while(!pathRequestQueue.empty() && tokensRemaining > 0) {
+        // Check time budget (safety valve - should rarely trigger)
         const Uint64 now = SDL_GetPerformanceCounter();
         const double elapsed = static_cast<double>(now - start) / static_cast<double>(frequency);
-        if(processedAny && elapsed >= budgetSeconds) {
-            break;  // Used up remaining budget for this frame
+        if(processedAny && elapsed >= cycleBudgetSeconds) {
+            frameTiming.timeBudgetExceededCount++;
+            logPerformance("[WARNING] Time budget exceeded before token budget (%.2fms elapsed, %zu tokens remaining, queue=%zu)",
+                elapsed * 1000.0, tokensRemaining, pathRequestQueue.size());
+            break;  // Time limit hit (safety valve)
         }
 
         PathRequest request = pathRequestQueue.front();
@@ -478,17 +493,64 @@ void Game::processPathRequests() {
 
         auto* unit = dynamic_cast<UnitBase*>(objectManager.getObject(request.objectId));
         if(unit != nullptr) {
-            unit->resolvePendingPathRequest();
+            UnitBase::PathRequestStats stats = unit->resolvePendingPathRequest();
+            
             frameTiming.pathsProcessedThisCycle++;
             frameTiming.totalPathsProcessedThisFrame++;
             frameTiming.totalPathsProcessed++;
+            
+            // Track tokens (nodes expanded)
+            const size_t tokens = stats.nodesExpanded;
+            frameTiming.pathTokensThisCycle += tokens;
+            frameTiming.pathTokensThisFrame += tokens;
+            frameTiming.totalPathTokens += tokens;
+            
+            // Deduct from token budget
+            if (tokens < tokensRemaining) {
+                tokensRemaining -= tokens;
+            } else {
+                tokensRemaining = 0;
+            }
+            
+            // Track min/max tokens per cycle
+            if(frameTiming.pathTokensThisCycle > frameTiming.maxPathTokensPerCycle) {
+                frameTiming.maxPathTokensPerCycle = frameTiming.pathTokensThisCycle;
+            }
+            
+            // Record token distribution histogram
+            recordPathTokens(tokens);
+            
+            // Track completed vs failed paths
+            if(!stats.invalidDestination) {
+                if(stats.pathFound) {
+                    recordCompletedPathTokens(tokens);
+                } else {
+                    frameTiming.pathsFailedThisFrame++;
+                    frameTiming.totalPathsFailed++;
+                    recordFailedPathTokens(tokens);
+                }
+            }
         }
 
         processedAny = true;
     }
     
+    // Track token budget exhaustion
+    if (tokensRemaining == 0 && !pathRequestQueue.empty()) {
+        frameTiming.tokenBudgetExhaustedCount++;
+    }
+    
     const Uint64 end = SDL_GetPerformanceCounter();
     frameTiming.pathfindingMsThisCycle = getElapsedMs(start, end);
+    
+    // Record cycle statistics
+    frameTiming.pathsPerCycleStats.add(static_cast<double>(frameTiming.pathsProcessedThisCycle));
+    frameTiming.pathTokensPerCycleStats.add(static_cast<double>(frameTiming.pathTokensThisCycle));
+    
+    // Track max tokens per frame
+    if(frameTiming.pathTokensThisFrame > frameTiming.maxPathTokensPerFrame) {
+        frameTiming.maxPathTokensPerFrame = frameTiming.pathTokensThisFrame;
+    }
     
     // Subtract used time from frame budget
     pathfindingBudgetRemainingMs -= frameTiming.pathfindingMsThisCycle;
@@ -1653,6 +1715,77 @@ void Game::logFrameTiming() {
     logPerformance("[Performance] Turret Scan Range: min=%.2fms max=%.2fms | Peak: %d scans/frame",
         frameTiming.minTurretScanMs, frameTiming.maxTurretScanMs, frameTiming.maxTurretScansPerFrame);
     
+    // Phase 1: Token/node statistics
+    const double avgTokensPerFrame = frameTiming.frameCount > 0 ? 
+        static_cast<double>(frameTiming.totalPathTokens) / frameTiming.frameCount : 0.0;
+    logPerformance("[Performance] === TOKEN STATISTICS (Phase 1) ===");
+    logPerformance("[Performance] Tokens/Frame: avg=%.1f max=%zu total=%zu",
+        avgTokensPerFrame, frameTiming.maxPathTokensPerFrame, frameTiming.totalPathTokens);
+    logPerformance("[Performance] Tokens/Cycle: avg=%.1f±%.1f max=%zu",
+        frameTiming.pathTokensPerCycleStats.mean, 
+        frameTiming.pathTokensPerCycleStats.ci95(),
+        frameTiming.maxPathTokensPerCycle);
+    logPerformance("[Performance] Paths/Cycle: avg=%.2f±%.2f",
+        frameTiming.pathsPerCycleStats.mean,
+        frameTiming.pathsPerCycleStats.ci95());
+    
+    // Token distribution per path
+    if(frameTiming.tokensPerCompletedPathStats.sampleCount > 0) {
+        logPerformance("[Performance] Tokens/CompletedPath: avg=%.1f±%.1f min=%zu max=%zu (n=%zu)",
+            frameTiming.tokensPerCompletedPathStats.mean,
+            frameTiming.tokensPerCompletedPathStats.ci95(),
+            frameTiming.minTokensPerCompletedPath,
+            frameTiming.maxTokensPerCompletedPath,
+            frameTiming.tokensPerCompletedPathStats.sampleCount);
+    }
+    if(frameTiming.tokensPerFailedPathStats.sampleCount > 0) {
+        logPerformance("[Performance] Tokens/FailedPath: avg=%.1f±%.1f min=%zu max=%zu (n=%zu)",
+            frameTiming.tokensPerFailedPathStats.mean,
+            frameTiming.tokensPerFailedPathStats.ci95(),
+            frameTiming.minTokensPerFailedPath,
+            frameTiming.maxTokensPerFailedPath,
+            frameTiming.tokensPerFailedPathStats.sampleCount);
+    }
+    
+    // Path completion rates
+    const double pathCompletionRate = frameTiming.totalPathsProcessed > 0 ?
+        (100.0 * (frameTiming.totalPathsProcessed - frameTiming.totalPathsFailed) / frameTiming.totalPathsProcessed) : 0.0;
+    logPerformance("[Performance] Path Completion: %.1f%% (%d completed, %d failed)",
+        pathCompletionRate,
+        frameTiming.totalPathsProcessed - frameTiming.totalPathsFailed,
+        frameTiming.totalPathsFailed);
+    
+    // Token histogram
+    logPerformance("[Performance] Token Histogram: <512:%zu 512-1k:%zu 1k-2k:%zu 2k-4k:%zu 4k-8k:%zu 8k-16k:%zu 16k+:%zu",
+        frameTiming.pathTokenHistogram[0],
+        frameTiming.pathTokenHistogram[1],
+        frameTiming.pathTokenHistogram[2],
+        frameTiming.pathTokenHistogram[3],
+        frameTiming.pathTokenHistogram[4],
+        frameTiming.pathTokenHistogram[5],
+        frameTiming.pathTokenHistogram[6]);
+    
+    // Queue and budget stats
+    logPerformance("[Performance] Queue: maxDepth=%d | BudgetStarvedFrames=%d",
+        frameTiming.maxPathQueueLength,
+        frameTiming.pathBudgetStarvedFrames);
+    
+    // Phase 2: Token budget statistics
+    const double tokensUsedPerCycle = frameTiming.totalGameCycles > 0 ?
+        static_cast<double>(frameTiming.totalPathTokens) / frameTiming.totalGameCycles : 0.0;
+    const double tokenBudgetUtilization = tokensUsedPerCycle / PathTokensPerCycleBudget * 100.0;
+    logPerformance("[Performance] === TOKEN BUDGET (Phase 2) ===");
+    logPerformance("[Performance] Budget: %zu tokens/cycle | Avg Used: %.0f (%.1f%% utilization)",
+        PathTokensPerCycleBudget, tokensUsedPerCycle, tokenBudgetUtilization);
+    logPerformance("[Performance] Token Budget Exhausted: %d times | Time Budget Exceeded: %d times (safety valve)",
+        frameTiming.tokenBudgetExhaustedCount,
+        frameTiming.timeBudgetExceededCount);
+    
+    // Token-to-time correlation
+    const double tokensPerMs = avgPathfindingPerCycle > 0.0 ? 
+        tokensUsedPerCycle / avgPathfindingPerCycle : 0.0;
+    logPerformance("[Performance] Tokens/Ms: %.0f (measured correlation)", tokensPerMs);
+    
     logPerformance("[Performance] === PEAKS (worst case) ===");
     logPerformance("[Performance] FPS: %.1f | Frame: %.2fms | AI: %.2fms | Units: %.2fms | Structures: %.2fms | Pathfinding: %.2fms | NetworkWait: %.2fms | Rendering: %.2fms",
         maxFps, frameTiming.maxTotalMs,
@@ -1702,6 +1835,27 @@ void Game::logFrameTiming() {
     frameTiming.unitMoveMs = 0.0;
     frameTiming.unitTurnMs = 0.0;
     frameTiming.unitVisibilityMs = 0.0;
+    
+    // Reset Phase 1 token stats
+    frameTiming.totalPathTokens = 0;
+    frameTiming.maxPathTokensPerCycle = 0;
+    frameTiming.maxPathTokensPerFrame = 0;
+    frameTiming.pathsPerCycleStats.reset();
+    frameTiming.pathTokensPerCycleStats.reset();
+    frameTiming.tokensPerCompletedPathStats.reset();
+    frameTiming.tokensPerFailedPathStats.reset();
+    frameTiming.minTokensPerCompletedPath = SIZE_MAX;
+    frameTiming.maxTokensPerCompletedPath = 0;
+    frameTiming.minTokensPerFailedPath = SIZE_MAX;
+    frameTiming.maxTokensPerFailedPath = 0;
+    
+    // Reset Phase 2 token budget stats
+    frameTiming.tokenBudgetExhaustedCount = 0;
+    frameTiming.timeBudgetExceededCount = 0;
+    frameTiming.pathTokenHistogram = {};
+    frameTiming.maxPathQueueLength = 0;
+    frameTiming.pathBudgetStarvedFrames = 0;
+    frameTiming.totalPathsFailed = 0;
 }
 
 void Game::onOptions()
@@ -3003,14 +3157,15 @@ bool Game::handleNetworkUpdates() {
 }
 
 void Game::dumpCombatStats() {
-    SDL_Log("[Combat Stats] ==================== 30-SECOND ROCKET TURRET ANALYSIS ====================");
+    SDL_Log("[Combat Stats] ==================== 30-SECOND ANTI-AIR ANALYSIS ====================");
     
-    // Targeting
+    // ===== ROCKET TURRETS =====
+    SDL_Log("[Combat Stats] ");
+    SDL_Log("[Combat Stats] === ROCKET TURRETS vs ORNITHOPTERS ===");
     SDL_Log("[Combat Stats] TARGETING:");
     SDL_Log("[Combat Stats]   Ornithopters Acquired as Target:  %d", combatStats.rocketTurretTargetsOrni);
     SDL_Log("[Combat Stats]   Target Lost (out of range/dead):  %d", combatStats.rocketTurretLosesOrniTarget);
     
-    // Firing Opportunities
     SDL_Log("[Combat Stats] FIRING OPPORTUNITIES:");
     const int totalOpportunities = combatStats.orniInRangeCorrectAngle;
     SDL_Log("[Combat Stats]   Ornithopter in Range + Correct Angle: %d", combatStats.orniInRangeCorrectAngle);
@@ -3024,7 +3179,6 @@ void Game::dumpCombatStats() {
                 fireRate, combatStats.rocketTurretFiresOnOrni, totalOpportunities);
     }
     
-    // Bullet Performance
     SDL_Log("[Combat Stats] ROCKET PERFORMANCE:");
     SDL_Log("[Combat Stats]   Rockets Spawned:          %d", combatStats.turretRocketsSpawned);
     SDL_Log("[Combat Stats]   Proximity Detonations:    %d", combatStats.turretRocketsProximityDetonated);
@@ -3041,6 +3195,28 @@ void Game::dumpCombatStats() {
                 killRate, combatStats.turretRocketsKillOrni, combatStats.turretRocketsSpawned);
     }
     
+    // ===== LAUNCHER UNITS =====
+    SDL_Log("[Combat Stats] ");
+    SDL_Log("[Combat Stats] === LAUNCHER/DEVIATOR UNITS vs ORNITHOPTERS ===");
+    SDL_Log("[Combat Stats] TARGETING:");
+    SDL_Log("[Combat Stats]   Ornithopters Acquired as Target:  %d", combatStats.launcherTargetsOrni);
+    SDL_Log("[Combat Stats]   Shots Fired at Ornithopters:      %d", combatStats.launcherFiresOnOrni);
+    
+    SDL_Log("[Combat Stats] ROCKET PERFORMANCE:");
+    SDL_Log("[Combat Stats]   Rockets Spawned:          %d", combatStats.launcherRocketsSpawned);
+    SDL_Log("[Combat Stats]   Timer Expirations:        %d", combatStats.launcherRocketsExpired);
+    SDL_Log("[Combat Stats]   Rockets Hit Ornithopter:  %d", combatStats.launcherRocketsHitOrni);
+    SDL_Log("[Combat Stats]   Rockets Killed Ornithopter: %d", combatStats.launcherRocketsKillOrni);
+    
+    if(combatStats.launcherRocketsSpawned > 0) {
+        const double hitRate = static_cast<double>(combatStats.launcherRocketsHitOrni) / combatStats.launcherRocketsSpawned * 100.0;
+        const double killRate = static_cast<double>(combatStats.launcherRocketsKillOrni) / combatStats.launcherRocketsSpawned * 100.0;
+        SDL_Log("[Combat Stats]   Hit Rate:  %.1f%% (%d hits / %d rockets)", 
+                hitRate, combatStats.launcherRocketsHitOrni, combatStats.launcherRocketsSpawned);
+        SDL_Log("[Combat Stats]   Kill Rate: %.1f%% (%d kills / %d rockets)", 
+                killRate, combatStats.launcherRocketsKillOrni, combatStats.launcherRocketsSpawned);
+    }
+    
     // Reset stats
     combatStats.rocketTurretTargetsOrni = 0;
     combatStats.rocketTurretLosesOrniTarget = 0;
@@ -3053,5 +3229,11 @@ void Game::dumpCombatStats() {
     combatStats.turretRocketsKillOrni = 0;
     combatStats.turretRocketsExpired = 0;
     combatStats.turretRocketsProximityDetonated = 0;
+    combatStats.launcherTargetsOrni = 0;
+    combatStats.launcherFiresOnOrni = 0;
+    combatStats.launcherRocketsSpawned = 0;
+    combatStats.launcherRocketsHitOrni = 0;
+    combatStats.launcherRocketsKillOrni = 0;
+    combatStats.launcherRocketsExpired = 0;
     SDL_Log("[Combat Stats] ================================================================================");
 }

@@ -76,6 +76,11 @@ void TurretBase::save(OutputStream& stream) const {
 void TurretBase::updateStructureSpecificStuff() {
     if(target && (target.getObjPointer() != nullptr)) {
         if(!canAttack(target.getObjPointer()) || !targetInWeaponRange()) {
+            // MULTIPLAYER-SAFE: Track when turret loses ornithopter target
+            if(getItemID() == Structure_RocketTurret && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.rocketTurretLosesOrniTarget++;
+            }
+            
             setTarget(nullptr);
             // BUG FIX: Reset timer when losing target to prevent immediate rescan spam
             // Use deterministic stagger based on objectID for multiplayer sync
@@ -117,6 +122,15 @@ void TurretBase::updateStructureSpecificStuff() {
                 if(angleDelta <= kRocketTurretFireTolerance) {
                     shouldFire = true;
                 }
+                
+                // MULTIPLAYER-SAFE: Track firing opportunities for rocket turrets vs ornithopters
+                if(getItemID() == Structure_RocketTurret && target.getObjPointer()->getItemID() == Unit_Ornithopter) {
+                    if(shouldFire) {
+                        currentGame->combatStats.orniInRangeCorrectAngle++;
+                    } else {
+                        currentGame->combatStats.orniInRangeButWrongAngle++;
+                    }
+                }
             } else if(drawnAngle == wantedAngle) {
                 shouldFire = true;
             }
@@ -137,6 +151,12 @@ void TurretBase::updateStructureSpecificStuff() {
         // Measure turret target scan performance
         const Uint64 scanStart = SDL_GetPerformanceCounter();
         const ObjectBase* newTarget = findTarget();
+        
+        // MULTIPLAYER-SAFE: Track stats unconditionally (doesn't affect game logic)
+        if(getItemID() == Structure_RocketTurret && newTarget && newTarget->getItemID() == Unit_Ornithopter) {
+            currentGame->combatStats.rocketTurretTargetsOrni++;
+        }
+        
         setTarget(newTarget);
         const Uint64 scanEnd = SDL_GetPerformanceCounter();
         

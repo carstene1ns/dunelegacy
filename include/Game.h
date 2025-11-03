@@ -626,6 +626,11 @@ public:
         int maxPathQueueLength = 0;
         int pathBudgetStarvedFrames = 0;
         
+        // Phase 2: Token budget tracking
+        int tokenBudgetExhaustedCount = 0;  // How often we hit 20k token limit
+        int timeBudgetExceededCount = 0;    // How often time limit hit (should be rare)
+        double avgTokensUsedPerCycle = 0.0;  // Running average
+        
         // Turret target scan detailed stats
         int turretScansThisFrame = 0;
         int totalTurretScans = 0;
@@ -682,22 +687,26 @@ public:
     
     // Rocket Turret vs Ornithopter Statistics
     struct CombatStats {
-        // Targeting stats
+        // Rocket Turret stats
         int rocketTurretTargetsOrni = 0;      // Turret acquires ornithopter as target
         int rocketTurretLosesOrniTarget = 0;  // Turret loses ornithopter target
-        
-        // Firing opportunity stats
         int orniInRangeButWrongAngle = 0;     // Ornithopter in range but turret not aimed
         int orniInRangeCorrectAngle = 0;      // Ornithopter in range and turret aimed correctly
         int rocketTurretFiresOnOrni = 0;      // Turret actually fires rocket at ornithopter
         int rocketTurretFireBlocked = 0;      // Weapon timer not ready
-        
-        // Bullet tracking
         int turretRocketsSpawned = 0;         // Total turret rockets created
         int turretRocketsHitOrni = 0;         // Rockets that damaged ornithopter
         int turretRocketsKillOrni = 0;        // Rockets that killed ornithopter
         int turretRocketsExpired = 0;         // Rockets that expired (timer)
         int turretRocketsProximityDetonated = 0; // Rockets detonated via proximity
+        
+        // Launcher Unit stats (Rocket Launcher + Deviator)
+        int launcherTargetsOrni = 0;          // Launcher acquires ornithopter as target
+        int launcherFiresOnOrni = 0;          // Launcher fires at ornithopter
+        int launcherRocketsSpawned = 0;       // Total launcher rockets created
+        int launcherRocketsHitOrni = 0;       // Launcher rockets that damaged ornithopter
+        int launcherRocketsKillOrni = 0;      // Launcher rockets that killed ornithopter
+        int launcherRocketsExpired = 0;       // Launcher rockets that expired (timer)
         
         Uint32 lastDumpTime = 0;              // Last time we dumped stats (SDL ticks)
     };
@@ -806,8 +815,9 @@ private:
     std::unordered_set<Uint32> pendingPathRequestIds;
 
     static constexpr double TargetBudgetMs = 3.0;
-    static constexpr double PathBudgetMs = 6.0;  // Optimized for 60 FPS (16ms frames) - 36% of frame budget
+    static constexpr double PathBudgetMs = 6.0;  // Kept as safety valve
     static constexpr std::size_t kPathNodeBudget = 2048;
+    static constexpr size_t PathTokensPerCycleBudget = 20000;  // Phase 2: Deterministic token budget (~4.4ms)
 
     // Game loop methods
     void initializeGameLoop();

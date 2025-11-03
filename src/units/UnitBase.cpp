@@ -226,6 +226,13 @@ bool UnitBase::attack() {
             } 
 
             if(primaryWeaponTimer == 0) {
+                // MULTIPLAYER-SAFE: Track launcher unit firing at ornithopters
+                if((getItemID() == Unit_Launcher || getItemID() == Unit_Deviator) && 
+                   pObject && pObject->getItemID() == Unit_Ornithopter) {
+                    currentGame->combatStats.launcherFiresOnOrni++;
+                    currentGame->combatStats.launcherRocketsSpawned++;
+                }
+                
                 bulletList.push_back( new Bullet( objectID, &centerPoint, &targetCenterPoint, currentBulletType, currentWeaponDamage, bAirBullet, pObject) );
                 if(pObject != nullptr) {
                     currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
@@ -248,6 +255,13 @@ bool UnitBase::attack() {
             }
 
             if((numWeapons == 2) && (secondaryWeaponTimer == 0) && (isBadlyDamaged() == false)) {
+                // MULTIPLAYER-SAFE: Track launcher unit secondary weapon firing at ornithopters
+                if((getItemID() == Unit_Launcher || getItemID() == Unit_Deviator) && 
+                   pObject && pObject->getItemID() == Unit_Ornithopter) {
+                    currentGame->combatStats.launcherFiresOnOrni++;
+                    currentGame->combatStats.launcherRocketsSpawned++;
+                }
+                
                 bulletList.push_back( new Bullet( objectID, &centerPoint, &targetCenterPoint, currentBulletType, currentWeaponDamage, bAirBullet, pObject) );
                 if(pObject != nullptr) {
                     currentGameMap->viewMap(pObject->getOwner()->getHouseID(), location, 2);
@@ -1299,6 +1313,12 @@ void UnitBase::resolvePendingTargetRequest() {
             const ObjectBase* pNewTarget = findTarget();
 
             if(pNewTarget != nullptr) {
+                // MULTIPLAYER-SAFE: Track launcher units acquiring ornithopter targets
+                if((getItemID() == Unit_Launcher || getItemID() == Unit_Deviator) && 
+                   pNewTarget->getItemID() == Unit_Ornithopter) {
+                    currentGame->combatStats.launcherTargetsOrni++;
+                }
+                
                 // In HUNT mode, attack targets regardless of guard range
                 // For other modes, only attack if in guard range
                 if(attackMode == HUNT || isInGuardRange(pNewTarget)) {
@@ -1320,39 +1340,55 @@ void UnitBase::resolvePendingTargetRequest() {
     }
 }
 
-void UnitBase::resolvePendingPathRequest() {
+UnitBase::PathRequestStats UnitBase::resolvePendingPathRequest() {
+    PathRequestStats stats;
     pathRequestQueued = false;
 
     if(currentGame == nullptr) {
         recalculatePathTimer = 0;
-        return;
+        stats.invalidDestination = true;
+        return stats;
     }
 
     if(location.isInvalid() || destination.isInvalid()) {
         recalculatePathTimer = 0;
-        return;
+        stats.invalidDestination = true;
+        return stats;
     }
 
-    recalculatePathTimer = 100;
+    recalculatePathTimer = 500;  // Increased from 100 to reduce excessive re-pathing
 
-    if(!SearchPathWithAStar()) {
+    std::size_t nodesExpanded = 0;
+    bool invalidDestination = false;
+    const bool pathFound = SearchPathWithAStar(nodesExpanded, invalidDestination);
+
+    stats.nodesExpanded = nodesExpanded;
+    stats.pathFound = pathFound;
+    stats.invalidDestination = invalidDestination;
+
+    // Don't count invalid destinations as pathfinding failures
+    if(invalidDestination) {
+        return stats;
+    }
+
+    if(!pathFound) {
         if((++noCloserPointCount >= 3) && (location != oldLocation)) {
-            if (target.getObjPointer() != nullptr && targetFriendly
-                && (target.getObjPointer()->getItemID() != Structure_RepairYard)
-                && ((target.getObjPointer()->getItemID() != Structure_Refinery)
-                || (getItemID() != Unit_Harvester))) {
+            if(target.getObjPointer() != nullptr && targetFriendly
+               && (target.getObjPointer()->getItemID() != Structure_RepairYard)
+               && ((target.getObjPointer()->getItemID() != Structure_Refinery)
+                   || (getItemID() != Unit_Harvester))) {
                 setTarget(nullptr);
             }
 
             if(getOwner()->hasCarryalls()
                && this->isAGroundUnit()
                && (currentGame->getGameInitSettings().getGameOptions().manualCarryallDrops || getOwner()->isAI())
-               && blockDistance(location, destination) >= MIN_CARRYALL_LIFT_DISTANCE ) {
-               static_cast<GroundUnit*>(this)->requestCarryall();
-            } else if(  getOwner()->isAI()
-                        && (getItemID() == Unit_Harvester)
-                        && !static_cast<Harvester*>(this)->isReturning()
-                        && blockDistance(location, destination) >= 2) {
+               && blockDistance(location, destination) >= MIN_CARRYALL_LIFT_DISTANCE) {
+                static_cast<GroundUnit*>(this)->requestCarryall();
+            } else if(getOwner()->isAI()
+                      && (getItemID() == Unit_Harvester)
+                      && !static_cast<Harvester*>(this)->isReturning()
+                      && blockDistance(location, destination) >= 2) {
                 static_cast<Harvester*>(this)->doReturn();
             } else {
                 setDestination(location);
@@ -1360,6 +1396,8 @@ void UnitBase::resolvePendingPathRequest() {
             }
         }
     }
+
+    return stats;
 }
 
 void UnitBase::turn() {
@@ -1554,7 +1592,10 @@ bool UnitBase::canPass(int xPos, int yPos) const {
     return true;
 }
 
-bool UnitBase::SearchPathWithAStar() {
+bool UnitBase::SearchPathWithAStar(std::size_t& nodesExpanded, bool& invalidDestination) {
+    nodesExpanded = 0;
+    invalidDestination = false;
+
     Coord destinationCoord;
 
     if(target && target.getObjPointer() != nullptr) {
@@ -1570,14 +1611,15 @@ bool UnitBase::SearchPathWithAStar() {
     }
 
     AStarSearch pathfinder(currentGameMap, this, location, destinationCoord);
+    nodesExpanded = static_cast<size_t>(pathfinder.getNodesChecked());
     pathList = pathfinder.getFoundPath();
 
-    if(pathList.empty() == true) {
+    if(pathList.empty()) {
         nextSpotFound = false;
         return false;
-    } else {
-        return true;
     }
+
+    return true;
 }
 
 void UnitBase::drawSmoke(int x, int y) const {

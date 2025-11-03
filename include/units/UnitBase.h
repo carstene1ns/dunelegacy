@@ -222,7 +222,13 @@ public:
     virtual FixPoint getMaxSpeed() const;
 
     void resolvePendingTargetRequest();
-    void resolvePendingPathRequest();
+    
+    struct PathRequestStats {
+        bool pathFound = false;
+        bool invalidDestination = false;
+        size_t nodesExpanded = 0;
+    };
+    PathRequestStats resolvePendingPathRequest();
 
     inline void clearPath() {
         pathList.clear();
@@ -280,7 +286,7 @@ protected:
 
     void quitDeviation();
 
-    bool SearchPathWithAStar();
+    bool SearchPathWithAStar(size_t& nodesExpanded, bool& invalidDestination);
 
     void drawSmoke(int x, int y) const;
 

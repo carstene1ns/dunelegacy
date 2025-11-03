@@ -171,6 +171,21 @@ void Map::damage(Uint32 damagerID, House* damagerOwner, const Coord& realPos, Ui
                         const auto scaledDamage = lround(damage);
                         const auto healthBefore = pAirUnit->getHealth();
                         pAirUnit->handleDamage(scaledDamage, damagerID, damagerOwner);
+                        
+                        // MULTIPLAYER-SAFE: Track rocket hits/kills on ornithopters (after damage)
+                        if(pAirUnit->getItemID() == Unit_Ornithopter && healthBefore > 0) {
+                            if(bulletID == Bullet_TurretRocket) {
+                                currentGame->combatStats.turretRocketsHitOrni++;
+                                if(pAirUnit->getHealth() <= 0) {
+                                    currentGame->combatStats.turretRocketsKillOrni++;
+                                }
+                            } else if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
+                                currentGame->combatStats.launcherRocketsHitOrni++;
+                                if(pAirUnit->getHealth() <= 0) {
+                                    currentGame->combatStats.launcherRocketsKillOrni++;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -202,6 +217,10 @@ void Map::damage(Uint32 damagerID, House* damagerOwner, const Coord& realPos, Ui
                     const auto distance = lround(distanceFrom(centerPoint, realPos));
 
                     if(distance <= damageRadius) {
+                        // MULTIPLAYER-SAFE: Track rocket hits on ornithopters (before damage)
+                        const bool isOrni = (pUnit->getItemID() == Unit_Ornithopter);
+                        const FixPoint healthBefore = isOrni ? pUnit->getHealth() : 0;
+                        
                         if(bulletID == Bullet_DRocket) {
                             if((pUnit->getItemID() != Unit_Carryall) && (pUnit->getItemID() != Unit_Sandworm) && (pUnit->getItemID() != Unit_Frigate)) {
                                 // try to deviate
@@ -214,6 +233,21 @@ void Map::damage(Uint32 damagerID, House* damagerOwner, const Coord& realPos, Ui
                         } else {
                             const auto scaledDamage = lround(damage) >> (distance/16 + 1);
                             pUnit->handleDamage(scaledDamage, damagerID, damagerOwner);
+                        }
+                        
+                        // MULTIPLAYER-SAFE: Track rocket hits/kills on ornithopters (after damage)
+                        if(isOrni && healthBefore > 0) {
+                            if(bulletID == Bullet_TurretRocket) {
+                                currentGame->combatStats.turretRocketsHitOrni++;
+                                if(pUnit->getHealth() <= 0) {
+                                    currentGame->combatStats.turretRocketsKillOrni++;
+                                }
+                            } else if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
+                                currentGame->combatStats.launcherRocketsHitOrni++;
+                                if(pUnit->getHealth() <= 0) {
+                                    currentGame->combatStats.launcherRocketsKillOrni++;
+                                }
+                            }
                         }
                     }
                 }

@@ -99,7 +99,8 @@ Bullet::Bullet(Uint32 shooterID, Coord* newRealLocation, Coord* newRealDestinati
     location.x = newRealLocation->x/TILESIZE;
     location.y = newRealLocation->y/TILESIZE;
 
-    FixPoint angleRad =  destinationAngleRad(*newRealLocation, *newRealDestination);
+    // Calculate angle based on the (possibly modified) destination, not the original target
+    FixPoint angleRad =  destinationAngleRad(*newRealLocation, destination);
     angle = RadToDeg256(angleRad);
     drawnAngle = lround(numFrames*angle/256) % numFrames;
 
@@ -330,6 +331,9 @@ void Bullet::update()
 {
     if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket || bulletID == Bullet_TurretRocket) {
 
+        // Note: In original Dune 2, rockets did NOT continuously track targets.
+        // For BALANCE: Enable tracking for all rockets vs air units (gameplay > authenticity)
+        // Without tracking, fast-moving ornithopters are nearly impossible to hit
         ObjectBase* pTarget = target.getObjPointer();
         if(pTarget && pTarget->isAFlyingUnit()) {
             destination = pTarget->getCenterPoint();
@@ -388,6 +392,11 @@ void Bullet::update()
         }
 
         if(bulletID == Bullet_TurretRocket && detonationTimer == 0) {
+            // MULTIPLAYER-SAFE: Track turret rocket expiration
+            ObjectBase* pTarget = target.getObjPointer();
+            if(pTarget && pTarget->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.turretRocketsExpired++;
+            }
             destroy();
             return;
         }
@@ -430,9 +439,24 @@ void Bullet::update()
 
             if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
                 if(detonationTimer == 0) {
+                    // MULTIPLAYER-SAFE: Track launcher rocket expiration
+                    ObjectBase* pTarget = target.getObjPointer();
+                    if(pTarget && pTarget->getItemID() == Unit_Ornithopter) {
+                        currentGame->combatStats.launcherRocketsExpired++;
+                    }
                     destroy();
                     return;
                 }
+            } else if(bulletID == Bullet_TurretRocket) {
+                // MULTIPLAYER-SAFE: Track proximity detonation
+                ObjectBase* pTarget = target.getObjPointer();
+                if(pTarget && pTarget->getItemID() == Unit_Ornithopter) {
+                    currentGame->combatStats.turretRocketsProximityDetonated++;
+                }
+                realX = destination.x;
+                realY = destination.y;
+                destroy();
+                return;
             } else {
                 realX = destination.x;
                 realY = destination.y;

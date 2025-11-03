@@ -59,6 +59,8 @@ public:
         return path;
     };
 
+    int getNodesChecked() const { return numNodesChecked; }
+
 private:
     struct TileData {
         Coord    parentCoord;
@@ -183,6 +185,7 @@ private:
 
     int sizeX;
     int sizeY;
+    int numNodesChecked;
     Coord bestCoord;
     TileData* mapData;
     std::vector<Coord> openList;

@@ -94,6 +94,12 @@ void RocketTurret::attack() {
                 weaponTimer = currentGame->objectData.data[Structure_GunTurret][originalHouseID].weaponreloadtime;
             }
         } else {
+            // MULTIPLAYER-SAFE: Track turret rocket firing
+            if(pObject->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.rocketTurretFiresOnOrni++;
+                currentGame->combatStats.turretRocketsSpawned++;
+            }
+            
             bulletList.push_back( new Bullet( objectID, &centerPoint, &targetCenterPoint, bulletType,
                                                    currentGame->objectData.data[itemID][originalHouseID].weapondamage,
                                                    pObject->isAFlyingUnit(),
@@ -103,6 +109,10 @@ void RocketTurret::attack() {
             soundPlayer->playSoundAt(attackSound, location);
             weaponTimer = getWeaponReloadTime();
         }
-
+    } else if((weaponTimer != 0) && (target.getObjPointer() != nullptr)) {
+        // MULTIPLAYER-SAFE: Track when weapon timer blocks firing
+        if(target.getObjPointer()->getItemID() == Unit_Ornithopter) {
+            currentGame->combatStats.rocketTurretFireBlocked++;
+        }
     }
 }

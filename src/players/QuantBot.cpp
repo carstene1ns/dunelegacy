@@ -488,6 +488,37 @@ void QuantBot::update() {
 		}
 	}
 
+	// Continuously adjust harvester limit based on remaining spice (Custom mode only)
+	// This runs every cycle to dynamically reduce harvester targets as spice depletes
+	if (gameMode == GameMode::Custom) {
+		// Get the base harvester limit (from config/map size, not yet adjusted for spice)
+		const QuantBotConfig& config = getQuantBotConfig();
+		const QuantBotConfig::DifficultySettings& diffSettings = config.getSettings(static_cast<int>(difficulty));
+		
+		int baseHarvesterLimit = harvesterLimit;
+		const int mapsize = currentGameMap->getSizeX() * currentGameMap->getSizeY();
+		if (mapsize <= 1024) {
+			baseHarvesterLimit = diffSettings.harvesterLimitCustomSmallMap;
+		} else if (mapsize <= 4096) {
+			baseHarvesterLimit = diffSettings.harvesterLimitCustomMediumMap;
+		} else if (mapsize <= 16384) {
+			baseHarvesterLimit = diffSettings.harvesterLimitCustomLargeMap;
+		} else {
+			baseHarvesterLimit = diffSettings.harvesterLimitCustomLargeMap * (mapsize / 16384.0);
+		}
+		
+		// Don't build more harvesters if total spice < 2000 * harvester count
+		int maxHarvestersForSpice = lastCalculatedSpice / 2000;
+		int oldLimit = harvesterLimit;
+		harvesterLimit = std::min(baseHarvesterLimit, std::max(1, maxHarvestersForSpice));
+		
+		// Log when the limit changes
+		if (oldLimit != harvesterLimit) {
+			logDebug("Harvester limit adjusted: %d -> %d (spice: %d, base: %d)", 
+				oldLimit, harvesterLimit, lastCalculatedSpice, baseHarvesterLimit);
+		}
+	}
+
 	if ((getGameCycleCount() + getHouse()->getHouseID()) % AIUPDATEINTERVAL != 0) {
 		// we are not updating this AI player this cycle
 		return;
