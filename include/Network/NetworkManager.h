@@ -52,6 +52,7 @@
 #define NETWORKPACKET_COMMANDLIST           9
 #define NETWORKPACKET_SELECTIONLIST         10
 #define NETWORKPACKET_CONFIG_HASH           11
+#define NETWORKPACKET_SETPATHBUDGET         12  // Phase 1.4: Budget negotiation
 
 #define AWAITING_CONNECTION_TIMEOUT     5000
 

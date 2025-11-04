@@ -569,7 +569,7 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
                                 "Physical Width = 640\n"
                                 "Physical Height = 480\n"
                                 "Fullscreen = true\n"
-                                "FrameLimit = true           # Limit the frame rate to save energy?\n"
+                                "FrameLimit = false          # Limit the frame rate to ~31 FPS (32ms per frame). Set to false for unlimited FPS.\n"
                                 "Preferred Zoom Level = 1    # 0 = no zooming, 1 = 2x, 2 = 3x\n"
                                 "Scaler = ScaleHD            # Scaler to use: ScaleHD = apply manual drawn mask to upscale, Scale2x = smooth edges, ScaleNN = nearest neighbour, \n"
                                 "RotateUnitGraphics = false  # Freely rotate unit graphics, e.g. carryall graphics\n"
@@ -838,7 +838,7 @@ int main(int argc, char *argv[]) {
             settings.video.physicalWidth= myINIFile.getIntValue("Video","Physical Width",640);
             settings.video.physicalHeight = myINIFile.getIntValue("Video","Physical Height",480);
             settings.video.fullscreen = myINIFile.getBoolValue("Video","Fullscreen",false);
-            settings.video.frameLimit = myINIFile.getBoolValue("Video","FrameLimit",true);
+            settings.video.frameLimit = myINIFile.getBoolValue("Video","FrameLimit",false);
             settings.video.preferredZoomLevel = myINIFile.getIntValue("Video","Preferred Zoom Level", 0);
             settings.video.scaler = myINIFile.getStringValue("Video","Scaler","ScaleHD");
             settings.video.rotateUnitGraphics = myINIFile.getBoolValue("Video","RotateUnitGraphics",false);

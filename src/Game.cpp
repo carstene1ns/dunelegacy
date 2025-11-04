@@ -487,23 +487,19 @@ void Game::processPathRequests() {
         frameTiming.maxPathQueueLength = queueDepth;
     }
 
-    // ADAPTIVE DETERMINISTIC TOKEN BUDGET
-    // Base budget increased from 20k to 30k for heavy scenarios (6 AI players)
-    // Adaptive boost when queue grows (deterministic - same on all clients)
-    size_t baseBudget = 30000;  // Increased from 20000
-    size_t tokensRemaining = baseBudget;
+    // PHASE 1: NEGOTIATED TOKEN BUDGET WITH CARRY-OVER
+    // Start at 15k tokens/cycle, adapt between 8k-25k based on FPS
+    // NEVER scale UP aggressively (that caused the freeze!)
     
-    // Adaptive boost based on queue depth (deterministic)
-    if(queueDepth > 500) {
-        // Heavy load: 3x boost
-        tokensRemaining = baseBudget * 3;  // 90k tokens
-    } else if(queueDepth > 200) {
-        // Moderate load: 2x boost  
-        tokensRemaining = baseBudget * 2;  // 60k tokens
-    } else if(queueDepth > 100) {
-        // Light load: 1.5x boost
-        tokensRemaining = baseBudget + (baseBudget / 2);  // 45k tokens
-    }
+    // Calculate budget with carry-over (capped at kHardCap)
+    size_t budget = std::min<size_t>(
+        negotiatedBudget + carryOverTokens,
+        kHardCap
+    );
+    carryOverTokens = 0;  // Reset for this cycle
+    
+    size_t tokensRemaining = budget;
+    size_t tokensUsedThisCycle = 0;
     
     // Process paths until token budget exhausted (deterministic stopping condition)
     while(!pathRequestQueue.empty() && tokensRemaining > 0) {
@@ -524,6 +520,7 @@ void Game::processPathRequests() {
             frameTiming.pathTokensThisCycle += tokens;
             frameTiming.pathTokensThisFrame += tokens;
             frameTiming.totalPathTokens += tokens;
+            tokensUsedThisCycle += tokens;
             
             // Deduct from token budget
             if (tokens < tokensRemaining) {
@@ -553,21 +550,18 @@ void Game::processPathRequests() {
         }
     }
     
-    // MULTIPLAYER FIX (Issue #6): Track token budget exhaustion with deterministic recovery
+    // PHASE 1.2: BANK UNUSED TOKENS FOR NEXT CYCLE
+    if (tokensUsedThisCycle < budget) {
+        // Bank unused tokens (capped at kDebtCap)
+        carryOverTokens = std::min<size_t>(
+            kDebtCap,
+            budget - tokensUsedThisCycle
+        );
+    }
+    
+    // Track token budget exhaustion
     if (tokensRemaining == 0 && !pathRequestQueue.empty()) {
         frameTiming.tokenBudgetExhaustedCount++;
-        
-        // Deterministic recovery: If queue is growing beyond threshold, temporarily boost budget
-        const size_t queueThreshold = 100;  // If queue > 100, we're falling behind
-        if(pathRequestQueue.size() > queueThreshold) {
-            // Log warning (cycle-based, so deterministic)
-            if((gameCycleCount % MILLI2CYCLES(5000)) == 0) {
-                SDL_Log("[MP-Sync WARNING Cycle %d] Pathfinding queue starved: %zu requests pending",
-                        gameCycleCount, pathRequestQueue.size());
-            }
-            // Note: Budget boost would need to be implemented as a game state change
-            // For now, we just track and log the issue deterministically
-        }
     }
     
     const Uint64 end = SDL_GetPerformanceCounter();  // PROFILING ONLY
@@ -590,21 +584,91 @@ void Game::processPathRequests() {
         frameTiming.maxPathsPerCycle = frameTiming.pathsProcessedThisCycle;
     }
     
-    // MULTIPLAYER TELEMETRY: Log synchronization info with adaptive budget status
+    // MULTIPLAYER TELEMETRY: Log synchronization info
     if(pNetworkManager != nullptr && frameTiming.pathsProcessedThisCycle > 0) {
         // Log every 10 seconds to verify synchronization
         if((gameCycleCount % MILLI2CYCLES(10000)) == 0) {
-            const char* budgetMode = (queueDepth > 500) ? " [BOOST:3x]" : 
-                                     (queueDepth > 200) ? " [BOOST:2x]" :
-                                     (queueDepth > 100) ? " [BOOST:1.5x]" : "";
-            SDL_Log("[MP-Sync Cycle %d] Paths: %d, Tokens: %zu, Queue: %zu%s",
+            SDL_Log("[MP-Sync Cycle %d] Budget: %zu (carry: %zu), Paths: %d, Tokens Used: %zu, Queue: %zu",
                     gameCycleCount,
+                    negotiatedBudget,
+                    carryOverTokens,
                     frameTiming.pathsProcessedThisCycle,
                     frameTiming.pathTokensThisCycle,
-                    pathRequestQueue.size(),
-                    budgetMode);
+                    pathRequestQueue.size());
         }
     }
+}
+
+
+void Game::requestLowerBudget(int steps) {
+    // PHASE 1.4: REQUEST LOWER BUDGET VIA NETWORK COMMAND
+    SDL_Log("[PathBudget] requestLowerBudget triggered (current=%zu, steps=%d)",
+            negotiatedBudget, steps);
+    
+    // Calculate target: reduce by steps × 500
+    // Examples:
+    //   1 step: 15k → 14.5k (gradual reduction)
+    //   4 steps: 15k → 13k (aggressive FPS recovery)
+    size_t reduction = steps * 500;
+    size_t targetBudget;
+    if (negotiatedBudget > kMinBudget + reduction) {
+        targetBudget = negotiatedBudget - reduction;
+    } else {
+        targetBudget = kMinBudget;  // Floor at minimum (8k)
+    }
+    
+    targetBudget = std::clamp(targetBudget, kMinBudget, kMaxBudget);
+    
+    // Don't request if already at minimum
+    if (targetBudget >= negotiatedBudget) {
+        SDL_Log("[PathBudget] Already at minimum (%zu tokens/cycle)", negotiatedBudget);
+        return;
+    }
+    
+    SDL_Log("[PathBudget] Requesting reduction: %zu -> %zu tokens/cycle (%d steps × 500)",
+            negotiatedBudget, targetBudget, steps);
+    logPerformance("[BUDGET CHANGE] Cycle %d: Requesting reduction %zu -> %zu tokens/cycle (%d steps × 500, queue=%zu)",
+            gameCycleCount, negotiatedBudget, targetBudget, steps, pathRequestQueue.size());
+    
+    // In single-player, apply immediately
+    if (pNetworkManager == nullptr) {
+        negotiatedBudget = targetBudget;
+        carryOverTokens = 0;  // Reset carry-over on budget change
+        SDL_Log("[PathBudget] Applied immediately (single-player)");
+        logPerformance("[BUDGET CHANGE] Cycle %d: Applied immediately - new budget=%zu", 
+                gameCycleCount, negotiatedBudget);
+        return;
+    }
+    
+    // In multiplayer, send command to host for broadcast
+    // Host will schedule the change for a specific cycle
+    // All peers will apply it deterministically at that cycle
+    
+    // Create network command
+    // Format: NETWORKPACKET_SETPATHBUDGET | targetBudget (4 bytes) | applyCycle (4 bytes)
+    const Uint32 applyCycle = gameCycleCount + 2;  // Apply 2 cycles from now
+    
+    // Build packet
+    std::vector<Uint8> buffer;
+    buffer.reserve(9);
+    buffer.push_back(NETWORKPACKET_SETPATHBUDGET);
+    
+    // Write targetBudget (4 bytes, big-endian)
+    buffer.push_back((targetBudget >> 24) & 0xFF);
+    buffer.push_back((targetBudget >> 16) & 0xFF);
+    buffer.push_back((targetBudget >> 8) & 0xFF);
+    buffer.push_back(targetBudget & 0xFF);
+    
+    // Write applyCycle (4 bytes, big-endian)
+    buffer.push_back((applyCycle >> 24) & 0xFF);
+    buffer.push_back((applyCycle >> 16) & 0xFF);
+    buffer.push_back((applyCycle >> 8) & 0xFF);
+    buffer.push_back(applyCycle & 0xFF);
+    
+    // Send to network manager
+    // Note: This will be fully implemented after we add the network handler
+    // For now, just apply locally in single-player mode
+    SDL_Log("[PathBudget] TODO: Send network command (buffer size: %zu)", buffer.size());
 }
 
 
@@ -1358,7 +1422,11 @@ void Game::runMainLoop() {
         int loopIterations = 0;
         int cyclesExecuted = 0;
         
-        while((frameTime > getGameSpeed()) || (!finished && (gameCycleCount < skipToGameCycle))) {
+        // PHASE 1.3: CYCLE GUARDRAIL - Prevent renderer starvation
+        static constexpr int kMaxCyclesPerFrame = 10;
+        
+        while(((frameTime > getGameSpeed()) || (!finished && (gameCycleCount < skipToGameCycle))) 
+              && cyclesExecuted < kMaxCyclesPerFrame) {
             loopIterations++;
             
             Uint64 networkWaitStart = SDL_GetPerformanceCounter();
@@ -1410,10 +1478,66 @@ void Game::runMainLoop() {
             }
         }
         
-        // DIAGNOSTIC: Log if unusual activity
-        if(loopIterations > 10 || cyclesExecuted > 5) {
+        // PHASE 1.3: DETECT GUARDRAIL TRIPS & REQUEST LOWER BUDGET
+        if(cyclesExecuted >= kMaxCyclesPerFrame) {
+            cycleGuardrailTrips++;
+            
+            // Log guardrail trip to performance file (but not every single one - too noisy)
+            if(cycleGuardrailTrips % 20 == 0) {
+                logPerformance("[GUARDRAIL] Cycle %d: Hit limit %d times (10 cycles/frame) - queue=%zu, budget=%zu",
+                        gameCycleCount, cycleGuardrailTrips, pathRequestQueue.size(), negotiatedBudget);
+            }
+            
+            // Log to console periodically
+            if((gameCycleCount % MILLI2CYCLES(5000)) == 0) {
+                SDL_Log("[Guardrail] Hit cycle limit (%d cycles/frame), queue=%zu, trips=%d",
+                        kMaxCyclesPerFrame, pathRequestQueue.size(), cycleGuardrailTrips);
+            }
+            
+            // CHANGED: Only reduce budget after SUSTAINED poor performance
+            // 300 guardrail trips = ~300 frames = ~5 seconds at 60 FPS
+            // This prevents reacting to temporary spikes
+            if(cycleGuardrailTrips >= 300) {
+                SDL_Log("[PathBudget] Sustained poor performance detected (%d guardrail trips over ~300 frames)", cycleGuardrailTrips);
+                requestLowerBudget();
+                cycleGuardrailTrips = 0;  // Reset counter
+            }
+        } else if(cyclesExecuted < 5) {
+            // Running smoothly - aggressively reset counter
+            // Decay faster to forgive temporary spikes
+            if(cycleGuardrailTrips > 0) {
+                cycleGuardrailTrips -= 3;  // Decrease by 3 per smooth frame
+                if(cycleGuardrailTrips < 0) {
+                    cycleGuardrailTrips = 0;
+                }
+            }
+        }
+        
+        // DIAGNOSTIC: Log every 100 frames for continuous monitoring
+        static int diagnosticFrameCounter = 0;
+        diagnosticFrameCounter++;
+        if(diagnosticFrameCounter >= 100 || loopIterations > 10 || cyclesExecuted > 5) {
             logPerformance("[DIAGNOSTIC] Frame: %d loop iterations, %d cycles executed, frameTime=%d, bPause=%d, gameCycle=%d", 
                 loopIterations, cyclesExecuted, frameTime, bPause ? 1 : 0, gameCycleCount);
+            diagnosticFrameCounter = 0;
+        }
+        
+        // PERIODIC STATUS SNAPSHOT: Every 15 seconds of game time
+        if((gameCycleCount % MILLI2CYCLES(15000)) == 0 && gameCycleCount > 0) {
+            const double avgFps = frameTiming.frameCount > 0 ? 
+                (frameTiming.frameCount * 1000.0 / frameTiming.totalMs) : 0.0;
+            const double tokensPerCycle = frameTiming.totalGameCycles > 0 ?
+                static_cast<double>(frameTiming.totalPathTokens) / frameTiming.totalGameCycles : 0.0;
+            
+            logPerformance("[STATUS] Cycle %d (%.1f min) - FPS: %.1f | Budget: %zu (carry: %zu) | Queue: %zu | Tokens/cycle: %.0f | Budget exhausted: %d",
+                    gameCycleCount,
+                    gameCycleCount / (60.0 * MILLI2CYCLES(1000)),
+                    avgFps,
+                    negotiatedBudget,
+                    carryOverTokens,
+                    pathRequestQueue.size(),
+                    tokensPerCycle,
+                    frameTiming.tokenBudgetExhaustedCount);
         }
 
         musicPlayer->musicCheck();
@@ -1458,7 +1582,7 @@ void Game::runMainLoop() {
         if(frameTiming.turretScanMsThisFrame < frameTiming.minTurretScanMs && frameTiming.turretScansThisFrame > 0) frameTiming.minTurretScanMs = frameTiming.turretScanMsThisFrame;
         if(frameTiming.turretScansThisFrame > frameTiming.maxTurretScansPerFrame) frameTiming.maxTurretScansPerFrame = frameTiming.turretScansThisFrame;
         
-        // Log every 30 seconds
+        // Log every 30 seconds as backup (main logs happen on budget changes)
         const Uint32 now = SDL_GetTicks();
         if(now - lastTimingLogMs >= 30000) {
             logFrameTiming();
@@ -1591,6 +1715,44 @@ void Game::updateGameState() {
     }
 
     gameCycleCount++;
+    
+    // PHASE 1: Cycle-based budget adjustment (deterministic, every 375 cycles ~7.5s at 50Hz)
+    if(gameCycleCount % kBudgetCheckInterval == 0 && frameTiming.frameCount > 0) {
+        // Use existing FPS calculation over the entire session
+        const double avgFps = (frameTiming.frameCount * 1000.0 / frameTiming.totalMs);
+        
+        // If average FPS is below 40, reduce budget by 4 steps (2k) - AGGRESSIVE
+        if(avgFps < 40.0) {
+            SDL_Log("[PathBudget] Cycle %d: Average FPS below 40: %.1f FPS - reducing budget (4 steps × 500)", 
+                    gameCycleCount, avgFps);
+            logPerformance("[PathBudget] Cycle %d: Average FPS below 40: %.1f FPS - reducing budget (4 steps × 500)", 
+                    gameCycleCount, avgFps);
+            requestLowerBudget(4);  // Reduce by 2k (4 × 500) - aggressive
+            
+            // Log full performance report on budget change
+            logFrameTiming();
+        }
+        // If average FPS is above 60 AND budget is below max, increase budget by 1 step (500)
+        else if(avgFps > 60.0 && negotiatedBudget < kMaxBudget) {
+            size_t oldBudget = negotiatedBudget;
+            size_t newBudget = std::min<size_t>(negotiatedBudget + 500, kMaxBudget);
+            
+            SDL_Log("[PathBudget] Cycle %d: Average FPS above 60: %.1f FPS - increasing budget (1 step × 500) %zu -> %zu", 
+                    gameCycleCount, avgFps, oldBudget, newBudget);
+            logPerformance("[BUDGET CHANGE] Cycle %d: Increasing budget %zu -> %zu tokens/cycle (1 step × 500, FPS=%.1f, queue=%zu)",
+                    gameCycleCount, oldBudget, newBudget, avgFps, pathRequestQueue.size());
+            
+            negotiatedBudget = newBudget;
+            carryOverTokens = 0;  // Reset carry-over when budget changes
+            
+            SDL_Log("[PathBudget] Applied immediately - new budget=%zu", negotiatedBudget);
+            logPerformance("[BUDGET CHANGE] Cycle %d: Applied immediately - new budget=%zu", 
+                    gameCycleCount, negotiatedBudget);
+            
+            // Log full performance report on budget change
+            logFrameTiming();
+        }
+    }
     
     // MULTIPLAYER FIX (Issue #8): Cycle-based combat stats dump (deterministic)
     // Dump combat statistics every 30 seconds (MILLI2CYCLES(30000) cycles)
@@ -1816,10 +1978,10 @@ void Game::logFrameTiming() {
     // Phase 2: Token budget statistics
     const double tokensUsedPerCycle = frameTiming.totalGameCycles > 0 ?
         static_cast<double>(frameTiming.totalPathTokens) / frameTiming.totalGameCycles : 0.0;
-    const double tokenBudgetUtilization = tokensUsedPerCycle / PathTokensPerCycleBudget * 100.0;
-    logPerformance("[Performance] === TOKEN BUDGET (Phase 2) ===");
-    logPerformance("[Performance] Budget: %zu tokens/cycle | Avg Used: %.0f (%.1f%% utilization)",
-        PathTokensPerCycleBudget, tokensUsedPerCycle, tokenBudgetUtilization);
+    const double tokenBudgetUtilization = tokensUsedPerCycle / negotiatedBudget * 100.0;
+    logPerformance("[Performance] === TOKEN BUDGET (Phase 1 - Negotiated) ===");
+    logPerformance("[Performance] Budget: %zu tokens/cycle | Avg Used: %.0f (%.1f%% utilization) | Carry-Over: %zu",
+        negotiatedBudget, tokensUsedPerCycle, tokenBudgetUtilization, carryOverTokens);
     logPerformance("[Performance] Token Budget Exhausted: %d times | Time Budget Exceeded: %d times (safety valve)",
         frameTiming.tokenBudgetExhaustedCount,
         frameTiming.timeBudgetExceededCount);

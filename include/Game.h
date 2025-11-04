@@ -817,7 +817,22 @@ private:
     // MULTIPLAYER FIX (Issue #1, #2): Removed time-based budgets
     // Now using only deterministic budgets:
     static constexpr std::size_t kPathNodeBudget = 2048;
-    static constexpr size_t PathTokensPerCycleBudget = 30000;  // Base deterministic token budget (adaptive boost in processPathRequests)
+    
+    // Phase 1: Budget Negotiation System
+    // Start at 15k (middle of range), adapt up or down based on FPS
+    size_t negotiatedBudget = 15000;  // Current token budget (adaptive 8k-25k)
+    size_t carryOverTokens = 0;       // Unused tokens from previous cycle
+    
+    static constexpr size_t kMinBudget = 8000;    // Minimum 8k tokens/cycle
+    static constexpr size_t kMaxBudget = 25000;   // Maximum 25k tokens/cycle
+    static constexpr size_t kHardCap = 30000;     // With carry-over
+    static constexpr size_t kDebtCap = 10000;     // Max carry-over tokens
+    
+    static constexpr int kBudgetCheckInterval = 375;  // Check every 375 cycles (~7.5s at 50Hz)
+    
+    int cycleGuardrailTrips = 0;      // Counter for cycle limit hits
+    
+    void requestLowerBudget(int steps = 1);  // Request budget reduction via network (steps × 500)
 
     // Game loop methods
     void initializeGameLoop();
