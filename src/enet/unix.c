@@ -7,6 +7,8 @@ typedef int avoid_warning_that_ISO_C_forbids_an_empty_translation_unit;
 
 #ifndef _WIN32
 
+#include <config.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>

@@ -25,6 +25,10 @@
 #include <globals.h>
 #include <sand.h>
 
+#ifdef __SWITCH__
+    #include "Switch/input.h"
+#endif
+
 CutScene::CutScene()
 {
     quiting = false;
@@ -51,6 +55,10 @@ void CutScene::run()
         while(SDL_PollEvent(&event)) {
 
             //check the events
+#ifdef __SWITCH__
+            if (Switch::Input::ProcessEvent(event))
+                continue;
+#endif
             switch (event.type)
             {
                 case (SDL_KEYDOWN): // Look for a keypress

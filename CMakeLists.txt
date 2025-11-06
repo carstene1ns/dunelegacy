@@ -10,6 +10,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Include cmake modules
 include(CMakeDependentOption)
+include(CheckSymbolExists)
+include(CheckTypeSize)
+include(CheckStructHasMember)
+include(CMakePushCheckState)
 include(CTest)
 include(GNUInstallDirs)
 
@@ -57,9 +61,16 @@ option(DUNELEGACY_STATIC_RUNTIME "Use static runtime libraries" OFF)
 
 # Check for required packages with specific versions
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2>=2.32.2)
-pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer>=2.8.1)
-pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf>=2.24.0)
+if(NINTENDO_SWITCH)
+    # use always the newest available
+    pkg_check_modules(SDL2 REQUIRED sdl2)
+    pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+    pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
+else()
+    pkg_check_modules(SDL2 REQUIRED sdl2>=2.32.2)
+    pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer>=2.8.1)
+    pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf>=2.24.0)
+endif()
 
 # Platform-specific settings
 if(WIN32)
@@ -85,6 +96,8 @@ if(WIN32)
             set(PCH_HEADER "${CMAKE_SOURCE_DIR}/IDE/VC/stdafx.h")
         endif()
     endif()
+elseif(NINTENDO_SWITCH)
+    add_compile_definitions(_GNU_SOURCE)
 else()
     # Unix-like systems
     find_package(Threads REQUIRED)
@@ -98,6 +111,25 @@ else()
     add_compile_options(-Wall -Wextra -pedantic)
     add_compile_options(-Wno-unused-parameter -Wno-unused-but-set-variable -Wno-unknown-pragmas) # FIXME These should be cleaned up.
     add_compile_options(-Wno-expansion-to-defined)  # Silences "define FMT_HAS_FEATURE(x) __has_feature(x) may not be portable" warnings.
+endif()
+
+if(NOT WIN32)
+    check_symbol_exists(gethostbyaddr_r "netdb.h" HAS_GETHOSTBYADDR_R)
+    check_symbol_exists(gethostbyname_r "netdb.h" HAS_GETHOSTBYNAME_R)
+    check_symbol_exists(poll "sys/poll.h" HAS_POLL)
+    check_symbol_exists(fcntl "fcntl.h" HAS_FCNTL)
+    check_symbol_exists(inet_pton "arpa/inet.h" HAS_INET_PTON)
+    check_symbol_exists(inet_ntop "arpa/inet.h" HAS_INET_NTOP)
+
+    check_struct_has_member("struct msghdr" msg_flags "sys/socket.h" HAS_MSGHDR_FLAGS)
+
+    cmake_push_check_state(RESET)
+        set(CMAKE_EXTRA_INCLUDE_FILES sys/types.h sys/socket.h arpa/inet.h)
+        check_type_size(socklen_t SIZEOF_SOCKLEN_T)
+        if(NOT SIZEOF_SOCKLEN_T STREQUAL "")
+            set(HAS_SOCKLEN_T 1)
+        endif()
+    cmake_pop_check_state()
 endif()
 
 # Add subdirectories

@@ -79,6 +79,10 @@ std::mutex Game::performanceLogMutex;
 #include <sstream>
 #include <iomanip>
 
+#ifdef __SWITCH__
+    #include "Switch/input.h"
+#endif
+
 Game::Game() {
     currentZoomlevel = settings.video.preferredZoomLevel;
 
@@ -187,6 +191,9 @@ Game::~Game() {
 }
 
 void Game::initPerformanceLog() {
+#ifdef __SWITCH__
+    return;
+#endif
     std::lock_guard<std::mutex> lock(performanceLogMutex);
     
     if(performanceLogFile.is_open()) {
@@ -214,6 +221,9 @@ void Game::initPerformanceLog() {
 }
 
 void Game::closePerformanceLog() {
+#ifdef __SWITCH__
+    return;
+#endif
     std::lock_guard<std::mutex> lock(performanceLogMutex);
     
     if(performanceLogFile.is_open()) {
@@ -229,6 +239,9 @@ void Game::closePerformanceLog() {
 }
 
 void Game::logPerformance(const char* format, ...) {
+#ifdef __SWITCH__
+    return;
+#endif
     std::lock_guard<std::mutex> lock(performanceLogMutex);
     
     if(!performanceLogFile.is_open()) {
@@ -1398,6 +1411,10 @@ void Game::doInput()
     SDL_Event event;
     while(SDL_PollEvent(&event)) {
         // check for a key press
+#ifdef __SWITCH__
+        if(Switch::Input::ProcessEvent(event))
+            continue;
+#endif
 
         // first of all update mouse
         if(event.type == SDL_MOUSEMOTION) {
@@ -1405,6 +1422,7 @@ void Game::doInput()
             drawnMouseX = std::max(0, std::min(mouse->x, settings.video.width-1));
             drawnMouseY = std::max(0, std::min(mouse->y, settings.video.height-1));
 
+#ifndef __SWITCH__
             static Uint32 lastCursorLog = 0;
             const Uint32 now = SDL_GetTicks();
             if(now - lastCursorLog >= 500) {
@@ -1424,6 +1442,7 @@ void Game::doInput()
                                cursorManager.isInitialized() ? "yes" : "no");
                 lastCursorLog = now;
             }
+#endif
         }
 
         if(pInGameMenu != nullptr) {
@@ -1677,7 +1696,11 @@ void Game::doInput()
 
     if((pInGameMenu == nullptr) && (pInGameMentat == nullptr) && (pWaitingForOtherPlayers == nullptr) && (SDL_GetWindowFlags(window) & SDL_WINDOW_MOUSE_FOCUS)) {
 
+#ifdef __SWITCH__
+        const Uint8 *keystate = Switch::Input::GetKeyboardState(nullptr);
+#else
         const Uint8 *keystate = SDL_GetKeyboardState(nullptr);
+#endif
         scrollDownMode =  (drawnMouseY >= getRendererHeight()-1-SCROLLBORDER) || keystate[SDL_SCANCODE_DOWN];
         scrollLeftMode = (drawnMouseX <= SCROLLBORDER) || keystate[SDL_SCANCODE_LEFT];
         scrollRightMode = (drawnMouseX >= getRendererWidth()-1-SCROLLBORDER) || keystate[SDL_SCANCODE_RIGHT];
@@ -2046,6 +2069,9 @@ void Game::renderFrame() {
     // Copy to main screen and present in one step
     SDL_SetRenderTarget(renderer, nullptr);
     SDL_RenderCopy(renderer, screenTexture, nullptr, nullptr);
+#ifdef __SWITCH__
+    Switch::Input::DrawCursor();
+#endif
     SDL_RenderPresent(renderer);
     
     const Uint64 renderEnd = SDL_GetPerformanceCounter();
@@ -2055,6 +2081,9 @@ void Game::renderFrame() {
 }
 
 void Game::processInput() {
+#ifdef __SWITCH__
+        Switch::Input::Update();
+#endif
     // Process all input through doInput() which handles both menu and game input
     doInput();
     
@@ -2131,7 +2160,9 @@ void Game::updateGameState() {
     if(combatStats.lastDumpCycle == 0) {
         combatStats.lastDumpCycle = gameCycleCount;
     } else if((gameCycleCount - combatStats.lastDumpCycle) >= MILLI2CYCLES(30000)) {
+#ifndef __SWITCH__
         dumpCombatStats();
+#endif
         combatStats.lastDumpCycle = gameCycleCount;
     }
     
@@ -3286,6 +3317,23 @@ void Game::handleKeyInput(SDL_KeyboardEvent& keyboardEvent) {
             setCursorMode(CursorMode_Move);
         } break;
 
+#ifdef __SWITCH__
+        case SDLK_s: {
+            // stop action, back to guarding
+            UnitBase* pResponder = nullptr;
+            for(Uint32 objectID : selectedList) {
+                ObjectBase* pObject = objectManager.getObject(objectID);
+                if (pObject->isAUnit() && (pObject->getOwner() == pLocalHouse) && pObject->isRespondable()) {
+                    pResponder = static_cast<UnitBase*>(pObject);
+                    pResponder->handleSetAttackModeClick(GUARD);
+                }
+            }
+            setCursorMode(CursorMode_Normal);
+            if(pResponder)
+                pResponder->playConfirmSound();
+        } break;
+#endif
+
         case SDLK_g: {
             // select next construction yard
             std::set<Uint32> itemIDs;
@@ -3647,6 +3695,7 @@ bool Game::handleSelectedObjectsActionClick(int xPos, int yPos) {
 
 
 void Game::takeScreenshot() const {
+#ifndef __SWITCH__ // FIXME: crashes
     std::string screenshotFilename;
     int i = 1;
     do {
@@ -3657,6 +3706,7 @@ void Game::takeScreenshot() const {
     sdl2::surface_ptr pCurrentScreen = renderReadSurface(renderer);
     SavePNG(pCurrentScreen.get(), screenshotFilename.c_str());
     currentGame->addToNewsTicker(_("Screenshot saved") + ": '" + screenshotFilename + "'");
+#endif
 }
 
 

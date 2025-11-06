@@ -6,6 +6,7 @@ configure_file(
 
 # Main executable
 add_executable(dunelegacy)
+target_include_directories(dunelegacy PRIVATE ${CMAKE_BINARY_DIR}/include)
 
 # Enable Win32 subsystem on Windows
 if(WIN32)
@@ -330,11 +331,34 @@ if(WIN32)
 endif()
 
 # Compiler options
-target_compile_options(dunelegacy
-    PRIVATE
-        $<$<CXX_COMPILER_ID:MSVC>:/W4>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic>
-)
+if(NINTENDO_SWITCH)
+    # be a bit less verbose
+    target_compile_options(dunelegacy PRIVATE -Wall -Wno-extra -Wno-pedantic)
+else()
+    target_compile_options(dunelegacy
+        PRIVATE
+            $<$<CXX_COMPILER_ID:MSVC>:/W4>
+            $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic>
+    )
+endif()
+
+if(NINTENDO_SWITCH)
+    target_sources(dunelegacy PRIVATE Switch/input.cpp Switch/misc.cpp Switch/runtime.cpp)
+    dkp_target_generate_symbol_list(dunelegacy)
+
+    file(COPY "${CMAKE_SOURCE_DIR}/data" DESTINATION "${CMAKE_BINARY_DIR}/romfs")
+    file(COPY "${CMAKE_SOURCE_DIR}/config" DESTINATION "${CMAKE_BINARY_DIR}/romfs/data")
+
+    nx_generate_nacp(dunelegacy.nacp
+        NAME "Dune Legacy"
+        AUTHOR "Dune Legacy Team, carstene1ns"
+        VERSION ${PROJECT_VERSION})
+    nx_create_nro(dunelegacy
+        NACP dunelegacy.nacp
+        ICON ${CMAKE_SOURCE_DIR}/dunelegacy.jpg
+        ROMFS ${CMAKE_BINARY_DIR}/romfs
+    )
+endif()
 
 # Data directory handling
 set(DATA_DIR "${CMAKE_SOURCE_DIR}/data")
@@ -364,8 +388,16 @@ install(TARGETS dunelegacy
 )
 
 # Define data directory path for runtime
-target_compile_definitions(dunelegacy
-    PRIVATE
-        DATA_DIRECTORY="${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
-        DUNELEGACY_DATADIR="${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}"
-) 
+if(NINTENDO_SWITCH)
+    target_compile_definitions(dunelegacy
+        PRIVATE
+            DATA_DIRECTORY="romfs:/data"
+            DUNELEGACY_DATADIR="romfs:/data"
+    )
+else()
+    target_compile_definitions(dunelegacy
+        PRIVATE
+            DATA_DIRECTORY="${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}"
+            DUNELEGACY_DATADIR="${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}"
+    )
+endif()

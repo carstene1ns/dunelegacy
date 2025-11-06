@@ -42,6 +42,10 @@
 #include <typeinfo>
 #include <algorithm>
 
+#ifdef __SWITCH__
+    #include "Switch/input.h"
+#endif
+
 extern int currentZoomlevel;
 
 // functor for std::find_if
@@ -129,6 +133,9 @@ void MapEditor::RunEditor() {
         int frameStart = SDL_GetTicks();
 
         processInput();
+#ifdef __SWITCH__
+        Switch::Input::Update();
+#endif
         drawScreen();
 
         int frameTime = SDL_GetTicks() - frameStart;
@@ -964,6 +971,9 @@ void MapEditor::drawScreen() {
 
     // Cursor
     drawCursor();
+#ifdef __SWITCH__
+    Switch::Input::DrawCursor();
+#endif
 
     SDL_RenderPresent(renderer);
 }
@@ -972,6 +982,11 @@ void MapEditor::processInput() {
     SDL_Event event;
 
     while(SDL_PollEvent(&event)) {
+
+#ifdef __SWITCH__
+        if (Switch::Input::ProcessEvent(event))
+            continue;
+#endif
 
         // first of all update mouse
         if(event.type == SDL_MOUSEMOTION) {
@@ -1296,7 +1311,11 @@ void MapEditor::processInput() {
     }
 
     if((pInterface->hasChildWindow() == false) && (SDL_GetWindowFlags(window) & SDL_WINDOW_MOUSE_FOCUS)) {
+#ifdef __SWITCH__
+        const Uint8 *keystate = Switch::Input::GetKeyboardState(nullptr);
+#else
         const Uint8 *keystate = SDL_GetKeyboardState(nullptr);
+#endif
         scrollDownMode =  (drawnMouseY >= getRendererHeight()-1-SCROLLBORDER) || keystate[SDL_SCANCODE_DOWN];
         scrollLeftMode = (drawnMouseX <= SCROLLBORDER) || keystate[SDL_SCANCODE_LEFT];
         scrollRightMode = (drawnMouseX >= getRendererWidth()-1-SCROLLBORDER) || keystate[SDL_SCANCODE_RIGHT];

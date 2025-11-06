@@ -82,6 +82,11 @@
 #include <misc/MacFunctions.h>
 #endif
 
+#ifdef __SWITCH__
+    #include "Switch/misc.h"
+    #include "Switch/input.h"
+#endif
+
 #if !defined(__GNUG__) || (defined(_GLIBCXX_HAS_GTHREADS) && defined(_GLIBCXX_USE_C99_STDINT_TR1) && (ATOMIC_INT_LOCK_FREE > 1) && !defined(_GLIBCXX_HAS_GTHREADS))
 // g++ does not provide std::async on all platforms
 #define HAS_ASYNC
@@ -406,6 +411,8 @@ std::string getDefaultPlayerName() {
 #ifdef _WIN32
     DWORD playernameLength = MAX_PLAYERNAMELENGHT+1;
     GetUserName(playername, &playernameLength);
+#elif defined __SWITCH__
+    Switch::getUserName(playername, MAX_PLAYERNAMELENGHT+1);
 #else
     struct passwd* pwent = getpwuid(getuid());
 
@@ -560,6 +567,9 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
                                 "Player Name = %s            # The name of the player\n"
                                 "Language = %s               # en = English, fr = French, de = German\n"
                                 "Scroll Speed = 50           # Amount to scroll the map when the cursor is near the screen border\n"
+#ifdef __SWITCH__
+                                "Mouse Speed = 15            # Controller cursor movement speed\n"
+#endif
                                 "Show Tutorial Hints = true  # Show tutorial hints during the game\n"
                                 "\n"
                                 "[Video]\n"
@@ -650,9 +660,14 @@ void showMissingFilesMessageBox() {
 
     instruction += "\nYou may want to add GERMAN.PAK or FRENCH.PAK for playing in these languages.";
 
+#ifdef __SWITCH__
+    // message box unimplemented
+    printf("%s\n", instruction.c_str());
+#else
     if(!SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Dune Legacy", instruction.c_str(), nullptr)) {
         fprintf(stderr, "%s\n", instruction.c_str());
     }
+#endif
 }
 
 std::string getUserLanguage() {
@@ -669,6 +684,12 @@ std::string getUserLanguage() {
 
 #elif defined (__APPLE__)
     pLang = getMacLanguage();
+    if(pLang == nullptr) {
+        return "";
+    }
+
+#elif defined (__SWITCH__)
+    pLang = Switch::getUserLanguage();
     if(pLang == nullptr) {
         return "";
     }
@@ -709,8 +730,11 @@ int main(int argc, char *argv[]) {
         if(fnkdat(nullptr, nullptr, 0, FNKDAT_INIT) < 0) {
             THROW(std::runtime_error, "Cannot initialize fnkdat!");
         }
-
+#if defined __SWITCH__ && defined DEBUG
+        bool bShowDebugLog = true;
+#else
         bool bShowDebugLog = false;
+#endif
         for(int i=1; i < argc; i++) {
             //check for overiding params
             std::string parameter(argv[i]);
@@ -823,6 +847,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 bFirstGamestart = true;
+                pFileManager = std::make_unique<FileManager>(); // FIXME: upstream bug
                 createDefaultConfigFile(configfilepath, userLanguage);
             }
 
@@ -832,6 +857,9 @@ int main(int argc, char *argv[]) {
             settings.general.playerName = myINIFile.getStringValue("General","Player Name","Player");
             settings.general.language = myINIFile.getStringValue("General","Language","en");
             settings.general.scrollSpeed = myINIFile.getIntValue("General","Scroll Speed",50);
+#ifdef __SWITCH__
+            settings.general.mouseSpeed = myINIFile.getIntValue("General","Mouse Speed",15);
+#endif
             settings.general.showTutorialHints = myINIFile.getBoolValue("General","Show Tutorial Hints",true);
             settings.video.width = myINIFile.getIntValue("Video","Width",640);
             settings.video.height = myINIFile.getIntValue("Video","Height",480);
@@ -921,6 +949,10 @@ int main(int argc, char *argv[]) {
                 if(SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO) < 0) {
                     THROW(sdl_error, "Couldn't initialize SDL: %s!", SDL_GetError());
                 }
+
+#ifdef __SWITCH__
+                Switch::Input::Start();
+#endif
 
                 SDL_version compiledVersion;
                 SDL_version linkedVersion;
@@ -1145,6 +1177,9 @@ int main(int argc, char *argv[]) {
 
             if(bExitGame == true) {
                 TTF_Quit();
+#ifdef __SWITCH__
+                Switch::Input::Stop();
+#endif
                 SDL_Quit();
             }
             SDL_Log("Deinitialization finished!");
@@ -1156,7 +1191,12 @@ int main(int argc, char *argv[]) {
         }
     } catch(const std::exception& e) {
         std::string message = std::string("An unhandled exception of type \'") + demangleSymbol(typeid(e).name()) + std::string("\' was thrown:\n\n") + e.what() + std::string("\n\nDune Legacy will now be terminated!");
+#ifdef __SWITCH__
+        // message box unimplemented
+        printf("Dune Legacy: Unrecoverable error: %s\n", message.c_str());
+#else
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Dune Legacy: Unrecoverable error", message.c_str(), nullptr);
+#endif
 
         return EXIT_FAILURE;
     }

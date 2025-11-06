@@ -11,6 +11,9 @@
     #include <windows.h>
     #include <dbghelp.h>
     #pragma comment(lib, "dbghelp.lib")
+#elif defined __SWITCH__
+    #include <switch.h>
+    extern "C" void __libnx_exit(int);
 #else
     #include <execinfo.h>  // For backtrace (POSIX)
     #include <unistd.h>
@@ -103,7 +106,11 @@ static void signalHandler(int sig) {
     // Prevent recursive crashes
     static volatile sig_atomic_t in_handler = 0;
     if(in_handler) {
+#ifdef __SWITCH__
+        __libnx_exit(128 + sig);
+#else
         _exit(128 + sig);
+#endif
     }
     in_handler = 1;
     
@@ -150,7 +157,26 @@ static void signalHandler(int sig) {
     }
     
     SymCleanup(process);
-    
+
+#elif defined __SWITCH__
+    // todo?
+    writeCrashLog("Stack Trace:\n");
+
+    ThreadContext ctx = {0};
+    Result rc = threadDumpContext(&ctx, threadGetSelf());
+    if(R_SUCCEEDED(rc)) {
+        for(int i = 0; i < 29; i++)
+            writeCrashLog("[X%d]: 0x%lx\n", i, ctx.cpu_gprs[i].x);
+        writeCrashLog("fp: 0x%lx\n", ctx.fp);
+        writeCrashLog("lr: 0x%lx\n", ctx.lr);
+        writeCrashLog("sp: 0x%lx\n", ctx.sp);
+        writeCrashLog("pc: 0x%lx\n", ctx.pc.x);
+        writeCrashLog("pstate/cpsr: 0x%x\n", ctx.psr);
+        writeCrashLog("fpcr: 0x%x\n", ctx.fpcr);
+        writeCrashLog("fpsr: 0x%x\n", ctx.fpsr);
+        writeCrashLog("tpidr: 0x%lx\n", ctx.tpidr);
+    } else
+        writeCrashLog("  (Unable to get stack trace)\n");
 #else
     // POSIX (macOS/Linux): Get stack trace using backtrace
     writeCrashLog("Stack Trace:\n");

@@ -244,6 +244,11 @@ public:
         }
 
         if(pressed == true) {
+
+#ifdef __SWITCH__
+            setText("", false); // no way to delete from swkbd
+            SDL_StartTextInput();
+#endif
             setActive();
             lastCarretTime = SDL_GetTicks();
         }

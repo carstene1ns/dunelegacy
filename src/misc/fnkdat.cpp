@@ -441,6 +441,9 @@ int fnkdat(const char* target, char* buffer, int len, int flags) {
 #ifdef __APPLE__
       getMacApplicationSupportFolder(buffer, len);
       FNKDAT_S(strncat(buffer, "/Dune Legacy", len));
+#elif defined __SWITCH__
+      // FIXME: configuration dir is fixed (should be app dir)
+      FNKDAT_S(strncat(buffer, "sdmc:/switch/" PACKAGE, len));
 #else
       {
          char* xdg_config = getenv("XDG_CONFIG_HOME");

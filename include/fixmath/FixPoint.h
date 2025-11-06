@@ -30,9 +30,11 @@ typedef FixPoint32 FixPoint;
 
 namespace fix32_parserimpl
 {
+#ifdef _MSC_VER
 #pragma warning(push)
     // The unused branches in the template functions have integer overflows.
 #pragma warning(disable:4307)
+#endif
 
     template<uint64_t I, uint64_t F, uint64_t Scale>
     static constexpr uint64_t fp32_fraction_parser()
@@ -62,7 +64,9 @@ namespace fix32_parserimpl
 
         return fp32_parser<10 * I + (static_cast<int>(First) - '0'), Chars...>();
     }
+#ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 }
 
 template<char...Chars>

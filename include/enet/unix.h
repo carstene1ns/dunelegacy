@@ -9,6 +9,10 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#ifdef __SWITCH__
+#include <sys/select.h>
+#include <arpa/inet.h>
+#endif
 #include <netinet/in.h>
 #include <unistd.h>
 

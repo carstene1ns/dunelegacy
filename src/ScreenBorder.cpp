@@ -21,6 +21,10 @@
 
 #include <algorithm>
 
+#ifdef __SWITCH__
+    #include "Switch/input.h"
+#endif
+
 void ScreenBorder::setNewScreenCenter(const Coord& newPosition) {
     Coord currentBorderSize = bottomRightCorner - topLeftCorner;
 
@@ -61,7 +65,12 @@ void ScreenBorder::setNewScreenCenter(const Coord& newPosition) {
 
 bool ScreenBorder::scrollLeft() {
     if(topLeftCorner.x > 0) {
-        int scrollAmount = std::min(settings.general.scrollSpeed, topLeftCorner.x);
+        int scrollSpeed = settings.general.scrollSpeed;
+#ifdef __SWITCH__
+        // apply stick position
+        scrollSpeed = static_cast<int>(round(scrollSpeed * Switch::Input::scrollFactorLeft));
+#endif
+        int scrollAmount = std::min(scrollSpeed, topLeftCorner.x);
         topLeftCorner.x -= scrollAmount;
         bottomRightCorner.x -= scrollAmount;
         return true;
@@ -72,7 +81,12 @@ bool ScreenBorder::scrollLeft() {
 
 bool ScreenBorder::scrollRight() {
     if(bottomRightCorner.x < mapSizeX*TILESIZE-1) {
-        int scrollAmount = std::min(settings.general.scrollSpeed,mapSizeX*TILESIZE-1-bottomRightCorner.x);
+        int scrollSpeed = settings.general.scrollSpeed;
+#ifdef __SWITCH__
+        // apply stick position
+        scrollSpeed = static_cast<int>(round(scrollSpeed * Switch::Input::scrollFactorRight));
+#endif
+        int scrollAmount = std::min(scrollSpeed,mapSizeX*TILESIZE-1-bottomRightCorner.x);
         topLeftCorner.x += scrollAmount;
         bottomRightCorner.x += scrollAmount;
         return true;
@@ -83,7 +97,12 @@ bool ScreenBorder::scrollRight() {
 
 bool ScreenBorder::scrollUp() {
     if(topLeftCorner.y > 0) {
-        int scrollAmount = std::min(settings.general.scrollSpeed, topLeftCorner.y);
+        int scrollSpeed = settings.general.scrollSpeed;
+#ifdef __SWITCH__
+        // apply stick position
+        scrollSpeed = static_cast<int>(round(scrollSpeed * Switch::Input::scrollFactorUp));
+#endif
+        int scrollAmount = std::min(scrollSpeed, topLeftCorner.y);
         topLeftCorner.y -= scrollAmount;
         bottomRightCorner.y -= scrollAmount;
         return true;
@@ -94,7 +113,12 @@ bool ScreenBorder::scrollUp() {
 
 bool ScreenBorder::scrollDown() {
     if(bottomRightCorner.y < mapSizeY*TILESIZE-1) {
-        int scrollAmount = std::min(settings.general.scrollSpeed,mapSizeY*TILESIZE-1-bottomRightCorner.y);
+        int scrollSpeed = settings.general.scrollSpeed;
+#ifdef __SWITCH__
+        // apply stick position
+        scrollSpeed = static_cast<int>(round(scrollSpeed * Switch::Input::scrollFactorDown));
+#endif
+        int scrollAmount = std::min(scrollSpeed,mapSizeY*TILESIZE-1-bottomRightCorner.y);
         topLeftCorner.y += scrollAmount;
         bottomRightCorner.y += scrollAmount;
         return true;

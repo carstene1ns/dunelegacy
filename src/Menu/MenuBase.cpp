@@ -29,6 +29,9 @@
 #include <sand.h>
 #include <main.h>
 
+#ifdef __SWITCH__
+    #include "Switch/input.h"
+#endif
 
 MenuBase::MenuBase() : Window(0,0,0,0) {
     bAllowQuiting = true;
@@ -55,6 +58,10 @@ int MenuBase::showMenu() {
         int frameStart = SDL_GetTicks();
 
         update();
+
+#ifdef __SWITCH__
+        Switch::Input::Update();
+#endif
 
         if(pNetworkManager != nullptr) {
             pNetworkManager->update();
@@ -100,12 +107,19 @@ void MenuBase::draw() {
     Window::drawOverlay();
 
     SDL_RenderSetClipRect(renderer, nullptr);
+#ifdef __SWITCH__
+    Switch::Input::DrawCursor();
+#endif
 }
 
 void MenuBase::drawSpecificStuff() {
 }
 
 bool MenuBase::doInput(SDL_Event &event) {
+#ifdef __SWITCH__
+    if (Switch::Input::ProcessEvent(event))
+        return !quiting;
+#endif
     switch (event.type) {
         case (SDL_KEYDOWN): {
             // Look for a keypress
