@@ -1721,36 +1721,46 @@ void Game::updateGameState() {
         // Use existing FPS calculation over the entire session
         const double avgFps = (frameTiming.frameCount * 1000.0 / frameTiming.totalMs);
         
-        // If average FPS is below 40, reduce budget by 4 steps (2k) - AGGRESSIVE
-        if(avgFps < 40.0) {
-            SDL_Log("[PathBudget] Cycle %d: Average FPS below 40: %.1f FPS - reducing budget (4 steps × 500)", 
+        // If average FPS is below 50, reduce budget by 8 steps (4k) - AGGRESSIVE
+        if(avgFps < 50.0) {
+            SDL_Log("[PathBudget] Cycle %d: Average FPS below 50: %.1f FPS - reducing budget (8 steps × 500)", 
                     gameCycleCount, avgFps);
-            logPerformance("[PathBudget] Cycle %d: Average FPS below 40: %.1f FPS - reducing budget (4 steps × 500)", 
+            logPerformance("[PathBudget] Cycle %d: Average FPS below 50: %.1f FPS - reducing budget (8 steps × 500)", 
                     gameCycleCount, avgFps);
-            requestLowerBudget(4);  // Reduce by 2k (4 × 500) - aggressive
+            requestLowerBudget(8);  // Reduce by 4k (8 × 500) - aggressive
             
             // Log full performance report on budget change
             logFrameTiming();
         }
-        // If average FPS is above 60 AND budget is below max, increase budget by 1 step (500)
-        else if(avgFps > 60.0 && negotiatedBudget < kMaxBudget) {
-            size_t oldBudget = negotiatedBudget;
-            size_t newBudget = std::min<size_t>(negotiatedBudget + 500, kMaxBudget);
+        // If average FPS is above 80 AND budget is below max AND queue is manageable, increase budget by 1 step (500)
+        else if(avgFps > 80.0 && negotiatedBudget < kMaxBudget) {
+            const size_t queueDepth = pathRequestQueue.size();
             
-            SDL_Log("[PathBudget] Cycle %d: Average FPS above 60: %.1f FPS - increasing budget (1 step × 500) %zu -> %zu", 
-                    gameCycleCount, avgFps, oldBudget, newBudget);
-            logPerformance("[BUDGET CHANGE] Cycle %d: Increasing budget %zu -> %zu tokens/cycle (1 step × 500, FPS=%.1f, queue=%zu)",
-                    gameCycleCount, oldBudget, newBudget, avgFps, pathRequestQueue.size());
-            
-            negotiatedBudget = newBudget;
-            carryOverTokens = 0;  // Reset carry-over when budget changes
-            
-            SDL_Log("[PathBudget] Applied immediately - new budget=%zu", negotiatedBudget);
-            logPerformance("[BUDGET CHANGE] Cycle %d: Applied immediately - new budget=%zu", 
-                    gameCycleCount, negotiatedBudget);
-            
-            // Log full performance report on budget change
-            logFrameTiming();
+            // Block increases if queue is high (system already struggling)
+            if(queueDepth > 300) {
+                SDL_Log("[PathBudget] Cycle %d: FPS=%.1f but queue too high (%zu) - blocking budget increase", 
+                        gameCycleCount, avgFps, queueDepth);
+                logPerformance("[PathBudget] Cycle %d: FPS=%.1f but queue too high (%zu) - blocking budget increase", 
+                        gameCycleCount, avgFps, queueDepth);
+            } else {
+                size_t oldBudget = negotiatedBudget;
+                size_t newBudget = std::min<size_t>(negotiatedBudget + 500, kMaxBudget);
+                
+                SDL_Log("[PathBudget] Cycle %d: Average FPS above 80: %.1f FPS - increasing budget (1 step × 500) %zu -> %zu (queue=%zu)", 
+                        gameCycleCount, avgFps, oldBudget, newBudget, queueDepth);
+                logPerformance("[BUDGET CHANGE] Cycle %d: Increasing budget %zu -> %zu tokens/cycle (1 step × 500, FPS=%.1f, queue=%zu)",
+                        gameCycleCount, oldBudget, newBudget, avgFps, queueDepth);
+                
+                negotiatedBudget = newBudget;
+                carryOverTokens = 0;  // Reset carry-over when budget changes
+                
+                SDL_Log("[PathBudget] Applied immediately - new budget=%zu", negotiatedBudget);
+                logPerformance("[BUDGET CHANGE] Cycle %d: Applied immediately - new budget=%zu", 
+                        gameCycleCount, negotiatedBudget);
+                
+                // Log full performance report on budget change
+                logFrameTiming();
+            }
         }
     }
     

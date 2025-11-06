@@ -438,15 +438,10 @@ void Bullet::update()
         if(oldDistanceToDestination < newDistanceToDestination || newDistanceToDestination < 4)  {
 
             if(bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) {
-                if(detonationTimer == 0) {
-                    // MULTIPLAYER-SAFE: Track launcher rocket expiration
-                    ObjectBase* pTarget = target.getObjPointer();
-                    if(pTarget && pTarget->getItemID() == Unit_Ornithopter) {
-                        currentGame->combatStats.launcherRocketsExpired++;
-                    }
-                    destroy();
-                    return;
-                }
+                realX = destination.x;
+                realY = destination.y;
+                destroy();
+                return;
             } else if(bulletID == Bullet_TurretRocket) {
                 // MULTIPLAYER-SAFE: Track proximity detonation
                 ObjectBase* pTarget = target.getObjPointer();
@@ -463,6 +458,16 @@ void Bullet::update()
                 destroy();
                 return;
             }
+        }
+
+        if((bulletID == Bullet_Rocket || bulletID == Bullet_DRocket) && detonationTimer == 0) {
+            // MULTIPLAYER-SAFE: Track launcher rocket expiration
+            ObjectBase* pTarget = target.getObjPointer();
+            if(pTarget && pTarget->getItemID() == Unit_Ornithopter) {
+                currentGame->combatStats.launcherRocketsExpired++;
+            }
+            destroy();
+            return;
         }
     }
 }
