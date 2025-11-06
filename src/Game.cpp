@@ -640,35 +640,439 @@ void Game::requestLowerBudget(int steps) {
         return;
     }
     
-    // In multiplayer, send command to host for broadcast
-    // Host will schedule the change for a specific cycle
-    // All peers will apply it deterministically at that cycle
+    // In multiplayer, use the proper budget negotiation system
+    // Only the host can broadcast budget changes
+    if(pNetworkManager->isServer()) {
+        // HOST: Broadcast the change to all clients
+        SDL_Log("[PathBudget] Host broadcasting budget reduction: %zu -> %zu", 
+                negotiatedBudget, targetBudget);
+        broadcastBudgetChange(targetBudget);
+    } else {
+        // CLIENT: This shouldn't happen - clients don't request budget changes
+        // Budget changes are driven by the host's decision logic
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "[PathBudget] Client called requestLowerBudget() - ignoring (host controls budget in multiplayer)");
+        logPerformance("[PathBudget] Cycle %d: Client incorrectly called requestLowerBudget() - ignoring",
+                gameCycleCount);
+    }
+}
+
+// MULTIPLAYER BUDGET NEGOTIATION IMPLEMENTATION
+
+void Game::checkBudgetAdjustment() {
+    if(pNetworkManager != nullptr && !pNetworkManager->isServer()) {
+        // CLIENT: Send stats ONE CYCLE BEFORE the check interval
+        // This ensures the host has fresh data when it makes its decision
+        if((gameCycleCount + 1) % kBudgetCheckInterval == 0 && frameTiming.frameCount > 0) {
+            const double avgFps = (frameTiming.frameCount * 1000.0 / frameTiming.totalMs);
+            sendStatsToHost(avgFps, pathRequestQueue.size(), negotiatedBudget);
+        }
+    }
+    else if(gameCycleCount % kBudgetCheckInterval == 0 && frameTiming.frameCount > 0) {
+        const double avgFps = (frameTiming.frameCount * 1000.0 / frameTiming.totalMs);
+        
+        if(pNetworkManager != nullptr && pNetworkManager->isServer()) {
+            // HOST: Make decision based on collected stats + handle missing stats
+            // At this point, client stats from (cycle - 1) have arrived
+            makeHostBudgetDecision();
+        } else {
+            // SINGLE-PLAYER: Apply adjustment immediately
+            applySinglePlayerBudgetAdjustment(avgFps);
+        }
+    }
+}
+
+void Game::applySinglePlayerBudgetAdjustment(float avgFps) {
+    // If average FPS is below 50, reduce budget by 8 steps (4k) - AGGRESSIVE
+    if(avgFps < 50.0) {
+        SDL_Log("[PathBudget] Cycle %d: Average FPS below 50: %.1f FPS - reducing budget (8 steps × 500)", 
+                gameCycleCount, avgFps);
+        logPerformance("[PathBudget] Cycle %d: Average FPS below 50: %.1f FPS - reducing budget (8 steps × 500)", 
+                gameCycleCount, avgFps);
+        requestLowerBudget(8);  // Reduce by 4k (8 × 500) - aggressive
+        
+        // Log full performance report on budget change
+        logFrameTiming();
+    }
+    // If average FPS is above 80 AND budget is below max AND queue is manageable, increase budget by 1 step (500)
+    else if(avgFps > 80.0 && negotiatedBudget < kMaxBudget) {
+        const size_t queueDepth = pathRequestQueue.size();
+        
+        // Block increases if queue is high (system already struggling)
+        if(queueDepth > 300) {
+            SDL_Log("[PathBudget] Cycle %d: FPS=%.1f but queue too high (%zu) - blocking budget increase", 
+                    gameCycleCount, avgFps, queueDepth);
+            logPerformance("[PathBudget] Cycle %d: FPS=%.1f but queue too high (%zu) - blocking budget increase", 
+                    gameCycleCount, avgFps, queueDepth);
+        } else {
+            size_t oldBudget = negotiatedBudget;
+            size_t newBudget = std::min<size_t>(negotiatedBudget + 500, kMaxBudget);
+            
+            SDL_Log("[PathBudget] Cycle %d: Average FPS above 80: %.1f FPS - increasing budget (1 step × 500) %zu -> %zu (queue=%zu)", 
+                    gameCycleCount, avgFps, oldBudget, newBudget, queueDepth);
+            logPerformance("[BUDGET CHANGE] Cycle %d: Increasing budget %zu -> %zu tokens/cycle (1 step × 500, FPS=%.1f, queue=%zu)",
+                    gameCycleCount, oldBudget, newBudget, avgFps, queueDepth);
+            
+            negotiatedBudget = newBudget;
+            carryOverTokens = 0;  // Reset carry-over when budget changes
+            
+            SDL_Log("[PathBudget] Applied immediately - new budget=%zu", negotiatedBudget);
+            logPerformance("[BUDGET CHANGE] Cycle %d: Applied immediately - new budget=%zu", 
+                    gameCycleCount, negotiatedBudget);
+            
+            // Log full performance report on budget change
+            logFrameTiming();
+        }
+    }
+}
+
+void Game::sendStatsToHost(float avgFps, size_t queueDepth, size_t currentBudget) {
+    if(pNetworkManager == nullptr) {
+        return;  // Single-player, nothing to send
+    }
     
-    // Create network command
-    // Format: NETWORKPACKET_SETPATHBUDGET | targetBudget (4 bytes) | applyCycle (4 bytes)
-    const Uint32 applyCycle = gameCycleCount + 2;  // Apply 2 cycles from now
+    // Host doesn't need to send stats to itself (it computes them locally in makeHostBudgetDecision)
+    if(pNetworkManager->isServer()) {
+        return;  // Host, nothing to send
+    }
     
-    // Build packet
-    std::vector<Uint8> buffer;
-    buffer.reserve(9);
-    buffer.push_back(NETWORKPACKET_SETPATHBUDGET);
+    // LOGGING: Outbound stats to host (before sending)
+    SDL_Log("[PathBudget CLIENT] → OUTBOUND to host: FPS=%.1f, queue=%zu, budget=%zu (cycle %d)",
+            avgFps, queueDepth, currentBudget, gameCycleCount);
+    logPerformance("[CLIENT OUTBOUND] Cycle %d: Sending stats to host: FPS=%.1f, queue=%zu, budget=%zu, carryOver=%zu",
+            gameCycleCount, avgFps, queueDepth, currentBudget, carryOverTokens);
     
-    // Write targetBudget (4 bytes, big-endian)
-    buffer.push_back((targetBudget >> 24) & 0xFF);
-    buffer.push_back((targetBudget >> 16) & 0xFF);
-    buffer.push_back((targetBudget >> 8) & 0xFF);
-    buffer.push_back(targetBudget & 0xFF);
+    // Send via NetworkManager
+    pNetworkManager->sendClientStats(avgFps, queueDepth, currentBudget, gameCycleCount);
     
-    // Write applyCycle (4 bytes, big-endian)
-    buffer.push_back((applyCycle >> 24) & 0xFF);
-    buffer.push_back((applyCycle >> 16) & 0xFF);
-    buffer.push_back((applyCycle >> 8) & 0xFF);
-    buffer.push_back(applyCycle & 0xFF);
+    SDL_Log("[PathBudget CLIENT] ✓ Stats sent to host");
+    logPerformance("[CLIENT OUTBOUND] Cycle %d: Stats packet sent successfully", gameCycleCount);
+}
+
+void Game::handleClientStats(Uint32 clientId, Uint32 gameCycle, float avgFps, Uint32 queueDepth, Uint32 currentBudget) {
+    // HOST ONLY: Collect stats from clients
+    if(pNetworkManager == nullptr || !pNetworkManager->isServer()) {
+        return;  // Only host processes client stats
+    }
     
-    // Send to network manager
-    // Note: This will be fully implemented after we add the network handler
-    // For now, just apply locally in single-player mode
-    SDL_Log("[PathBudget] TODO: Send network command (buffer size: %zu)", buffer.size());
+    // Store client stats
+    ClientPerformanceStats stats;
+    stats.clientId = clientId;
+    stats.lastUpdateCycle = gameCycle;
+    stats.avgFps = avgFps;
+    stats.queueDepth = queueDepth;  // Instantaneous at cycle boundary
+    stats.currentBudget = currentBudget;
+    stats.missedUpdates = 0;  // Reset counter on successful receive
+    
+    clientStats[clientId] = stats;
+    
+    // LOGGING: Inbound client stats
+    SDL_Log("[PathBudget HOST] ← INBOUND from Client %d: FPS=%.1f, queue=%d, budget=%d (cycle %d)",
+            clientId, avgFps, queueDepth, currentBudget, gameCycle);
+    logPerformance("[HOST INBOUND] Cycle %d: Client %d stats: FPS=%.1f, queue=%d, budget=%d",
+            gameCycleCount, clientId, avgFps, queueDepth, currentBudget);
+    
+    // Mark that we received stats from this client
+    // Don't immediately make a decision - wait for checkBudgetAdjustment to trigger it
+}
+
+bool Game::haveStatsFromAllClients() const {
+    // NOTE: This function is currently unused since we switched to time-based decision making
+    // The host makes decisions every kBudgetCheckInterval, not when all stats arrive
+    // Missing stats are handled by handleMissingClientStats() which uses stale data
+    
+    if(pNetworkManager == nullptr) {
+        return false;
+    }
+    
+    // TODO: If we ever need this again, implement getConnectedClientCount()
+    // const size_t expectedClientCount = pNetworkManager->getConnectedClientCount();
+    // return clientStats.size() >= expectedClientCount;
+    
+    return false;  // Unused
+}
+
+void Game::handleMissingClientStats() {
+    // HOST ONLY: Handle clients that haven't sent stats
+    if(pNetworkManager == nullptr || !pNetworkManager->isServer()) {
+        return;
+    }
+    
+    for(auto& [clientId, stats] : clientStats) {
+        const Uint32 cyclesSinceLastUpdate = gameCycleCount - stats.lastUpdateCycle;
+        
+        // Clients send stats one cycle BEFORE the check interval
+        // So we expect stats every kBudgetCheckInterval cycles, but they arrive at (interval - 1)
+        // If stats are older than (kBudgetCheckInterval + a few grace cycles), they're stale
+        if(cyclesSinceLastUpdate > kBudgetCheckInterval + 5) {
+            stats.missedUpdates++;
+            
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "[PathBudget] Client %d stats are stale (last update: %d cycles ago, missed: %d)",
+                clientId, cyclesSinceLastUpdate, stats.missedUpdates);
+            
+            // After 3 consecutive missed updates (3 × 7.5s = 22.5 seconds)
+            if(stats.missedUpdates >= 3) {
+                // Assume worst-case: client is struggling
+                SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                    "[PathBudget] Client %d has missed 3+ updates - assuming poor performance",
+                    clientId);
+                logPerformance("[PathBudget] Cycle %d: Client %d stale (missed %d) - forcing reduction",
+                        gameCycleCount, clientId, stats.missedUpdates);
+                
+                // Force FPS to 0 to trigger reduction
+                stats.avgFps = 0.0f;
+                stats.queueDepth = 1000;  // Assume high queue
+            }
+            // After 2 missed updates: reuse last known values but log warning
+            else {
+                SDL_Log("[PathBudget] Client %d: Reusing last known values (FPS=%.1f, queue=%d)",
+                        clientId, stats.avgFps, stats.queueDepth);
+                logPerformance("[PathBudget] Cycle %d: Client %d stats reused (missed %d)",
+                        gameCycleCount, clientId, stats.missedUpdates);
+            }
+        }
+    }
+}
+
+void Game::makeHostBudgetDecision() {
+    // HOST ONLY: Decide budget based on ALL client stats + own stats
+    if(pNetworkManager == nullptr || !pNetworkManager->isServer()) {
+        return;
+    }
+    
+    // Calculate own stats
+    const double hostFps = (frameTiming.frameCount * 1000.0 / frameTiming.totalMs);
+    const size_t hostQueueDepth = pathRequestQueue.size();  // Instantaneous
+    
+    // If we have no client stats yet (first interval), only use host's own stats
+    // This is safe because clients send stats one cycle early, so after the first interval
+    // we'll always have client data. For the very first decision, host-only is acceptable.
+    if(clientStats.empty()) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "[PathBudget HOST] First decision with no client stats yet - using host-only (FPS=%.1f, queue=%zu)",
+            hostFps, hostQueueDepth);
+        logPerformance("[HOST DECISION] Cycle %d: FIRST INTERVAL (no client stats yet - host-only decision)",
+                gameCycleCount);
+        // Fall through to make decision based on host stats only
+    }
+    
+    // Handle missing client stats (timeout logic)
+    handleMissingClientStats();
+    
+    // Find minimum FPS across all peers (including host)
+    float minFps = hostFps;
+    size_t maxQueueDepth = hostQueueDepth;
+    
+    // Track desync status
+    bool allClientsSynced = true;
+    
+    for(const auto& [clientId, stats] : clientStats) {
+        // Validate budget synchronization (sanity check)
+        if(stats.currentBudget != negotiatedBudget) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                "[PathBudget] DESYNC DETECTED! Client %d budget=%d but host=%zu - triggering re-sync",
+                clientId, stats.currentBudget, negotiatedBudget);
+            logPerformance("[DESYNC CRITICAL] Client %d has budget=%d but host has %zu - re-syncing immediately",
+                    clientId, stats.currentBudget, negotiatedBudget);
+            
+            // Immediately re-sync this client
+            resyncClientBudget(clientId);
+            allClientsSynced = false;
+        }
+        
+        // Decision logic uses ONLY FPS and queue depth
+        if(stats.avgFps < minFps) {
+            minFps = stats.avgFps;
+        }
+        if(stats.queueDepth > maxQueueDepth) {
+            maxQueueDepth = stats.queueDepth;
+        }
+    }
+    
+    // If any clients are out of sync, don't make budget changes until they're synced
+    if(!allClientsSynced) {
+        SDL_Log("[PathBudget] Deferring budget decision until all clients re-synced");
+        logPerformance("[PathBudget] Cycle %d: Deferring decision - waiting for client re-sync",
+                gameCycleCount);
+        return;  // Skip this decision cycle
+    }
+    
+    // LOGGING: Host decision inputs
+    SDL_Log("[PathBudget HOST] ═══ DECISION CYCLE %d ═══", gameCycleCount);
+    SDL_Log("[PathBudget HOST] Inputs: minFps=%.1f (host=%.1f), maxQueue=%zu (host=%zu), current budget=%zu",
+            minFps, hostFps, maxQueueDepth, hostQueueDepth, negotiatedBudget);
+    logPerformance("[HOST DECISION] Cycle %d: minFps=%.1f, maxQueue=%zu, budget=%zu",
+            gameCycleCount, minFps, maxQueueDepth, negotiatedBudget);
+    
+    // Decision logic: "Slowest peer wins"
+    size_t newBudget = negotiatedBudget;
+    const char* decisionReason = "STABLE";
+    
+    if(minFps < 50.0) {
+        // AT LEAST ONE peer is struggling → REDUCE budget aggressively
+        newBudget = negotiatedBudget >= 4000 + kMinBudget ? 
+                    negotiatedBudget - 4000 : kMinBudget;
+        decisionReason = "REDUCE (low FPS)";
+        
+        SDL_Log("[PathBudget HOST] Decision: REDUCE budget (minFps=%.1f < 50) → %zu → %zu",
+                minFps, negotiatedBudget, newBudget);
+        logPerformance("[HOST DECISION] Cycle %d: REDUCE %zu → %zu (minFps=%.1f < 50)",
+                gameCycleCount, negotiatedBudget, newBudget, minFps);
+    }
+    else if(minFps > 80.0 && negotiatedBudget < kMaxBudget) {
+        // ALL peers have good FPS → consider INCREASE
+        
+        // Queue depth gate: block increases if ANY peer has high queue
+        if(maxQueueDepth > 300) {
+            decisionReason = "BLOCKED (high queue)";
+            
+            SDL_Log("[PathBudget HOST] Decision: FPS good (%.1f) but queue too high (%zu) - BLOCKED",
+                    minFps, maxQueueDepth);
+            logPerformance("[HOST DECISION] Cycle %d: BLOCKED (minFps=%.1f > 80 but maxQueue=%zu > 300)",
+                    gameCycleCount, minFps, maxQueueDepth);
+            newBudget = negotiatedBudget;  // Keep current
+        } else {
+            // Safe to increase
+            newBudget = std::min<size_t>(negotiatedBudget + 500, kMaxBudget);
+            decisionReason = "INCREASE (high FPS)";
+            
+            SDL_Log("[PathBudget HOST] Decision: INCREASE budget (minFps=%.1f > 80, maxQueue=%zu < 300) → %zu → %zu",
+                    minFps, maxQueueDepth, negotiatedBudget, newBudget);
+            logPerformance("[HOST DECISION] Cycle %d: INCREASE %zu → %zu (minFps=%.1f > 80, maxQueue=%zu < 300)",
+                    gameCycleCount, negotiatedBudget, newBudget, minFps, maxQueueDepth);
+        }
+    }
+    else {
+        // Stable - no change needed
+        decisionReason = "STABLE (FPS in range)";
+        SDL_Log("[PathBudget HOST] Decision: STABLE (minFps=%.1f in 50-80 range)", minFps);
+        logPerformance("[HOST DECISION] Cycle %d: STABLE (minFps=%.1f in 50-80 range)",
+                gameCycleCount, minFps);
+    }
+    
+    // LOGGING: Final decision summary
+    SDL_Log("[PathBudget HOST] ═══ DECISION: %s ═══", decisionReason);
+    
+    // If budget changed, broadcast to all clients
+    if(newBudget != negotiatedBudget) {
+        broadcastBudgetChange(newBudget);
+    } else {
+        SDL_Log("[PathBudget HOST] No change - budget stays at %zu", negotiatedBudget);
+        logPerformance("[HOST DECISION] Cycle %d: No change (budget=%zu, reason=%s)",
+                gameCycleCount, negotiatedBudget, decisionReason);
+    }
+    
+    // Don't clear clientStats! We need to keep them to detect missing updates
+    // The stats will be updated when new packets arrive (missedUpdates reset to 0)
+}
+
+void Game::broadcastBudgetChange(size_t newBudget) {
+    // HOST ONLY: Broadcast budget change to all clients
+    if(pNetworkManager == nullptr || !pNetworkManager->isServer()) {
+        return;
+    }
+    
+    // Calculate apply cycle: NEXT interval boundary (e.g., cycle 750 if we're at cycle 375)
+    // This gives a full interval (375 cycles) for the broadcast to reach all clients
+    // and ensures budget changes always align with measurement windows
+    const Uint32 nextInterval = ((gameCycleCount / kBudgetCheckInterval) + 1) * kBudgetCheckInterval;
+    const Uint32 applyCycle = nextInterval;
+    
+    // LOGGING: Outbound budget broadcast (before sending)
+    SDL_Log("[PathBudget HOST] → OUTBOUND to ALL clients: budget %zu → %zu (apply cycle %d)",
+            negotiatedBudget, newBudget, applyCycle);
+    logPerformance("[HOST OUTBOUND] Cycle %d: Broadcasting budget %zu → %zu (apply cycle %d)",
+            gameCycleCount, negotiatedBudget, newBudget, applyCycle);
+    
+    // Send via NetworkManager broadcast to all clients
+    pNetworkManager->broadcastPathBudget(newBudget, applyCycle);
+    
+    // Also queue locally (host applies the same change)
+    handleSetPathBudget(newBudget, applyCycle);
+    
+    SDL_Log("[PathBudget HOST] ✓ Broadcast sent to all clients and queued locally");
+    logPerformance("[HOST OUTBOUND] Cycle %d: Broadcast sent successfully",
+            gameCycleCount);
+}
+
+void Game::resyncClientBudget(Uint32 clientId) {
+    // HOST ONLY: Emergency re-sync for out-of-sync client
+    if(pNetworkManager == nullptr || !pNetworkManager->isServer()) {
+        return;
+    }
+    
+    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+        "[PathBudget] Re-syncing client %d with current budget %zu",
+        clientId, negotiatedBudget);
+    
+    // Send immediate sync packet (apply at next interval boundary)
+    // Even for desyncs, we apply at the next interval to maintain determinism
+    const Uint32 nextInterval = ((gameCycleCount / kBudgetCheckInterval) + 1) * kBudgetCheckInterval;
+    const Uint32 applyCycle = nextInterval;
+    
+    // NOTE: For now, we broadcast to all clients (since ENet doesn't have per-peer send in our current API)
+    // This is safe - extra sync messages won't hurt synchronized clients
+    pNetworkManager->broadcastPathBudget(negotiatedBudget, applyCycle);
+    
+    SDL_Log("[PathBudget HOST] ✓ Re-sync broadcast sent to all clients (including client %d)", clientId);
+    logPerformance("[DESYNC RECOVERY] Cycle %d: Sent re-sync broadcast to all clients (budget=%zu, apply cycle %d)",
+            gameCycleCount, negotiatedBudget, applyCycle);
+}
+
+void Game::handleSetPathBudget(size_t newBudget, Uint32 applyCycle) {
+    // ALL CLIENTS: Queue the budget change for deterministic application
+    
+    // LOGGING: Inbound budget order from host
+    SDL_Log("[PathBudget CLIENT] ← INBOUND from host: budget %zu → %zu (apply cycle %d, current cycle %d, delta=%d cycles)",
+            negotiatedBudget, newBudget, applyCycle, gameCycleCount, 
+            (int)(applyCycle - gameCycleCount));
+    logPerformance("[CLIENT INBOUND] Cycle %d: Received budget order %zu → %zu (apply cycle %d, carryOver=%zu)",
+            gameCycleCount, negotiatedBudget, newBudget, applyCycle, carryOverTokens);
+    
+    // Store in pending commands queue
+    PendingBudgetChange change;
+    change.newBudget = newBudget;
+    change.applyCycle = applyCycle;
+    change.resetCarryOver = true;  // CRITICAL: Must clear carry-over tokens!
+    pendingBudgetChanges.push_back(change);
+    
+    SDL_Log("[PathBudget CLIENT] ✓ Budget order queued (pending: %zu)",
+            pendingBudgetChanges.size());
+}
+
+void Game::applyPendingBudgetChanges() {
+    // Called every cycle to check for pending budget changes
+    
+    auto it = pendingBudgetChanges.begin();
+    while(it != pendingBudgetChanges.end()) {
+        if(gameCycleCount >= it->applyCycle) {
+            // Apply budget change NOW
+            size_t oldBudget = negotiatedBudget;
+            negotiatedBudget = std::clamp(it->newBudget, kMinBudget, kMaxBudget);
+            
+            // CRITICAL FOR SYNC: Reset carry-over tokens on budget change
+            // Without this, clients can drift due to accumulated token differences
+            size_t oldCarryOver = carryOverTokens;
+            if(it->resetCarryOver) {
+                carryOverTokens = 0;
+            }
+            
+            // LOGGING: Budget application
+            SDL_Log("[PathBudget] ★ APPLIED budget change at cycle %d: %zu → %zu (carryOver %zu → 0)",
+                    gameCycleCount, oldBudget, negotiatedBudget, oldCarryOver);
+            logPerformance("[BUDGET APPLIED] Cycle %d: %zu → %zu tokens/cycle (carryOver %zu → 0, queue=%zu)",
+                    gameCycleCount, oldBudget, negotiatedBudget, oldCarryOver, pathRequestQueue.size());
+            
+            // Log full performance report on budget change
+            logFrameTiming();
+            
+            // Remove from pending queue
+            it = pendingBudgetChanges.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 
@@ -1716,53 +2120,11 @@ void Game::updateGameState() {
 
     gameCycleCount++;
     
+    // Apply any pending budget changes (deterministic, cycle-based)
+    applyPendingBudgetChanges();
+    
     // PHASE 1: Cycle-based budget adjustment (deterministic, every 375 cycles ~7.5s at 50Hz)
-    if(gameCycleCount % kBudgetCheckInterval == 0 && frameTiming.frameCount > 0) {
-        // Use existing FPS calculation over the entire session
-        const double avgFps = (frameTiming.frameCount * 1000.0 / frameTiming.totalMs);
-        
-        // If average FPS is below 50, reduce budget by 8 steps (4k) - AGGRESSIVE
-        if(avgFps < 50.0) {
-            SDL_Log("[PathBudget] Cycle %d: Average FPS below 50: %.1f FPS - reducing budget (8 steps × 500)", 
-                    gameCycleCount, avgFps);
-            logPerformance("[PathBudget] Cycle %d: Average FPS below 50: %.1f FPS - reducing budget (8 steps × 500)", 
-                    gameCycleCount, avgFps);
-            requestLowerBudget(8);  // Reduce by 4k (8 × 500) - aggressive
-            
-            // Log full performance report on budget change
-            logFrameTiming();
-        }
-        // If average FPS is above 80 AND budget is below max AND queue is manageable, increase budget by 1 step (500)
-        else if(avgFps > 80.0 && negotiatedBudget < kMaxBudget) {
-            const size_t queueDepth = pathRequestQueue.size();
-            
-            // Block increases if queue is high (system already struggling)
-            if(queueDepth > 300) {
-                SDL_Log("[PathBudget] Cycle %d: FPS=%.1f but queue too high (%zu) - blocking budget increase", 
-                        gameCycleCount, avgFps, queueDepth);
-                logPerformance("[PathBudget] Cycle %d: FPS=%.1f but queue too high (%zu) - blocking budget increase", 
-                        gameCycleCount, avgFps, queueDepth);
-            } else {
-                size_t oldBudget = negotiatedBudget;
-                size_t newBudget = std::min<size_t>(negotiatedBudget + 500, kMaxBudget);
-                
-                SDL_Log("[PathBudget] Cycle %d: Average FPS above 80: %.1f FPS - increasing budget (1 step × 500) %zu -> %zu (queue=%zu)", 
-                        gameCycleCount, avgFps, oldBudget, newBudget, queueDepth);
-                logPerformance("[BUDGET CHANGE] Cycle %d: Increasing budget %zu -> %zu tokens/cycle (1 step × 500, FPS=%.1f, queue=%zu)",
-                        gameCycleCount, oldBudget, newBudget, avgFps, queueDepth);
-                
-                negotiatedBudget = newBudget;
-                carryOverTokens = 0;  // Reset carry-over when budget changes
-                
-                SDL_Log("[PathBudget] Applied immediately - new budget=%zu", negotiatedBudget);
-                logPerformance("[BUDGET CHANGE] Cycle %d: Applied immediately - new budget=%zu", 
-                        gameCycleCount, negotiatedBudget);
-                
-                // Log full performance report on budget change
-                logFrameTiming();
-            }
-        }
-    }
+    checkBudgetAdjustment();
     
     // MULTIPLAYER FIX (Issue #8): Cycle-based combat stats dump (deterministic)
     // Dump combat statistics every 30 seconds (MILLI2CYCLES(30000) cycles)
@@ -1820,6 +2182,15 @@ void Game::initializeNetwork() {
         pNetworkManager->setOnPeerDisconnected(
             std::bind(&Game::onPeerDisconnected, this, 
             std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        
+        // Multiplayer budget negotiation callbacks
+        pNetworkManager->setOnReceiveClientStats(
+            std::bind(&Game::handleClientStats, this,
+            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, 
+            std::placeholders::_4, std::placeholders::_5));
+        pNetworkManager->setOnReceiveSetPathBudget(
+            std::bind(&Game::handleSetPathBudget, this,
+            std::placeholders::_1, std::placeholders::_2));
         
         cmdManager.setNetworkCycleBuffer(MILLI2CYCLES(pNetworkManager->getMaxPeerRoundTripTime()) + 5);
     }
@@ -2570,6 +2941,20 @@ void Game::onReceiveSelectionList(const std::string& name, const std::set<Uint32
 
 void Game::onPeerDisconnected(const std::string& name, bool bHost, int cause) {
     pInterface->getChatManager().addInfoMessage(name + " disconnected!");
+    
+    // CRITICAL: Clear all client stats when ANY peer disconnects
+    // Active clients will re-register at the next interval (< 375 cycles)
+    // This is simpler and safer than trying to map player name → clientId
+    if(pNetworkManager != nullptr && pNetworkManager->isServer()) {
+        const size_t removedCount = clientStats.size();
+        clientStats.clear();
+        
+        SDL_Log("[PathBudget HOST] Player '%s' disconnected - cleared all client stats (%zu entries)",
+                name.c_str(), removedCount);
+        SDL_Log("[PathBudget HOST] Active clients will re-register at next interval (< 375 cycles)");
+        logPerformance("[PathBudget] Cycle %d: Cleared %zu client stats due to disconnect (%s) - active clients will re-register",
+                gameCycleCount, removedCount, name.c_str());
+    }
 }
 
 void Game::setGameWon() {

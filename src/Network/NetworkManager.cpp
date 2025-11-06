@@ -776,6 +776,42 @@ void NetworkManager::handlePacket(ENetPeer* peer, ENetPacketIStream& packetStrea
                 }
             } break;
 
+            case NETWORKPACKET_CLIENTSTATS: {
+                // Host receives client performance stats
+                if(!bIsServer) {
+                    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "NetworkManager: Client received CLIENTSTATS packet (should only be sent to host)");
+                    break;
+                }
+
+                Uint32 gameCycle = packetStream.readUint32();
+                float avgFps = packetStream.readFloat();
+                Uint32 queueDepth = packetStream.readUint32();
+                Uint32 currentBudget = packetStream.readUint32();
+
+                // Extract client ID from peer data
+                // For now, we'll use the peer's address hash as a unique ID
+                Uint32 clientId = peer->address.host ^ peer->address.port;
+
+                if(pOnReceiveClientStats) {
+                    pOnReceiveClientStats(clientId, gameCycle, avgFps, queueDepth, currentBudget);
+                }
+            } break;
+
+            case NETWORKPACKET_SETPATHBUDGET: {
+                // Client receives budget change order from host
+                if(bIsServer) {
+                    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "NetworkManager: Host received SETPATHBUDGET packet (should only be sent to clients)");
+                    break;
+                }
+
+                Uint32 newBudget = packetStream.readUint32();
+                Uint32 applyCycle = packetStream.readUint32();
+
+                if(pOnReceiveSetPathBudget) {
+                    pOnReceiveSetPathBudget(newBudget, applyCycle);
+                }
+            } break;
+
             default: {
                 SDL_Log("NetworkManager: Unknown packet type %d", packetType);
             };
@@ -932,4 +968,36 @@ void NetworkManager::debugNetwork(const char* fmt, ...) {
         vfprintf(stderr, fmt, args);
         va_end(args);
     }
+}
+
+void NetworkManager::sendClientStats(float avgFps, Uint32 queueDepth, Uint32 currentBudget, Uint32 gameCycle) {
+    // Client → Host: Send performance stats
+    if(bIsServer) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "NetworkManager: Host trying to send client stats (should only be called by clients)");
+        return;
+    }
+
+    ENetPacketOStream packetStream(ENET_PACKET_FLAG_RELIABLE);
+    packetStream.writeUint32(NETWORKPACKET_CLIENTSTATS);
+    packetStream.writeUint32(gameCycle);
+    packetStream.writeFloat(avgFps);
+    packetStream.writeUint32(queueDepth);
+    packetStream.writeUint32(currentBudget);
+
+    sendPacketToHost(packetStream);
+}
+
+void NetworkManager::broadcastPathBudget(size_t newBudget, Uint32 applyCycle) {
+    // Host → All Clients: Broadcast budget change
+    if(!bIsServer) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "NetworkManager: Client trying to broadcast path budget (only host can broadcast)");
+        return;
+    }
+
+    ENetPacketOStream packetStream(ENET_PACKET_FLAG_RELIABLE);
+    packetStream.writeUint32(NETWORKPACKET_SETPATHBUDGET);
+    packetStream.writeUint32(static_cast<Uint32>(newBudget));
+    packetStream.writeUint32(applyCycle);
+
+    sendPacketToAllConnectedPeers(packetStream);
 }

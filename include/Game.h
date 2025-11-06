@@ -834,6 +834,39 @@ private:
     
     void requestLowerBudget(int steps = 1);  // Request budget reduction via network (steps × 500)
 
+    // Multiplayer budget negotiation structs
+    struct ClientPerformanceStats {
+        Uint32 clientId;
+        Uint32 lastUpdateCycle;
+        float avgFps;
+        Uint32 queueDepth;
+        Uint32 currentBudget;
+        int missedUpdates = 0;
+    };
+    
+    struct PendingBudgetChange {
+        size_t newBudget;
+        Uint32 applyCycle;
+        bool resetCarryOver = true;
+    };
+    
+    // Multiplayer budget negotiation state
+    std::vector<PendingBudgetChange> pendingBudgetChanges;
+    std::map<Uint32, ClientPerformanceStats> clientStats;  // Host only
+    
+    // Multiplayer budget negotiation functions
+    void checkBudgetAdjustment();
+    void sendStatsToHost(float avgFps, size_t queueDepth, size_t currentBudget);
+    void handleClientStats(Uint32 clientId, Uint32 gameCycle, float avgFps, Uint32 queueDepth, Uint32 currentBudget);
+    void makeHostBudgetDecision();
+    void broadcastBudgetChange(size_t newBudget);
+    void handleSetPathBudget(size_t newBudget, Uint32 applyCycle);
+    void applyPendingBudgetChanges();
+    bool haveStatsFromAllClients() const;
+    void applySinglePlayerBudgetAdjustment(float avgFps);
+    void resyncClientBudget(Uint32 clientId);
+    void handleMissingClientStats();
+
     // Game loop methods
     void initializeGameLoop();
     void renderFrame();
