@@ -102,7 +102,9 @@ void NetworkManager::updateServer(int numPlayers) {
     this->numPlayers = numPlayers;
 }
 
-void NetworkManager::stopServer() {
+void NetworkManager::stopAnnouncing() {
+    // Stop announcing the game in the lobby/server list
+    // This is called when the game starts, but the server should remain active
     if(bLANServer == true) {
         if(pLANGameFinderAndAnnouncer != nullptr) {
             pLANGameFinderAndAnnouncer->stopAnnounce();
@@ -112,7 +114,13 @@ void NetworkManager::stopServer() {
             pMetaServerClient->stopAnnounce();
         }
     }
+    // NOTE: bIsServer remains TRUE so the host can continue managing the game
+}
 
+void NetworkManager::stopServer() {
+    stopAnnouncing();
+    
+    // Fully stop the server (called when leaving a game or menu)
     bIsServer = false;
     bLANServer = false;
     pGameInitSettings = nullptr;

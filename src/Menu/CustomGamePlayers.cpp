@@ -477,7 +477,9 @@ void CustomGamePlayers::update() {
             pNetworkManager->setOnStartGame(std::function<void (unsigned int)>());
 
             if(bServer) {
-                pNetworkManager->stopServer();
+                // Stop announcing the game in lobby, but DON'T reset bIsServer
+                // The server needs to remain active during the game for multiplayer budget negotiation
+                pNetworkManager->stopAnnouncing();
             }
 
             addAllPlayersToGameInitSettings();

@@ -69,6 +69,7 @@ public:
 
     void startServer(bool bLANServer, const std::string& serverName, const std::string& playerName, GameInitSettings* pGameInitSettings, int numPlayers, int maxPlayers);
     void updateServer(int numPlayers);
+    void stopAnnouncing();  // Stops lobby announcement but keeps bIsServer = true
     void stopServer();
 
     void connect(const std::string& hostname, int port, const std::string& playerName);
