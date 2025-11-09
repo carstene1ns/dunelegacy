@@ -532,6 +532,7 @@ static bool promptToRestoreOutOfSyncConfigurations()
 void createDefaultConfigFile(const std::string& configfilepath, const std::string& language) {
     SDL_Log("Creating user config file '%s'", configfilepath.c_str());
 
+#ifndef __SWITCH__
     // Try to copy template file from config directory first
     try {
         auto templateFile = pFileManager->openFile("config/" + std::string(CONFIGFILENAME));
@@ -554,6 +555,7 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
         SDL_Log("Warning: Could not copy template from config directory: %s", e.what());
         SDL_Log("Falling back to programmatic creation...");
     }
+#endif
 
     // Fallback: create programmatically in user directory
     SDL_Log("Creating default config file in user directory: %s", configfilepath.c_str());
@@ -568,7 +570,7 @@ void createDefaultConfigFile(const std::string& configfilepath, const std::strin
                                 "Language = %s               # en = English, fr = French, de = German\n"
                                 "Scroll Speed = 50           # Amount to scroll the map when the cursor is near the screen border\n"
 #ifdef __SWITCH__
-                                "Mouse Speed = 15            # Controller cursor movement speed\n"
+                                "Mouse Speed = 30            # Controller cursor movement speed\n"
 #endif
                                 "Show Tutorial Hints = true  # Show tutorial hints during the game\n"
                                 "\n"
@@ -858,7 +860,8 @@ int main(int argc, char *argv[]) {
             settings.general.language = myINIFile.getStringValue("General","Language","en");
             settings.general.scrollSpeed = myINIFile.getIntValue("General","Scroll Speed",50);
 #ifdef __SWITCH__
-            settings.general.mouseSpeed = myINIFile.getIntValue("General","Mouse Speed",15);
+            settings.general.mouseSpeed = myINIFile.getIntValue("General","Mouse Speed",30);
+            settings.general.mouseSpeed = std::clamp(settings.general.mouseSpeed, Switch::Input::MOUSESPEED_MIN, Switch::Input::MOUSESPEED_MAX);
 #endif
             settings.general.showTutorialHints = myINIFile.getBoolValue("General","Show Tutorial Hints",true);
             settings.video.width = myINIFile.getIntValue("Video","Width",640);

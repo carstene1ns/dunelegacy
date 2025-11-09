@@ -16,11 +16,11 @@ extern SDL_Renderer* renderer;
 
 namespace {
     // used to convert user-friendly pointer speed values into more useable ones
-    constexpr float CONTROLLER_SPEED_MOD = 1800000.0f;
+    constexpr float CONTROLLER_SPEED_MOD = 1900000.0f;
     // bigger value correndsponds to faster pointer movement speed with bigger stick axis values
     constexpr float CONTROLLER_AXIS_SPEEDUP = 1.03f;
 
-    constexpr int CONTROLLER_AXIS_DEADZONE = 3000;
+    constexpr int CONTROLLER_AXIS_DEADZONE = 2500;
 
     SDL_GameController* gameController = nullptr;
     std::vector<uint8_t> keyStates;

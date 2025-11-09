@@ -5,6 +5,9 @@
 #include <SDL.h>
 
 namespace Switch::Input {
+    constexpr int MOUSESPEED_MIN = 10;
+    constexpr int MOUSESPEED_MAX = 80;
+
     extern float scrollFactorRight, scrollFactorLeft, scrollFactorUp, scrollFactorDown;
 
     void Start();

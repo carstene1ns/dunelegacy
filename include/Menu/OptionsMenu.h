@@ -26,6 +26,10 @@
 #include <GUI/TextBox.h>
 #include <GUI/Checkbox.h>
 #include <GUI/DropDownBox.h>
+#ifdef __SWITCH__
+    #include "Switch/input.h"
+    #include <GUI/ProgressBar.h>
+#endif
 #include <DataTypes.h>
 #include <misc/SDL2pp.h>
 
@@ -47,6 +51,12 @@ private:
     void    onOptionsCancel();
     void    onGameOptions();
     void    onRestoreDefaults();
+
+#ifdef __SWITCH__
+    void    onMouseSpeedMinus();
+    void    onMouseSpeedPlus();
+    void    updateMouseSpeedBar();
+#endif
 
     void    saveConfiguration2File();
 
@@ -92,6 +102,12 @@ private:
     HBox        audioHBox;
     Checkbox    playSFXCheckbox;
     Checkbox    playMusicCheckbox;
+#ifdef __SWITCH__
+    PictureButton   mouseSpeedPlus;
+    PictureButton   mouseSpeedMinus;
+    TextProgressBar mouseSpeedBar;
+    int             currentMouseSpeed;
+#endif
 
     HBox        networkPortHBox;
     TextBox     portTextBox;

@@ -203,15 +203,36 @@ OptionsMenu::OptionsMenu() : MenuBase()
 
     mainVBox.addWidget(Spacer::create(), 0.2);
 
+#ifdef __SWITCH__
+    #define AUDIO_CB_SIZE 140
+#else
+    #define AUDIO_CB_SIZE 240
+#endif
     audioHBox.addWidget(Spacer::create(), 0.5);
     playSFXCheckbox.setText(_("Play SFX"));
     playSFXCheckbox.setChecked(settings.audio.playSFX);
     playSFXCheckbox.setOnClick(std::bind(&OptionsMenu::onChangeOption, this, true));
-    audioHBox.addWidget(&playSFXCheckbox, 240);
+    audioHBox.addWidget(&playSFXCheckbox, AUDIO_CB_SIZE);
     playMusicCheckbox.setText(_("Play Music"));
     playMusicCheckbox.setChecked(settings.audio.playMusic);
     playMusicCheckbox.setOnClick(std::bind(&OptionsMenu::onChangeOption, this, true));
-    audioHBox.addWidget(&playMusicCheckbox, 240);
+    audioHBox.addWidget(&playMusicCheckbox, AUDIO_CB_SIZE);
+#undef AUDIO_CB_SIZE
+
+#ifdef __SWITCH__
+    mouseSpeedMinus.setTextures(pGFXManager->getUIGraphic(UI_Minus), pGFXManager->getUIGraphic(UI_Minus_Pressed));
+    mouseSpeedMinus.setOnClick(std::bind(&OptionsMenu::onMouseSpeedMinus, this));
+    audioHBox.addWidget(&mouseSpeedMinus);
+    audioHBox.addWidget(HSpacer::create(2));
+    mouseSpeedBar.setText(_("Emulated Mouse speed"));
+    audioHBox.addWidget(&mouseSpeedBar, 160);
+    currentMouseSpeed = settings.general.mouseSpeed;
+    updateMouseSpeedBar();
+    mouseSpeedPlus.setTextures(pGFXManager->getUIGraphic(UI_Plus), pGFXManager->getUIGraphic(UI_Plus_Pressed));
+    mouseSpeedPlus.setOnClick(std::bind(&OptionsMenu::onMouseSpeedPlus, this));
+    audioHBox.addWidget(HSpacer::create(2));
+    audioHBox.addWidget(&mouseSpeedPlus);
+#endif
     audioHBox.addWidget(Spacer::create(), 0.5);
 
     mainVBox.addWidget(&audioHBox, 0.01);
@@ -302,6 +323,10 @@ void OptionsMenu::onChangeOption(bool bInteractive) {
     bChanged |= (settings.audio.playSFX != playSFXCheckbox.isChecked());
     bChanged |= (settings.audio.playMusic != playMusicCheckbox.isChecked());
 
+#ifdef __SWITCH__
+    bChanged |= (settings.general.mouseSpeed != currentMouseSpeed);
+#endif
+
     bChanged |= (settings.gameOptions != currentGameOptions);
 
     bChanged |= (settings.network.serverPort != atoi(portTextBox.getText().c_str()));
@@ -368,6 +393,10 @@ void OptionsMenu::onOptionsOK() {
     settings.audio.playSFX = playSFXCheckbox.isChecked();
     settings.audio.playMusic = playMusicCheckbox.isChecked();
 
+#ifdef __SWITCH__
+    settings.general.mouseSpeed = currentMouseSpeed;
+#endif
+
     settings.gameOptions = currentGameOptions;
 
     settings.network.serverPort = serverport;
@@ -420,6 +449,10 @@ void OptionsMenu::saveConfiguration2File() {
 
     myINIFile.setBoolValue("General","Play Intro",settings.general.playIntro);
     myINIFile.setBoolValue("General","Show Tutorial Hints",settings.general.showTutorialHints);
+
+#ifdef __SWITCH__
+    myINIFile.setIntValue("General","Mouse Speed",settings.general.mouseSpeed);
+#endif
 
     myINIFile.setIntValue("Video","Physical Width",settings.video.physicalWidth);
     myINIFile.setIntValue("Video","Physical Height",settings.video.physicalHeight);
@@ -556,4 +589,25 @@ void OptionsMenu::onChildWindowClose(Window* pChildWindow) {
 
         onChangeOption(true);
     }
+}
+
+void OptionsMenu::onMouseSpeedMinus() {
+    if(currentMouseSpeed > Switch::Input::MOUSESPEED_MIN) {
+        currentMouseSpeed--;
+        updateMouseSpeedBar();
+        onChangeOption(true);
+    }
+}
+
+void OptionsMenu::onMouseSpeedPlus() {
+    if(currentMouseSpeed < Switch::Input::MOUSESPEED_MAX) {
+        currentMouseSpeed++;
+        updateMouseSpeedBar();
+        onChangeOption(true);
+    }
+}
+
+void OptionsMenu::updateMouseSpeedBar() {
+    constexpr int range = Switch::Input::MOUSESPEED_MAX - Switch::Input::MOUSESPEED_MIN;
+    mouseSpeedBar.setProgress(((currentMouseSpeed-Switch::Input::MOUSESPEED_MIN)*100)/range);
 }
